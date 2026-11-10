@@ -1,0 +1,1343 @@
+/**
+ * Base layer: the app frame and the primitives more than one screen uses.
+ *
+ * The stylesheet is built, not enqueued as authored: every component imports
+ * the file that styles it, webpack emits one bundle, and this file holds only
+ * what has no single owner. The rule for what belongs here is strict — a
+ * class used by two or more components, or a tint applied to core components
+ * app-wide. Anything one component owns lives beside that component.
+ *
+ * Color never appears here or in any component file. Every color is a
+ * var(--bs-*) role from tokens.css, and `npm run lint:css` fails the build on
+ * a literal — that rule is what keeps dark mode a token-layer concern.
+ */
+
+/*
+ * Layout is the app's alone; the token roles are not.
+ *
+ * A popover that finds no slot renders at the end of the document, outside
+ * this element, and inherits none of the token roles — including
+ * --wp-admin-theme-color, which is what core paints focus rings and selected
+ * states with. The app declares a popover slot so that does not happen;
+ * tokens.css covers .bs-popover as the second line, for the case where one
+ * escapes anyway.
+ */
+.bs-app {
+	font-size: var(--bs-text-md);
+	line-height: 1.55;
+	color: var(--bs-ink);
+	-webkit-font-smoothing: antialiased;
+
+	/* max-width: 1180px; */
+	margin: var(--bs-space-xl) auto var(--bs-space-4xl);
+	padding: 0 var(--bs-space-2xl) 0 var(--bs-space-xs);
+}
+
+/*
+ * The page the app is laid out on.
+ *
+ * `.bs-app` is a centered column inside wp-admin's content area and has never
+ * painted anything behind itself, so the dashboard sat on wp-admin's own
+ * #f0f0f1 — a flat mid-gray that the cards, the recessed strips and the band
+ * were never toned against. The product's own page color is #f8f9fa, one step
+ * lighter, which is what makes a white card read as raised and a subtle strip
+ * read as recessed.
+ *
+ * Only on our own screens: this stylesheet is enqueued on no others, and the
+ * attribute is written by the app that is mounted only there. It is removed
+ * when the app unmounts, so nothing is left painted behind us.
+ *
+ * Pinned dark is the case that makes this load-bearing rather than cosmetic.
+ * The cards turn dark and their ink turns light, and a section heading between
+ * two of them is then white on a light page — the dark island the note at the
+ * top of tokens.css refuses, arriving from the other direction.
+ *
+ * The footer is included because it is the one piece of wp-admin's own text
+ * inside the content column, and left alone it is dark ink on whatever this
+ * rule has just painted under it.
+ */
+body[data-bs-scheme],
+body[data-bs-scheme] #wpcontent,
+body[data-bs-scheme] #wpbody-content,
+body[data-bs-scheme] #wpfooter {
+	background: var(--bs-canvas);
+}
+
+body[data-bs-scheme] #wpfooter,
+body[data-bs-scheme] #wpfooter a {
+	color: var(--bs-canvas-ink);
+}
+
+/*
+ * A popover is one of our surfaces too.
+ *
+ * The token roles reach a popover that renders in the app's own slot, because
+ * custom properties inherit — so its TEXT has always been ours. Its surface
+ * never was: core paints the content box itself, in white, and nothing here
+ * had ever said otherwise because on a light scheme the two agree by
+ * accident. Pin the app to dark and the accident ends: light ink on a white
+ * card, which is how the color-scheme menu arrived unreadable.
+ *
+ * Here rather than beside a component because two of them open menus now —
+ * the filter overflow and the scheme control — and the second one is what
+ * turned a local rule into a shared one.
+ */
+.bs-popover .components-popover__content {
+	background: var(--bs-surface);
+	border: 1px solid var(--bs-border);
+	border-radius: var(--bs-radius-card);
+	box-shadow: var(--bs-shadow-overlay);
+	color: var(--bs-ink);
+}
+
+/*
+ * The entries a dropdown builds from `controls` carry this class, not the one
+ * a hand-composed MenuItem would — a distinction worth spelling out, because
+ * the wrong one of the two is silent: it matches nothing and the menu simply
+ * keeps core's own tone.
+ */
+.bs-popover .components-dropdown-menu__menu-item {
+	color: var(--bs-ink);
+	border-radius: var(--bs-radius-control);
+}
+
+.bs-popover .components-dropdown-menu__menu-item:hover:not(:disabled) {
+	background: var(--bs-surface-subtle);
+	color: var(--bs-brand-ink);
+}
+
+/* ---------- primitives ---------- */
+
+.bs-card {
+	background: var(--bs-surface);
+	border: 1px solid var(--bs-border);
+	border-radius: var(--bs-radius-card);
+	box-shadow: var(--bs-shadow);
+}
+
+/* A card with a heading and prose: the settings screens are built from these,
+   and the activity screen borrows the shape for its retention note. */
+.bs-panel {
+	padding: var(--bs-space-2xl);
+	margin-bottom: var(--bs-space-lg);
+}
+
+.bs-panel h2 {
+	font-size: var(--bs-text-lg);
+	font-weight: 600;
+	margin: 0 0 var(--bs-space-sm);
+	padding: 0;
+	color: var(--bs-ink);
+}
+
+/* The subheading inside a panel. Here rather than beside one screen: it is a
+   rule about .bs-panel, it applies wherever a panel has one, and written into
+   a screen's own stylesheet it reached every other screen anyway the moment
+   the bundle loaded. */
+.bs-panel h3 {
+	font-size: var(--bs-text-md);
+	font-weight: 600;
+	margin: var(--bs-space-xl) 0 var(--bs-space-xs);
+	padding: 0;
+	color: var(--bs-ink);
+}
+
+.bs-panel p {
+	color: var(--bs-ink-2);
+	margin: 0 0 var(--bs-space-md);
+	max-width: 66ch;
+}
+
+.bs-panel__row {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-space-md);
+	flex-wrap: wrap;
+}
+
+/* A panel heading with its control on the same line. What a card looks like
+   when the thing you do to it is one button or one switch: the control fills
+   the top right instead of leaving it empty, and the prose keeps a measure. */
+.bs-panel__head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--bs-space-2xl);
+	/* Wraps rather than overflows: a control whose label is a sentence does not
+	   fit beside a heading on a phone, and a card that scrolls sideways hides
+	   the half of itself that matters. */
+	flex-wrap: wrap;
+}
+
+.bs-panel__head h2 {
+	margin: 0;
+}
+
+.bs-panel__head > :last-child {
+	flex: none;
+}
+
+/* A note about the card above it, set outside the card so it does not read as
+   the end of whatever the card last showed. */
+.bs-undercard {
+	margin: var(--bs-space-md) var(--bs-space-2xs) 0;
+	max-width: 68ch;
+}
+
+/*
+ * A button standing beside a field matches its height.
+ *
+ * The field opts into the 40px control size; `Button` has no such size — its
+ * largest is 36 — so the four pixels have to come from here. `:has()` rather
+ * than a class on every such row: a browser without it simply leaves the
+ * button at 36, which is what it looks like today.
+ */
+.bs-panel__row:has(.components-text-control__input) .components-button,
+.bs-listedit__add:has(.components-text-control__input) .components-button,
+.bs-passkeys__add:has(.components-text-control__input) .components-button {
+	min-height: 40px;
+}
+
+.bs-panel__note {
+	color: var(--bs-ink-muted);
+	font-size: var(--bs-text-sm);
+	max-width: 52ch;
+}
+
+/* A live region stays in the page while it has nothing to say — one that is
+   only inserted once it does is one the browser has only just created, which
+   is the case that goes unannounced — so an empty one takes no room. */
+.bs-panel__note:empty {
+	margin: 0;
+}
+
+/*
+ * A row of labeled number fields. The failure this exists to prevent: a
+ * label that wraps to two lines pushes its own input down, and the row's
+ * inputs stop lining up. Every label block is therefore given the same
+ * two-line box with the text sat at its bottom, so wrapping changes where a
+ * label STARTS, never where its input sits.
+ */
+.bs-fieldrow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-space-lg);
+	flex-wrap: wrap;
+	margin: var(--bs-space-md) 0;
+}
+
+.bs-fieldrow .components-base-control {
+	width: 200px;
+}
+
+/* A field and the line under it, kept in one column of the row. */
+.bs-fieldrow__field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-space-2xs);
+}
+
+.bs-fieldrow .components-base-control__label {
+	min-height: 2.6em;
+	display: flex;
+	align-items: flex-end;
+}
+
+.bs-lede {
+	color: var(--bs-ink-2);
+	margin: 0 0 var(--bs-space-lg);
+	max-width: 62ch;
+}
+
+/*
+ * A quiet fact beside the thing it is about: when a credential was made, what
+ * a checksum is, which scope an app was given. It lived beside the agent
+ * surface while that was one screen; four tabs now write in it, so it belongs
+ * where the other shared primitives are rather than beside one of them.
+ */
+/*
+ * Key points: a short run of facts, one per line behind a brand dot, where a
+ * paragraph would have joined them with commas and "and". Shared because the
+ * explanations and the setting cards both break prose into these, and two
+ * lists that look almost the same are worse than one.
+ */
+.bs-points {
+	display: grid;
+	gap: var(--bs-space-xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-points li {
+	position: relative;
+	margin: 0;
+	padding-left: var(--bs-space-lg);
+}
+
+.bs-points li::before {
+	content: "";
+	position: absolute;
+	top: 0.62em;
+	left: 2px;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--bs-brand);
+}
+
+/*
+ * Labels: a handful of short things, a few words each, set as pills rather
+ * than a column of bullets — five two-word items stacked read as a list to
+ * work through. Shared for the same reason as the key points, and because the
+ * add-on sets them on its own cards.
+ */
+.bs-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-space-xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-tags li {
+	margin: 0;
+	padding: var(--bs-space-2xs) var(--bs-space-sm);
+	border: 1px solid var(--bs-border);
+	border-radius: var(--bs-radius-pill);
+	background: var(--bs-surface);
+	font-size: var(--bs-text-xs);
+	line-height: 1.5;
+	color: var(--bs-ink-2);
+}
+
+.bs-surface__meta {
+	color: var(--bs-ink-muted);
+	font-size: var(--bs-text-sm);
+}
+
+/* A value meant to be copied whole: the recovery link, a two-factor secret. */
+.bs-code {
+	font-family: Menlo, Consolas, monospace;
+	font-size: var(--bs-text-sm);
+	background: var(--bs-surface-subtle);
+	border: 1px solid var(--bs-border);
+	border-radius: 6px;
+	padding: var(--bs-space-sm) var(--bs-space-md);
+
+	/* `break-all` splits anywhere, including mid-word in ordinary prose, so a
+	   report about a policy read as broken text. `anywhere` still lets an
+	   unbreakable token — a long URL, a hash — split, and still lets the box
+	   shrink below its longest word. */
+	overflow-wrap: anywhere;
+	word-break: normal;
+	user-select: all;
+	margin-bottom: var(--bs-space-md);
+}
+
+.bs-rows {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-space-md);
+}
+
+/*
+ * The micro-label: a fact about the thing beside it, not a heading.
+ *
+ * "40 checks run", "posture, last 30 days", "-7 pts exposure". Uppercase and
+ * letter-spaced so it reads as an annotation at a size where sentence case
+ * would just read as small text, and tabular so a column of them lines up on
+ * the digit rather than on the glyph.
+ *
+ * Here rather than beside one component because the posture band, the side
+ * panels and the fixes list all write in it, and three copies of a type
+ * treatment is how one of them ends up a pixel off and nobody can say which.
+ * The text is written in the markup in the case it is read in; the transform
+ * is presentation, so a screen reader and a translator both get the sentence.
+ */
+.bs-label {
+	font-size: var(--bs-text-xs);
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	font-variant-numeric: tabular-nums;
+	color: var(--bs-ink-muted);
+}
+
+/*
+ * A count that qualifies the heading it sits beside: two unexpected files,
+ * one check that could not answer.
+ *
+ * Toned by severity through the roles, and never on its own — the heading
+ * says what the number is about, so the pill carries no meaning that the
+ * color is the only carrier of.
+ */
+.bs-countpill {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-space-xs);
+	padding: var(--bs-space-2xs) var(--bs-space-sm);
+	border-radius: var(--bs-radius-pill);
+	font-size: var(--bs-text-xs);
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	background: var(--bs-neutral-bg);
+	border: 1px solid var(--bs-neutral-border);
+	color: var(--bs-neutral-ink);
+}
+
+/* The dot is drawn from the pill's own ink, so a tone change moves both. */
+.bs-countpill::before {
+	content: "";
+	width: 5px;
+	height: 5px;
+	border-radius: var(--bs-radius-pill);
+	background: currentColor;
+	flex: none;
+}
+
+.bs-countpill--caution {
+	background: var(--bs-medium-bg);
+	border-color: var(--bs-medium-border);
+	color: var(--bs-medium-ink);
+}
+
+.bs-countpill--good {
+	background: var(--bs-good-bg);
+	border-color: var(--bs-good-border);
+	color: var(--bs-good-ink);
+}
+
+/* ---------- component tints ---------- */
+
+/*
+ * A link written as a link.
+ *
+ * Every link that looked right did so because it was a Button underneath, and
+ * nothing had ever said what a plain <a> should be — so the handful written as
+ * ordinary markup fell through to wp-admin's own blue and read as belonging to
+ * a different product. Said once here rather than per link, because the next
+ * one written will not remember to ask.
+ *
+ * Class-less on purpose, and not merely "not a button": a link that carries a
+ * class has a rule of its own somewhere — the section tabs are anchors toned
+ * to the quiet ink, and this selector outweighs theirs. So the boundary is
+ * whether anybody has said anything about the link yet.
+ */
+.bs-app a:not([class]) {
+	color: var(--bs-brand-ink);
+}
+
+/*
+ * A heading written as a heading, for the same reason and with the same
+ * boundary as the link above it.
+ *
+ * wp-admin styles bare `h1`–`h4` inside the content area to its own near-black,
+ * and every heading here that looked right did so because a component had
+ * named a color for it. The handful written as ordinary markup inherited
+ * wp-admin's instead — which is invisible the moment the reader pins a dark
+ * scheme, since the ink turns over and that literal does not.
+ *
+ * Class-less on purpose: a heading that carries a class has a rule of its
+ * own, and this must not outweigh it. `:not([class])` is also what takes this
+ * past `.wrap h2` on specificity rather than on load order.
+ */
+.bs-app :is(h1, h2, h3, h4):not([class]) {
+	color: var(--bs-ink);
+}
+
+/*
+ * Core's quiet button variants are toned for wp-admin's own chrome and read at
+ * about 3:1 against a dark card — under AA for body-size text. Tinting them
+ * from our brand role puts them back on the generated ramp, so they clear the
+ * threshold in both schemes. Setting --wp-components-* would be the other way
+ * to do this; those are transitional and not public API.
+ */
+.bs-app .components-button.is-tertiary:not( :disabled ):not( [aria-disabled='true'] ),
+.bs-app .components-button.is-secondary:not( :disabled ):not( [aria-disabled='true'] ),
+.bs-app .components-button.is-link:not( :disabled ):not( [aria-disabled='true'] ) {
+	color: var(--bs-brand-ink);
+}
+
+/*
+ * A control that removes or forgets something, told apart from the ones
+ * beside it.
+ *
+ * Almost everything here can be undone, so the few things that cannot are
+ * worth a reader noticing before they press rather than after. Removing an
+ * alert address sat in the same brand green as sending a test to it, which
+ * reads as one more thing to try.
+ *
+ * Not red. Red belongs to critical alone in this plugin, and a control is not
+ * an emergency — it is a choice somebody is about to make. This is
+ * de-emphasis rather than alarm: the brand color is what invites a press, so
+ * these do not get it, and the hover states what will happen rather than
+ * shouting it.
+ */
+.bs-app .components-button.bs-destructive:not( :disabled ):not( [aria-disabled='true'] ) {
+	color: var(--bs-ink-muted);
+}
+
+.bs-app .components-button.bs-destructive:not( :disabled ):not( [aria-disabled='true'] ):hover,
+.bs-app .components-button.bs-destructive:not( :disabled ):not( [aria-disabled='true'] ):focus {
+	color: var(--bs-ink);
+	background: var(--bs-surface-subtle);
+}
+
+/*
+ * What is wrong with a field, said while it is being typed rather than when
+ * the save fails. Amber and not red: red belongs to critical alone here, and a
+ * value somebody is halfway through typing is a correction rather than an
+ * emergency. The commit beside it is already held until it is made, so the
+ * message does not have to shout to be obeyed.
+ */
+.bs-field__problem {
+	margin: var(--bs-space-sm) 0 0;
+	font-size: var(--bs-text-sm);
+	color: var(--bs-high-ink);
+}
+
+/*
+ * Recovery codes on the one page they are ever shown. Monospaced and widely
+ * spaced because these are read off a screen and typed onto paper, and a
+ * transcription error here costs somebody the way back into their own site.
+ */
+.bs-codes {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: var(--bs-space-sm);
+	margin: var(--bs-space-md) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-codes code {
+	display: block;
+	padding: var(--bs-space-sm) var(--bs-space-md);
+	border: 1px solid var(--bs-border);
+	border-radius: 4px;
+	background: var(--bs-surface-subtle);
+	font-size: var(--bs-text-lg);
+	letter-spacing: 0.06em;
+}
+
+/* The control scale is shared across free, Ultra and all supported core versions. */
+.bs-app .components-button {
+	font-size: var(--bs-text-sm);
+	border-radius: var(--bs-radius-control);
+	/*
+	 * Every button settles into its hover and back rather than snapping. The
+	 * library ships none of this, so a row of controls on these screens went
+	 * from one state to the other between frames — which is the difference
+	 * between a screen that feels answered and one that feels switched.
+	 *
+	 * Color and shadow only, plus the press below. Nothing here animates a
+	 * property that costs layout.
+	 */
+	transition: background-color var(--bs-motion-fast) var(--bs-ease),
+		border-color var(--bs-motion-fast) var(--bs-ease),
+		color var(--bs-motion-fast) var(--bs-ease),
+		box-shadow var(--bs-motion-fast) var(--bs-ease),
+		transform var(--bs-motion-fast) var(--bs-ease);
+}
+
+/*
+ * And the same for every other control on these screens.
+ *
+ * The rule above reaches the library's button and nothing else, which left
+ * the filter chips, the disclosure asks, the client picker and the dismiss
+ * snapping between their hover states while the buttons beside them eased —
+ * six of them, each with a `:hover` and no transition to carry it. A control
+ * that changes between frames reads as a control that is not working.
+ *
+ * `button` catches all of them because all of them are buttons. The library's
+ * own is named as well, because it renders an anchor when it is given an
+ * href, and the two link-shaped controls are named for the same reason.
+ */
+.bs-app button,
+.bs-app .bs-site__name,
+.bs-popover button,
+.bs-popover .components-button,
+.bs-popover .components-dropdown-menu__menu-item {
+	transition: background-color var(--bs-motion-fast) var(--bs-ease),
+		border-color var(--bs-motion-fast) var(--bs-ease),
+		color var(--bs-motion-fast) var(--bs-ease),
+		box-shadow var(--bs-motion-fast) var(--bs-ease),
+		transform var(--bs-motion-fast) var(--bs-ease);
+}
+
+/*
+ * The press: one pixel down, for as long as the finger is on it.
+ *
+ * A control that moves under the press is the cheapest way to say the press
+ * landed, and it says it before any answer has come back. Disabled controls
+ * do not move, because they did not take the press.
+ */
+.bs-app button:not( :disabled ):not( [aria-disabled='true'] ):active,
+.bs-app .components-button:not( :disabled ):not( [aria-disabled='true'] ):active,
+.bs-popover button:not( :disabled ):not( [aria-disabled='true'] ):active {
+	transform: translateY(1px);
+}
+
+/*
+ * Working, said in the button's own colors.
+ *
+ * The library says it with a gray barbershop stripe scrolling diagonally
+ * across the control — two hard-coded grays that belong to no palette here.
+ * On a brand-colored button, and on every surface in the dark scheme, it read
+ * as a control that had broken rather than one that was busy. That was the
+ * report: a fix button that "shakes and looks broken" while it applies.
+ *
+ * So: one light crossing the button, left to right, in `currentColor`. On a
+ * primary the text is white and the light is white; on a secondary the text
+ * is brand ink and the light is brand. Nothing has to know which kind of
+ * button it is on, and no third color enters the palette.
+ */
+.bs-app .components-button.is-busy,
+.bs-app .components-button.is-busy:disabled,
+.bs-app .components-button.is-busy[aria-disabled='true'],
+.bs-app .components-button.is-primary.is-busy,
+.bs-app .components-button.is-primary.is-busy:disabled,
+.bs-app .components-button.is-primary.is-busy[aria-disabled='true'],
+.bs-app .components-button.is-secondary.is-busy,
+.bs-app .components-button.is-secondary.is-busy:disabled,
+.bs-app .components-button.is-secondary.is-busy[aria-disabled='true'] {
+	position: relative;
+	overflow: hidden;
+	animation: none;
+	background-image: none;
+	background-size: auto;
+}
+
+/*
+ * A button that is busy is not a button that is off.
+ *
+ * Both of these are written `isBusy` and `disabled` together — the press has
+ * been taken and must not be taken twice — and the disabled treatment above
+ * then drained the control to a pale box with muted ink. So the one moment a
+ * reader is watching the button hardest is the moment it stopped looking like
+ * itself, and the sheen inherited that muted ink and could barely be seen.
+ *
+ * Working keeps the variant's own colors. The cursor stays the plain arrow:
+ * the turning icon and the label already say it is working, and a busy
+ * pointer over the whole control read as the page hanging. `currentColor` is once
+ * again the label's real color — so the light crossing a primary is white on
+ * brand, and on a secondary it is brand on the surface.
+ */
+.bs-app .components-button.is-primary.is-busy:disabled,
+.bs-app .components-button.is-primary.is-busy[aria-disabled='true'] {
+	background: var(--bs-brand);
+	color: var(--bs-on-brand);
+	box-shadow: none;
+	cursor: default;
+}
+
+.bs-app .components-button.is-secondary.is-busy:disabled,
+.bs-app .components-button.is-secondary.is-busy[aria-disabled='true'] {
+	color: var(--bs-brand-ink);
+	border-color: var(--bs-border-strong);
+	cursor: default;
+}
+
+/*
+ * The bar: a line traveling along the foot of the button while it works.
+ *
+ * It was a sheen passing across the button's face, which cannot be done here.
+ * White on this brand green measures 4.50:1 — exactly the threshold 13px text
+ * has to clear — so any lightening of the face, even from behind the label,
+ * takes "Auditing…" below readable for as long as the light is under it.
+ * Darkening has the same problem on a secondary, where the label is brand ink
+ * on white.
+ *
+ * At the foot there is nothing to be behind and nothing to wash out, so the
+ * line can be `currentColor` at full strength: white on a primary, brand on a
+ * secondary, crisp in both. `overflow` clips it to the button's own corners.
+ */
+.bs-app .components-button.is-busy::after {
+	content: "";
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	height: 2px;
+	pointer-events: none;
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		color-mix(in srgb, currentColor 70%, transparent) 50%,
+		transparent 100%
+	);
+	transform: translateX(-100%);
+	/*
+	 * Started part of the way through its pass, so the line is already on the
+	 * button in the first frame. Begun from the far left edge it spent its
+	 * opening moment off the control, and a save that answered quickly was
+	 * over before anything had been drawn.
+	 */
+	animation: bs-busy-pass 1400ms linear -560ms infinite;
+}
+
+@keyframes bs-busy-pass {
+	to {
+		transform: translateX(100%);
+	}
+}
+
+/*
+ * The audit is a scan, and its control says so: the same line, brighter and
+ * with a core, sweeping out and back rather than wrapping.
+ *
+ * A line that leaves one edge and reappears at the other is a loading bar; a
+ * line that sweeps out and sweeps back is a scan. `ease-in-out` is what makes
+ * the turn read as a turn — at constant speed the reversal looks like a
+ * dropped frame. A second and a half each way, so a full pass takes the three
+ * seconds the eye needs to follow it rather than the fraction of a second it
+ * takes to blink.
+ */
+.bs-app .components-button.bs-scanning.is-busy::after {
+	height: 3px;
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		color-mix(in srgb, currentColor 25%, transparent) 30%,
+		currentColor 50%,
+		color-mix(in srgb, currentColor 25%, transparent) 70%,
+		transparent 100%
+	);
+	animation: bs-scan-sweep 1500ms ease-in-out infinite alternate;
+}
+
+@keyframes bs-scan-sweep {
+	from {
+		transform: translateX(-100%);
+	}
+
+	to {
+		transform: translateX(100%);
+	}
+}
+
+/*
+ * And a mark beside the label that pings outward in time with the sweep, the
+ * way a sweep on a scope is answered by the thing it found.
+ *
+ * Beside the label, not behind it, so it has nothing to wash out and can be
+ * drawn in `currentColor` like the line: white on a primary, brand on a
+ * secondary. The ring is a shadow, which costs no layout.
+ */
+.bs-app .components-button.bs-scanning.is-busy::before {
+	content: "";
+	flex: none;
+	width: 6px;
+	height: 6px;
+	margin-inline-end: var(--bs-space-sm);
+	border-radius: 50%;
+	background: currentColor;
+	animation: bs-scan-ping 1500ms ease-out infinite;
+}
+
+@keyframes bs-scan-ping {
+	from {
+		box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 60%, transparent);
+	}
+
+	to {
+		box-shadow: 0 0 0 6px transparent;
+	}
+}
+
+/*
+ * Something leaving the site — a test alert, a digest, a connection test, an
+ * export being prepared — fills the line from the left and then lets it go
+ * off the right edge. Filling reads as the thing being put together, the
+ * release as it being handed on, which is what these controls do; the scan's
+ * back-and-forth would claim they were looking for something.
+ *
+ * One pass is 1200ms, and the store holds these for one pass.
+ */
+.bs-app .components-button.bs-sending.is-busy::after {
+	background: linear-gradient(
+		90deg,
+		color-mix(in srgb, currentColor 35%, transparent) 0%,
+		currentColor 100%
+	);
+	animation: bs-send-fill 1200ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes bs-send-fill {
+	0% {
+		transform: translateX(-100%);
+	}
+
+	55% {
+		transform: translateX(0);
+	}
+
+	100% {
+		transform: translateX(100%);
+	}
+}
+
+/*
+ * Finished. The check arrives with a small overshoot, and the line the sweep
+ * was drawing is left lying full width along the foot, then fades — so the
+ * scan is seen to have reached the end rather than to have been switched off.
+ *
+ * Carried by the label as well ("Audit complete"), so none of it is said by
+ * the motion alone.
+ */
+.bs-app .components-button.bs-done {
+	position: relative;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/*
+ * The check is one of our own icons, which carry a viewBox and no size of
+ * their own. Given to a button as its icon it was left to size itself, filled
+ * the width it was given, and the overflow above cut it down to a white wedge
+ * across the corner while pushing "Audit complete" off the far edge. It is
+ * sized here, and the label is held on one line beside it (above).
+ */
+.bs-app .components-button.bs-done svg {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	margin-inline-end: var(--bs-space-xs);
+
+	/* Drawn as a line, not a shape. Core fills every button icon with the
+	   label's color, and a check drawn as a stroke, filled, is a solid wedge. */
+	fill: none;
+	stroke: currentColor;
+	animation: bs-done-pop 420ms var(--bs-ease) both;
+}
+
+@keyframes bs-done-pop {
+	from {
+		opacity: 0;
+		transform: scale(0.4);
+	}
+
+	70% {
+		opacity: 1;
+		transform: scale(1.15);
+	}
+
+	to {
+		transform: scale(1);
+	}
+}
+
+.bs-app .components-button.bs-done::after {
+	content: "";
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	height: 2px;
+	pointer-events: none;
+	background: color-mix(in srgb, currentColor 55%, transparent);
+	animation: bs-done-settle 1800ms ease-out forwards;
+}
+
+/* Faint from the start and gone well before the label changes back: at full
+   strength the line read as a pale band cut across the foot of the button. */
+@keyframes bs-done-settle {
+	from {
+		opacity: 0.8;
+	}
+
+	to {
+		opacity: 0;
+	}
+}
+
+/*
+ * A reader who asked for stillness gets the label and nothing else. "Auditing…"
+ * and "Applying…" already say what the sheen says, which is what makes this
+ * safe to drop rather than merely slow down.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.bs-app .components-button,
+	.bs-app button,
+	.bs-app .bs-site__name,
+	.bs-popover button,
+	.bs-popover .components-button,
+	.bs-popover .components-dropdown-menu__menu-item {
+		transition: none;
+	}
+
+	.bs-app button:not( :disabled ):not( [aria-disabled='true'] ):active,
+	.bs-app .components-button:not( :disabled ):not( [aria-disabled='true'] ):active,
+	.bs-popover button:not( :disabled ):not( [aria-disabled='true'] ):active {
+		transform: none;
+	}
+
+	/*
+	 * The variants are named as well as the base: each sets its own
+	 * `animation` at a weight the base selector cannot override, so naming
+	 * only the base left the audit's sweep running for exactly the reader
+	 * this block is for.
+	 */
+	.bs-app .components-button.is-busy::after,
+	.bs-app .components-button.bs-scanning.is-busy::after,
+	.bs-app .components-button.bs-sending.is-busy::after,
+	.bs-app .components-button.bs-done::after {
+		animation: none;
+		opacity: 0;
+	}
+
+	.bs-app .components-button.bs-scanning.is-busy::before,
+	.bs-app .components-button.bs-done svg {
+		animation: none;
+	}
+}
+
+.bs-app .components-button:not(.is-link):not(.is-small) {
+	min-height: 40px;
+}
+
+.bs-app .components-text-control__input,
+.bs-app .components-textarea-control__input,
+.bs-app .components-select-control__input {
+	border-radius: var(--bs-radius-control);
+	font-size: var(--bs-text-md);
+}
+
+/* WordPress draws select borders on a separate backdrop behind the input. */
+.bs-app .components-input-control__container,
+.bs-app .components-input-control__backdrop {
+	border-radius: var(--bs-radius-control);
+}
+
+/*
+ * One focus ring, ours, and only where a ring helps.
+ *
+ * WordPress rings on `:focus` rather than `:focus-visible` — `a:focus` in
+ * wp-admin's common.css and `.components-button:focus:not(:active)` in the
+ * components stylesheet — and a mouse click satisfies `:focus`. So every
+ * press left a ring behind on the thing that had just been pressed, which is
+ * a mark the reader did not ask for on the one element they were already
+ * looking at.
+ *
+ * Core's ring is also the wrong shape here. It is a box-shadow sitting
+ * outside the element, and the section tabs scroll horizontally — an
+ * `overflow-x` of anything but `visible` clips the other axis too, so on a
+ * tab the ring arrived already cut into four corners.
+ *
+ * Both are turned off inside our screens and the keyboard ring below is left
+ * to do the work: it is an outline rather than a shadow, it is drawn per
+ * shape by the component that owns the shape, and the tabs' own is inset for
+ * exactly the clipping reason above.
+ *
+ * A browser without `:focus-visible` matches none of these selectors and
+ * keeps core's ring, which is the right way for this to fail.
+ */
+.bs-app a:focus,
+.bs-popover a:focus {
+	box-shadow: none;
+}
+
+.bs-app a:focus:not(:focus-visible),
+.bs-app .components-button:focus:not(:focus-visible),
+.bs-popover a:focus:not(:focus-visible),
+.bs-popover .components-button:focus:not(:focus-visible) {
+	outline: none;
+}
+
+/*
+ * The same for the controls a click ticks rather than presses. Core rings a
+ * checkbox and a radio on `:focus` — wp-admin's forms.css and the components
+ * stylesheet's `[type=checkbox]:focus` both — and a switch rings its track
+ * when the hidden input under it takes focus, so every tick and every switch
+ * thrown with a mouse left a double ring round the control just used.
+ *
+ * Only the mouse case is taken away. From the keyboard `:focus-visible`
+ * matches, none of this applies, and the ring is drawn as before — the
+ * app's outline on a checkbox or radio, core's ring on a switch's track,
+ * whose input is transparent and so cannot show an outline of its own.
+ */
+.bs-app input:is([type="checkbox"], [type="radio"]):focus:not(:focus-visible),
+.bs-popover input:is([type="checkbox"], [type="radio"]):focus:not(:focus-visible) {
+	outline: none;
+	box-shadow: none;
+}
+
+.bs-app .components-form-toggle__input:focus:not(:focus-visible) + .components-form-toggle__track,
+.bs-popover .components-form-toggle__input:focus:not(:focus-visible) + .components-form-toggle__track {
+	outline: none;
+	box-shadow: none;
+}
+
+/*
+ * A glyph that points forward or back: the arrows. It points the reading
+ * direction, which in a right-to-left page is the other way.
+ */
+html[dir="rtl"] .bs-flip-rtl {
+	transform: scaleX(-1);
+}
+
+/*
+ * An unticked checkbox in the dark scheme. Core paints the box white with a
+ * near-black edge whatever it sits on, which on a dark card is a solid white
+ * square. It takes the card and the edge a text field has there instead; a
+ * ticked box carries the brand fill and is left as core draws it.
+ */
+.bs-app[data-bs-scheme="dark"] .components-checkbox-control__input:not(:checked):not(:indeterminate),
+[data-bs-scheme="dark"] .bs-popover .components-checkbox-control__input:not(:checked):not(:indeterminate) {
+	border-color: var(--bs-control-stroke);
+	background: var(--bs-surface);
+}
+
+/* An unchosen radio, which core paints the same white disc. A chosen one
+   carries the brand fill and is left as core draws it. */
+.bs-app[data-bs-scheme="dark"] .components-radio-control__input:not(:checked),
+[data-bs-scheme="dark"] .bs-popover .components-radio-control__input:not(:checked) {
+	border-color: var(--bs-control-stroke);
+	background: var(--bs-surface);
+}
+
+/*
+ * A field's help in the dark scheme. Core sets it a fixed gray toned for a
+ * white card, which on a dark one measured 3.5:1, under AA for body-size
+ * text. It takes the app's muted ink, which clears AA on every dark surface.
+ */
+.bs-app[data-bs-scheme="dark"] .components-base-control__help,
+[data-bs-scheme="dark"] .bs-popover .components-base-control__help {
+	color: var(--bs-ink-muted);
+}
+
+/* [tabindex] as well as the natural stops: a block made focusable so a
+   keyboard can scroll it is a stop on the path, and a stop with no ring is a
+   stop nobody can see they are on. */
+.bs-app :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+	outline: 2px solid var(--bs-brand);
+	outline-offset: 3px;
+}
+
+/*
+ * The same ring on a library button, which sets its own offset at a weight
+ * the rule above cannot reach. Without this the app draws its ring three
+ * pixels out from a link and two from a button standing beside it, which is
+ * the kind of difference nobody names and everybody sees.
+ *
+ * `:not(:active)` because core drops the ring while a button is held down,
+ * and a ring that reappeared under the finger would be this same complaint
+ * in a smaller form.
+ */
+.bs-app .components-button:focus-visible:not( :active ),
+.bs-popover .components-button:focus-visible:not( :active ) {
+	outline: 2px solid var(--bs-brand);
+	outline-offset: 3px;
+}
+
+/* Surviving headings receive focus when an action removes its own button. */
+.bs-app :where(h2, h3)[tabindex='-1']:focus {
+	outline: none;
+}
+
+.bs-app :where(h2, h3)[tabindex='-1']:focus-visible {
+	outline: 2px solid var(--bs-brand);
+	outline-offset: 3px;
+	border-radius: var(--bs-radius-control);
+}
+
+.bs-app :where(.bs-card, .bs-panel, .bs-setting, .bs-row) {
+	min-width: 0;
+}
+
+@media (max-width: 782px) {
+	.bs-app {
+		padding: 0 var(--bs-space-md) 0 var(--bs-space-2xs);
+	}
+}
+
+@media (max-width: 480px) {
+	.bs-panel {
+		padding: var(--bs-space-lg);
+	}
+
+	.bs-fieldrow .components-base-control {
+		width: 100%;
+	}
+}
+
+/* Keep primary button labels paired with the accessible brand fill. */
+.bs-app .components-button.is-primary,
+.bs-popover .components-button.is-primary {
+	color: var(--bs-on-brand);
+}
+
+@media (max-width: 782px) {
+	/* A readable control size also avoids automatic zoom on iOS. */
+	.bs-app input:not([type="checkbox"]):not([type="radio"]),
+	.bs-app textarea,
+	.bs-app select,
+	.bs-popover input:not([type="checkbox"]):not([type="radio"]) {
+		font-size: var(--bs-text-lg);
+	}
+}
+
+/* Disabled primary actions must remain visibly unavailable in every WP theme. */
+.bs-app .components-button.is-primary:disabled,
+.bs-app .components-button.is-primary[aria-disabled='true'],
+.bs-popover .components-button.is-primary:disabled,
+.bs-popover .components-button.is-primary[aria-disabled='true'] {
+	background: var(--bs-surface-subtle);
+	color: var(--bs-ink-muted);
+	box-shadow: inset 0 0 0 1px var(--bs-border);
+	cursor: not-allowed;
+}
+
+/*
+ * A native disclosure dressed as ours. The browser's triangle goes, and the
+ * summary reads like a group header on the Surface tab: one row, the label
+ * leading, a chevron trailing that turns when the section is open, the
+ * height and inset of a compact control. Owned here because four screens
+ * have one, and one disclosure that looks like the browser's beside three
+ * that do not is the smell the one-definition rule exists to catch.
+ */
+.bs-disclosure > summary {
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: var(--bs-space-sm);
+	min-height: 40px;
+	padding: var(--bs-space-xs) var(--bs-space-sm);
+	border-radius: var(--bs-radius-control);
+	list-style: none;
+	cursor: pointer;
+	font-size: var(--bs-text-md);
+	font-weight: 600;
+	color: var(--bs-ink);
+}
+
+.bs-disclosure > summary::-webkit-details-marker {
+	display: none;
+}
+
+.bs-disclosure > summary::marker {
+	content: "";
+}
+
+/* The chevron is drawn, not loaded: two borders of the summary's own ink. */
+.bs-disclosure > summary::after {
+	content: "";
+	flex: none;
+	margin-left: auto;
+	width: 7px;
+	height: 7px;
+	border-right: 2px solid currentColor;
+	border-bottom: 2px solid currentColor;
+	color: var(--bs-ink-muted);
+	transform: translateY(-2px) rotate(45deg);
+	transition: transform var(--bs-motion-base) var(--bs-ease);
+}
+
+.bs-disclosure[open] > summary::after {
+	transform: translateY(2px) rotate(-135deg);
+}
+
+/*
+ * The panel opens and closes the way every other disclosure here does: the
+ * height grows to the content's own, and closing fades the words before the
+ * room goes. A browser that cannot address the panel of a native disclosure,
+ * or cannot animate to `auto`, opens it at once — which is what every browser
+ * did before, so nothing is lost where this does not apply.
+ */
+.bs-disclosure {
+	interpolate-size: allow-keywords;
+}
+
+.bs-disclosure::details-content {
+	block-size: 0;
+	overflow: clip;
+	opacity: 0;
+	transition:
+		block-size var(--bs-motion-base) var(--bs-ease),
+		opacity var(--bs-motion-fast) var(--bs-ease),
+		content-visibility var(--bs-motion-base) allow-discrete;
+}
+
+.bs-disclosure[open]::details-content {
+	block-size: auto;
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.bs-disclosure > summary::after,
+	.bs-disclosure::details-content {
+		transition: none;
+	}
+}
+
+.bs-disclosure > summary:hover {
+	background: var(--bs-surface-subtle);
+	color: var(--bs-brand-ink);
+}
+
+.bs-disclosure > summary:focus-visible {
+	outline: 2px solid var(--wpds-color-stroke-focus, var(--bs-brand));
+	outline-offset: 2px;
+}
+
+/*
+ * A card's head: what the card is, one line saying why, and the card's own
+ * control.
+ *
+ * Written once here because it had already been written twice — the file
+ * report's head and the incident list's head were the same seven declarations
+ * with one border between them, and stylesheets.test.js exists partly to
+ * catch the third copy drifting from the first two. A card that puts its
+ * control in the head rather than at the foot of its content is the shape the
+ * rebuilt screens settled on: the reader meets the subject and the one thing
+ * they can do to it together, before the detail.
+ *
+ * The head does not draw its own divider. A card whose head is followed by
+ * rows wants one; a card whose head is followed by prose does not, and that
+ * is the card's decision rather than the head's.
+ */
+.bs-cardhead {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--bs-space-lg);
+	flex-wrap: wrap;
+	padding: var(--bs-space-xl) var(--bs-space-2xl) var(--bs-space-lg);
+}
+
+.bs-cardhead__what {
+	min-width: 0;
+}
+
+.bs-app .bs-cardhead h2 {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-space-sm);
+	margin: 0;
+	padding: 0;
+	font-size: var(--bs-text-lg);
+	font-weight: 600;
+	color: var(--bs-ink);
+}
+
+/*
+ * The measure is here rather than on each screen for the reason the head is:
+ * four screens declaring it separately is four chances for one of them not
+ * to, and one of them already had not.
+ */
+.bs-cardhead p {
+	margin: var(--bs-space-2xs) 0 0;
+	color: var(--bs-ink-muted);
+	font-size: var(--bs-text-sm);
+	max-width: 72ch;
+}
+
+/* The control keeps its own line rather than squeezing the sentence beside
+   it once the two no longer fit side by side. */
+.bs-cardhead__act {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-space-sm);
+	flex: none;
+}
+
+.bs-cardhead--divided {
+	border-bottom: 1px solid var(--bs-border);
+}
+
+@media (max-width: 600px) {
+	.bs-cardhead {
+		padding: var(--bs-space-lg) var(--bs-space-lg) var(--bs-space-md);
+	}
+
+	.bs-cardhead__act {
+		width: 100%;
+	}
+}
+
+/*
+ * What follows a .bs-cardhead: the card's content, inset to the same gutter
+ * the head keeps.
+ *
+ * It carries the type rules .bs-panel carried, because a card that takes the
+ * head loses the panel class and would otherwise lose its subheadings and its
+ * reading measure with it. The difference between the two is the head: a
+ * panel titles itself in its first child, a carded screen titles itself in a
+ * head that can also hold a control.
+ */
+.bs-cardbody {
+	padding: 0 var(--bs-space-2xl) var(--bs-space-2xl);
+}
+
+/* Under a rule, the body starts a full step below it. Without this its first
+   line sat against the rule, closer to it than the head's own words sit above
+   it, which read as the body being part of the head. */
+.bs-cardhead--divided + .bs-cardbody {
+	padding-top: var(--bs-space-xl);
+}
+
+.bs-app .bs-cardbody h3 {
+	font-size: var(--bs-text-md);
+	font-weight: 600;
+	margin: var(--bs-space-xl) 0 var(--bs-space-xs);
+	padding: 0;
+	color: var(--bs-ink);
+}
+
+.bs-cardbody p {
+	color: var(--bs-ink-2);
+	margin: 0 0 var(--bs-space-md);
+	max-width: 66ch;
+}
+
+/* The first thing in the body sits against the head's own bottom padding, so
+   it does not add a second gap to it. */
+.bs-cardbody > :first-child {
+	margin-top: 0;
+}
+
+.bs-cardbody > :last-child {
+	margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+	.bs-cardbody {
+		padding: 0 var(--bs-space-lg) var(--bs-space-lg);
+	}
+
+	.bs-cardhead--divided + .bs-cardbody {
+		padding-top: var(--bs-space-lg);
+	}
+}
+
+/*
+ * The foot of a carded screen: what is left once the rows have been read —
+ * the control that fetches more of them, and nothing else.
+ *
+ * Divided from the content above rather than floating under it, because a
+ * button sitting loose at the end of a list reads as belonging to the last
+ * row rather than to the list.
+ */
+.bs-cardfoot {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--bs-space-md);
+	padding: var(--bs-space-lg) var(--bs-space-2xl);
+	border-top: 1px solid var(--bs-border);
+}
+
+.bs-cardfoot:empty {
+	display: none;
+}
+
+@media (max-width: 600px) {
+	.bs-cardfoot {
+		padding: var(--bs-space-md) var(--bs-space-lg);
+	}
+}

@@ -1,0 +1,27 @@
+/**
+ * The usage report behind its question: the control, then what happens to
+ * the report, the report itself in a copy field, and the lines about the
+ * last one sent.
+ */
+
+.bs-ds-usagereport {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-usagereport > div,
+.bs-ds-usagereport .bs-ds-copyfield {
+	align-self: stretch;
+}
+
+.bs-ds-app .bs-ds-usagereport__line {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}

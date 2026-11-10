@@ -1,0 +1,24 @@
+/**
+ * A switch and its words, at a row's end: the words a 12 medium secondary
+ * label, 8 before the 36 by 20 Toggle, on one line at desktop widths and,
+ * when it must wrap, balanced and from the start edge, never a one-word
+ * orphan under a right-aligned line.
+ */
+
+.bs-ds-endswitch {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	cursor: pointer;
+}
+
+.bs-ds-endswitch__label {
+	max-width: 56ch;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	text-align: start;
+	text-wrap: balance;
+	color: var(--bs-ds-color-text-secondary);
+}

@@ -1,0 +1,293 @@
+/**
+ * The design's Button. Scoped under the app so it outranks the library's
+ * base rules, which set their own size, weight and hover color.
+ */
+
+.bs-ds-app .components-button.bs-ds-btn {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	gap: var(--bs-ds-space-xs);
+	height: auto;
+	min-height: 0;
+	padding: 0 var(--bs-ds-space-sm);
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: transparent;
+	box-shadow: none;
+	font-family: inherit;
+	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	text-decoration: none;
+	color: var(--bs-ds-color-text-primary);
+	cursor: pointer;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--lg {
+	height: 36px;
+	font-size: var(--bs-ds-size-small);
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--md {
+	height: 32px;
+	font-size: var(--bs-ds-size-small);
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--sm {
+	height: 28px;
+	padding: 0 var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--icon {
+	width: 28px;
+	padding: 0;
+}
+
+/* ---- types ---- */
+
+.bs-ds-app .components-button.bs-ds-btn--primary {
+	border-color: var(--bs-ds-color-surface-brand-hover);
+	background: var(--bs-ds-color-surface-brand);
+	box-shadow: var(--bs-ds-elevation-control);
+	color: var(--bs-ds-color-text-on-brand);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--secondary {
+	border-color: var(--bs-ds-color-border-control);
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: var(--bs-ds-elevation-control);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--toolbar {
+	border-color: var(--bs-ds-color-border-control);
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--subtle {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--link,
+.bs-ds-app .components-button.bs-ds-btn--linksub {
+	gap: var(--bs-ds-space-xxs);
+	height: 28px;
+	padding: 0;
+	border: 0;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--linksub {
+	padding-inline-start: var(--bs-ds-space-xs);
+	font-weight: 400;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* Link-subtle inside a sentence, after its full stop (#2468). The type's
+   indent lines it up under a line of text; inline it showed as a hole in the
+   line, so the word space before it is its only separator. And beside the
+   sentence's own gray it read as one more word, so at rest it is the primary
+   ink at medium weight, underlined. File Changes' Select All under its gray
+   "Showing …" line wears it too (#2441): plain, it read as more status text. */
+.bs-ds-app .components-button.bs-ds-btn--linksub.bs-ds-btn--inline {
+	padding-inline-start: 0;
+	font-weight: 500;
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 2px;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* ---- hover: the library's hover color is replaced, never shown ---- */
+
+.bs-ds-app .components-button.bs-ds-btn:hover:not(:disabled, [aria-disabled="true"]),
+.bs-ds-app .components-button.bs-ds-btn[aria-expanded="true"] {
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--primary:hover:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-brand-hover);
+	color: var(--bs-ds-color-text-on-brand);
+}
+
+/* Each hover is a step off its own rest fill, so the hover shows on the
+   button and not only in its text (#2326). */
+.bs-ds-app .components-button.bs-ds-btn--secondary:hover:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--toolbar:hover:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--ghost:hover:not(:disabled, [aria-disabled="true"]),
+.bs-ds-app .components-button.bs-ds-btn--ghost[aria-expanded="true"] {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--subtle:hover:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-disable);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--link:hover:not(:disabled, [aria-disabled="true"]) {
+	text-decoration: underline;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--linksub:hover:not(:disabled, [aria-disabled="true"]) {
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* Inline, hover thickens the line it rests with; open, the line goes, as the
+   reasons it opened now sit under the sentence. Neither is the other's look. */
+.bs-ds-app .components-button.bs-ds-btn--linksub.bs-ds-btn--inline[aria-expanded="true"] {
+	text-decoration-line: none;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--linksub.bs-ds-btn--inline:hover:not(:disabled, [aria-disabled="true"]) {
+	text-decoration-line: underline;
+	text-decoration-thickness: 2px;
+}
+
+/* ---- pressed: one step past hover, and the raised types drop their lift ---- */
+
+/* The design has no brand step past hover, so Primary's pressed fill is its
+   hover darkened toward its own ink: both tokens, the same in light and
+   dark. */
+.bs-ds-app .components-button.bs-ds-btn--primary:active:not(:disabled, [aria-disabled="true"]) {
+	background: color-mix(in srgb, var(--bs-ds-color-surface-brand-hover), var(--bs-ds-color-text-on-brand) 12%);
+	box-shadow: none;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--secondary:active:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-disable);
+	box-shadow: none;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--ghost:active:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-disable);
+}
+
+.bs-ds-app .components-button.bs-ds-btn--toolbar:active:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-tertiary-em);
+	box-shadow: none;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--subtle:active:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-disable);
+	box-shadow: inset 0 0 0 1px var(--bs-ds-color-border-control);
+}
+
+/* ---- in a row with its own hover ---- */
+
+/* A hovered row takes the gray a Secondary rests on, and a Toolbar hovers
+   on, so in such a row both rest on the sheet's fill and hover a step off
+   it: neither ever matches the row behind it, in light and dark alike. One
+   rule for every hoverable row, the table's and the findings list's
+   (#2309, #2326). */
+.bs-ds-app :is(.bs-ds-tbl__row--hover, .bs-ds-frow--item) .components-button:is(.bs-ds-btn--secondary, .bs-ds-btn--toolbar) {
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-app :is(.bs-ds-tbl__row--hover, .bs-ds-frow--item) .components-button:is(.bs-ds-btn--secondary, .bs-ds-btn--toolbar):hover:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-secondary);
+}
+
+/* The rule above outranks each variant's own :active, so the pressed state
+   is restated here: a step past the in-row hover, still none of the row's
+   grays, and without the lift. */
+.bs-ds-app :is(.bs-ds-tbl__row--hover, .bs-ds-frow--item) .components-button:is(.bs-ds-btn--secondary, .bs-ds-btn--toolbar):active:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-disable);
+	box-shadow: none;
+}
+
+/* A Ghost hovers on surface-tertiary-em, a hair off the hovered row's gray
+   and the selected row's very gray, so in a row it hovers on the sheet's
+   fill instead and presses a step past the row. */
+.bs-ds-app :is(.bs-ds-tbl__row--hover, .bs-ds-frow--item) .components-button.bs-ds-btn--ghost:hover:not(:disabled, [aria-disabled="true"]),
+.bs-ds-app :is(.bs-ds-tbl__row--hover, .bs-ds-frow--item) .components-button.bs-ds-btn--ghost[aria-expanded="true"] {
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-app :is(.bs-ds-tbl__row--hover, .bs-ds-frow--item) .components-button.bs-ds-btn--ghost:active:not(:disabled, [aria-disabled="true"]) {
+	background: var(--bs-ds-color-surface-disable);
+}
+
+/* ---- focus: the design's ring in place of the library's ---- */
+
+/* No ring after a click; the keyboard's ring below. Written on
+   :not(:focus-visible) so this rule, the more specific of the two, can never
+   take the keyboard's ring away. */
+.bs-ds-app .components-button.bs-ds-btn:focus:not(:focus-visible) {
+	outline: none;
+	box-shadow: none;
+}
+
+.bs-ds-app .components-button.bs-ds-btn:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+	box-shadow: none;
+}
+
+.bs-ds-app .components-button.bs-ds-btn:disabled,
+.bs-ds-app .components-button.bs-ds-btn[aria-disabled="true"] {
+	cursor: default;
+	opacity: 0.6;
+}
+
+/* A busy button is working, not off: it keeps its colors, and its focus ring
+   with them, and only a button that is unavailable fades. The cursor stays
+   the plain arrow; the button itself shows the work. */
+.bs-ds-app .components-button.bs-ds-btn.is-busy:disabled,
+.bs-ds-app .components-button.bs-ds-btn.is-busy[aria-disabled="true"] {
+	cursor: default;
+	opacity: 1;
+}
+
+/* A busy button's refresh icon turns until its request is done. */
+.bs-ds-app .components-button.bs-ds-btn--turning > .bs-ds-icon:first-child {
+	animation: bs-ds-btn-turn 1s linear infinite;
+}
+
+@keyframes bs-ds-btn-turn {
+
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-app .components-button.bs-ds-btn--turning > .bs-ds-icon:first-child {
+		animation: none;
+	}
+}
+
+/* A narrow card: a label longer than the card wraps inside its button rather
+   than running past the edge; the button keeps its size's height as a floor. */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-app .components-button.bs-ds-btn {
+		height: auto;
+		max-width: 100%;
+		line-height: 1.3;
+		white-space: normal;
+		text-align: start;
+	}
+
+	.bs-ds-app .components-button.bs-ds-btn--lg {
+		min-height: 36px;
+	}
+
+	.bs-ds-app .components-button.bs-ds-btn--md {
+		min-height: 32px;
+	}
+
+	.bs-ds-app .components-button.bs-ds-btn--sm {
+		min-height: 28px;
+	}
+}

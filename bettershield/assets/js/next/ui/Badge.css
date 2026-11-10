@@ -1,0 +1,45 @@
+/**
+ * The design's Badge, size sm. Its icon takes the label's color.
+ */
+
+.bs-ds-badge {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	padding: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	border-radius: 6px;
+	box-shadow: var(--bs-ds-elevation-control);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-tag-neutral-text);
+	background: var(--bs-ds-color-tag-neutral-bg);
+}
+
+.bs-ds-badge--brand {
+	color: var(--bs-ds-color-tag-brand-text);
+	background: var(--bs-ds-color-tag-brand-bg);
+}
+
+.bs-ds-badge--red {
+	color: var(--bs-ds-color-tag-red-text);
+	background: var(--bs-ds-color-tag-red-bg);
+}
+
+.bs-ds-badge--orange {
+	color: var(--bs-ds-color-tag-orange-text);
+	background: var(--bs-ds-color-tag-orange-bg);
+}
+
+.bs-ds-badge--yellow {
+	color: var(--bs-ds-color-tag-yellow-text);
+	background: var(--bs-ds-color-tag-yellow-bg);
+}
+
+.bs-ds-badge--blue {
+	color: var(--bs-ds-color-tag-blue-text);
+	background: var(--bs-ds-color-tag-blue-bg);
+}

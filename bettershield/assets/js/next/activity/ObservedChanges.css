@@ -1,0 +1,216 @@
+/**
+ * Previous values and reversible responses: the card closed behind its
+ * header, and open, its intro, the capture choice, the lists of changes and
+ * the review that opens under a row, drawn as one with it.
+ */
+
+/* The name wraps on a narrow card rather than running under the toggle. */
+.bs-ds-observed .bs-ds-card__title {
+	min-width: 0;
+	line-height: 1.4;
+	white-space: normal;
+}
+
+.bs-ds-observed__body {
+	display: flex;
+	flex-direction: column;
+	padding-bottom: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-observed__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-observed__part {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-observed__capture {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-observed__capture p {
+	margin: 0;
+}
+
+.bs-ds-observed__save {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	padding-top: var(--bs-ds-space-xxs);
+}
+
+/* A list's name, over its rows: the design's section header, under a rule. */
+.bs-ds-app .bs-ds-observed__head {
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml) var(--bs-ds-space-xxs);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A change's line is the control that reviews it, and wraps on a phone. */
+.bs-ds-app .components-button.bs-ds-observed__entry {
+	height: auto;
+	min-height: 28px;
+	white-space: normal;
+	text-align: start;
+}
+
+.bs-ds-observed__note {
+	margin-inline-start: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-observed__more {
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md) 0;
+}
+
+/* An older page that could not be read, above the button that asks again. */
+.bs-ds-app .bs-ds-observed__more-error {
+	margin: 0 0 var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-error);
+}
+
+/* A row runs into the review that opens under it. */
+.bs-ds-tbl__row:has(+ .bs-ds-observed__under) {
+	border-bottom: 0;
+}
+
+.bs-ds-observed__under {
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-sm);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+/* ---- the review ---- */
+
+.bs-ds-review,
+.bs-ds-review__panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-review p {
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-review .bs-ds-review__title {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-review__name {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* What a role gained and lost, ahead of the full maps. */
+.bs-ds-app .bs-ds-review__diff {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-md);
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-review__values {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-review__values dt {
+	margin: 0 0 var(--bs-ds-space-xxs);
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-review__values dd {
+	margin: 0;
+}
+
+/* A value keeps its lines, in the design's type, and scrolls past sixteen. */
+.bs-ds-app .bs-ds-review__values pre {
+	max-height: 16em;
+	margin: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	overflow: auto;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	font-family: inherit;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* A command to run by hand, in the design's type like everything else. */
+.bs-ds-app .bs-ds-review code {
+	padding: 0 var(--bs-ds-space-xxs);
+	border-radius: 4px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+	font-family: inherit;
+	font-size: inherit;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-review__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xs);
+	padding-top: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-review__bonevalue {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-review__bonebox {
+	display: block;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+}

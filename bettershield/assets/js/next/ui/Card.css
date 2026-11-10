@@ -1,0 +1,120 @@
+/**
+ * The design's Card, Icon tile and Tray (Patterns 26:38208).
+ */
+
+.bs-ds-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-card__head {
+	display: flex;
+	flex: none;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-height: 60px;
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-card__head--line {
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-card__head--auto {
+	height: auto;
+}
+
+/*
+ * The title takes the line beside the tile, never narrower than a short
+ * phrase, and wraps there. What ends the header moves under it, still at the
+ * far end, once the card itself is too narrow for both. Asked of the page's
+ * width, a card half a wide page kept both on one line and clipped its badge
+ * at the card's edge (#586). The title's basis is that phrase, not its whole
+ * text: sized by all of it, a long title took a line of its own and left the
+ * tile alone above it (#2551).
+ */
+.bs-ds-app .bs-ds-card__title {
+	flex: 1 1 10em;
+	min-width: min(10em, 100%);
+	margin: 0;
+	white-space: normal;
+	/* It wraps, so it takes wrapped text's leading, not the one-line style's
+	   1: two lines of a long or translated title never touch (#2625). Set
+	   here, not as a class in Card.js, so the add-on's tabs, which bundle that
+	   file, get it from this stylesheet at once. */
+	line-height: 1.4;
+}
+
+/* A title focus is moved to, after the card redrew under the reader, is not a control. */
+.bs-ds-app .bs-ds-card__title:focus {
+	outline: none;
+}
+
+/*
+ * What follows the spacer goes to the far end on an auto margin, so the
+ * spacer draws nothing at any width. In the row it still counted 1 px and
+ * two gaps toward the line, and a chip that fitted beside its title by
+ * less than that dropped under it (#2551).
+ */
+.bs-ds-card__head > .bs-ds-spacer {
+	display: none;
+}
+
+.bs-ds-card__head > .bs-ds-spacer + * {
+	margin-inline-start: auto;
+}
+
+.bs-ds-tile {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+}
+
+.bs-ds-tile--sm {
+	width: 28px;
+	height: 28px;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 4px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-tile--md {
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+	box-shadow: var(--bs-ds-elevation-control);
+}
+
+.bs-ds-tray {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding-bottom: var(--bs-ds-space-xs);
+	overflow: clip;
+	/* No top line of its own: the card inside draws it (#2296). */
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-tray__foot {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-xs) 0 var(--bs-ds-space-md);
+}
+
+.bs-ds-section-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs);
+	min-height: 28px;
+}

@@ -1,0 +1,32 @@
+/**
+ * Protect: the score at the heading's other end, the grade's move and a
+ * short note beside it, and the parts a row opens, drawn only when open.
+ */
+
+.bs-ds-setup-protect__score {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-setup-protect__part {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-setup-protect__part[hidden] {
+	display: none;
+}
+
+/* The proxy question, reached from the sign-in row's link. */
+.bs-ds-setup-protect__proxy {
+	min-width: 0;
+}
+
+.bs-ds-setup-protect__proxy:focus {
+	outline: none;
+}

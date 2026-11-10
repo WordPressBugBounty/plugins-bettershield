@@ -1,0 +1,245 @@
+/**
+ * Settings › Email alerts: the muted note under the first card's header, the
+ * maintenance window's lines, the addresses alerts go to and the field that
+ * adds one, a button with the line that answers it, and what an alert never
+ * contains.
+ */
+
+.bs-ds-alerts__muted {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+/* A button and the line that says what pressing it did, wrapping under it. */
+.bs-ds-alerts__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-alerts__note {
+	flex: 1 1 16em;
+	min-width: 0;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-alerts__day {
+	width: min(100%, 200px);
+}
+
+/* ---- planned maintenance ---- */
+
+.bs-ds-maint {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* The note's basis is a width in a row. In this column it became a height,
+   192px for one line above End maintenance, so here it takes its text's. */
+.bs-ds-app .bs-ds-maint .bs-ds-alerts__note {
+	flex: 0 0 auto;
+}
+
+.bs-ds-app .bs-ds-maint__status {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-maint__duration {
+	width: min(100%, 200px);
+}
+
+/* ---- where alerts go ---- */
+
+.bs-ds-app .bs-ds-recipients {
+	display: flex;
+	flex-direction: column;
+	max-width: 560px;
+	margin: 0;
+	padding: 0;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-recipients li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-sm);
+	min-height: 44px;
+	margin: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-xs) var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-recipients li + li {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-recipients li:focus {
+	outline: none;
+}
+
+.bs-ds-recipients li:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: -2px;
+}
+
+/* An address is a value, not prose: it must not wrap mid-domain, and a long
+   one scrolls rather than pushing the remove button off the card. */
+.bs-ds-recipients__address {
+	min-width: 0;
+	overflow-x: auto;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* What each address gets, on a line of its own under the address. */
+.bs-ds-recipients__choices {
+	display: flex;
+	flex-basis: 100%;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-md);
+	padding-bottom: var(--bs-ds-space-xs);
+}
+
+.bs-ds-recipients__add {
+	max-width: 560px;
+}
+
+.bs-ds-app .bs-ds-recipients__problem,
+.bs-ds-app .bs-ds-recipients__limit {
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-app .bs-ds-recipients__problem {
+	color: var(--bs-ds-color-text-error);
+}
+
+.bs-ds-app .bs-ds-recipients__limit {
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* Which language each address gets, said after a test went out. */
+.bs-ds-app .bs-ds-recipients__languages ul {
+	margin: var(--bs-ds-space-xs) 0 0;
+	padding-left: var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The delivery test sits apart from the list it tests. */
+.bs-ds-recipients__test {
+	padding-top: var(--bs-ds-space-sm);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* ---- what alerts include and where they go ---- */
+
+.bs-ds-app .bs-ds-never__list {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-xs);
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-never__list li {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	margin: 0;
+	padding: var(--bs-ds-space-sm) 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-never__list li + li {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-never__list .bs-ds-icon {
+	margin-top: var(--bs-ds-space-2);
+}
+
+/* The two account-holder switches, stacked beside the row (#1855). */
+.bs-ds-app .bs-ds-alerts__accounts {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: var(--bs-ds-space-sm);
+}
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-app .bs-ds-alerts__accounts {
+		align-items: flex-start;
+	}
+}
+
+/* ---- instant alerts by type ---- */
+
+/* Full width, so each switch ends where the screen's other switches do (#2633). */
+.bs-ds-alerts__types {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-alerts__type-group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+/* An area heading set apart from the type names under it. */
+.bs-ds-app .bs-ds-alerts__type-area {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-alerts__type-group + .bs-ds-alerts__type-group {
+	padding-top: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* The note keeps its own height: in this column its usual flex basis is a height. */
+.bs-ds-app .bs-ds-alerts__types .bs-ds-alerts__note {
+	flex: 0 0 auto;
+}
+
+/* A held switch says why beside its name (#2671). */
+.bs-ds-app .bs-ds-alerts__always {
+	margin-inline-start: var(--bs-ds-space-xs);
+}
+
+/* One type per line: its name at the start, its switch at the end. */
+.bs-ds-app .bs-ds-alerts__type-group .bs-ds-endswitch {
+	display: flex;
+	justify-content: space-between;
+}

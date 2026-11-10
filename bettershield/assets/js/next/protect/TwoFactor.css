@@ -1,0 +1,252 @@
+/**
+ * Protection › Two-factor: the two ways this account signs in as two cards side
+ * by side (one column on a narrow screen), what each card says and holds, the
+ * enrollment steps, and the requirements' roles, grace period and save.
+ *
+ * The method cards' body, sentence, notes and action rows are drawn here and
+ * shared by the passkeys card, which only this tab draws.
+ */
+
+/* Both cards as tall as the taller, so no hole opens beside the shorter (#2574). */
+.bs-ds-2fa__methods {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	align-items: stretch;
+	gap: var(--bs-ds-space-md);
+}
+
+/*
+ * Setting two-factor up, or holding fresh codes, stays in its own column:
+ * spanning the row pushed Passkeys onto a row of its own below (#2619). The
+ * QR code sits above the key instead, which fits half the content.
+ */
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-2fa__methods {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* ---- a method card's body ---- */
+
+.bs-ds-2fa__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-2fa__lead {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-2fa__note {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-2fa__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+/*
+ * The button that arms two-factor says what it does in a sentence, and on a
+ * phone that sentence is wider than the card: it wraps rather than running
+ * past the edge, where the card clips it.
+ */
+.bs-ds-app .components-button.bs-ds-btn.bs-ds-2fa__arm {
+	height: auto;
+	min-height: 28px;
+	padding-block: var(--bs-ds-space-xxs);
+	line-height: 1.3;
+	white-space: normal;
+	text-align: start;
+}
+
+/* ---- enrollment: three numbered steps ---- */
+
+.bs-ds-app .bs-ds-2fa__steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-lg);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	counter-reset: bs-ds-2fa-step;
+}
+
+.bs-ds-app .bs-ds-2fa__steps > li {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	margin: 0;
+	padding-inline-start: calc(var(--bs-ds-space-lg) + var(--bs-ds-space-sm));
+	counter-increment: bs-ds-2fa-step;
+}
+
+.bs-ds-2fa__steps > li::before {
+	content: counter(bs-ds-2fa-step);
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-2fa__step {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 24px;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-2fa__enroll {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-md);
+}
+
+/* The code carries its own light border inside it, so the box around it is a
+   frame and nothing more. */
+.bs-ds-2fa__qr {
+	flex: none;
+	width: 168px;
+	height: 168px;
+	overflow: hidden;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+}
+
+.bs-ds-2fa__qr svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* Under the code, as wide as the column and no wider than reads well; the
+   floor gives way to a narrow column, where a fixed 260px ran the key and its
+   Copy button past the card's edge. */
+.bs-ds-2fa__manual {
+	width: 100%;
+	min-width: min(260px, 100%);
+	max-width: 380px;
+}
+
+/* ---- the add-on's one quiet mention, at the card's foot ---- */
+
+.bs-ds-app .bs-ds-2fa__offer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0 var(--bs-ds-space-xs);
+	margin: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- what the site requires ---- */
+
+/* A failed read is said where its row would be, inside the card's edge. */
+.bs-ds-2fa__requirement > [role="alert"] {
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/*
+ * The grace period is a two-digit number: the input is the design's small
+ * field, and its label and the line under it run to a reading measure rather
+ * than wrapping inside the input's width.
+ */
+.bs-ds-field.bs-ds-2fa__grace {
+	width: min(100%, 320px);
+}
+
+.bs-ds-app .bs-ds-field.bs-ds-2fa__grace .components-text-control__input {
+	width: 120px;
+	max-width: 100%;
+}
+
+.bs-ds-2fa__save {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-2fa__unsaved {
+	font-size: var(--bs-ds-size-xsmall);
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* Which of the named roles have enrolled, each with a bar that fills to it. */
+.bs-ds-app .bs-ds-coverage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-coverage li {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-secondary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-coverage__bar {
+	display: block;
+	height: 4px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-coverage__bar > span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--bs-ds-color-surface-brand);
+	transform: scaleX(var(--bs-ds-coverage));
+	transform-origin: left;
+}

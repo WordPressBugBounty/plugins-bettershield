@@ -1,0 +1,158 @@
+/**
+ * Ready (Ecosystem): the grade's move in the heading, what is still to do
+ * and what the setup changed folded under one line in one block, and the
+ * note about sign-in changes inside it.
+ *
+ * The lines are one
+ * card, a row each with a rule between, the mark a 16 check in the success
+ * ink or an open circle for what is not in place; what belongs to a line
+ * (the jobs another plugin keeps, the fixes as switches) is a 12 list under
+ * its words.
+ */
+
+/* The grade's move at the heading's other end, its points beside it. */
+.bs-ds-setup-ready__grade {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+/* What is still to do, then What Setup changed, in one block: the folded
+   list sits under the rows with a hairline between, not as a card of its own. */
+.bs-ds-setup-ready__block > .bs-ds-setup-ready__lines + .bs-ds-setup-fold {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-setup-ready__block > .bs-ds-setup-fold {
+	border: 0;
+	border-radius: 0;
+	background: none;
+}
+
+/* ---- the lines ---------------------------------------------------------- */
+
+.bs-ds-setup-ready__lines {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-setup-ready__line {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-setup-ready__line:first-child {
+	border-top: 0;
+}
+
+/* Centered on the first line of words. */
+.bs-ds-setup-ready__mark {
+	margin-top: var(--bs-ds-space-2);
+}
+
+.bs-ds-setup-ready__text {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-setup-ready__head:focus {
+	outline: none;
+}
+
+.bs-ds-setup-ready__sub,
+.bs-ds-setup-ready__fixes {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setup-ready__sub {
+	gap: var(--bs-ds-space-xxs);
+}
+
+/* Each way back sized to its words, at the same edge as the button below. */
+.bs-ds-setup-ready__back {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-setup-ready__sub li {
+	margin: 0;
+}
+
+/* Each applied fix as a switch: its name, and its switch at the far end. */
+.bs-ds-app .bs-ds-setup-ready__fixes li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	min-height: 36px;
+	margin: 0;
+	padding: var(--bs-ds-space-xs) 0;
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-setup-ready__fixes li:first-child {
+	border-top: 0;
+}
+
+/* Room for a switch beside the name on any width; a badge goes under it
+   when the two do not fit. */
+.bs-ds-setup-ready__fix {
+	flex: 1 1 8em;
+	min-width: 0;
+}
+
+/* The set's own undo, after the fixes it covers and set apart from each
+   fix's switch: it takes several back at once. */
+.bs-ds-app .bs-ds-setup-ready__fixes li.bs-ds-setup-ready__set {
+	justify-content: flex-end;
+}
+
+/* Inside the folded list, which pads them already: the rows' rules only. */
+.bs-ds-app .bs-ds-setup-ready__lines--plain .bs-ds-setup-ready__line {
+	padding-inline: 0;
+}
+
+.bs-ds-app .bs-ds-setup-ready__lines--plain .bs-ds-setup-ready__line:first-child {
+	padding-top: 0;
+}
+
+/* ---- under the lines ---------------------------------------------------- */
+
+.bs-ds-app .bs-ds-setup-ready__off {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setup-ready__off .bs-ds-icon {
+	margin-top: 1px;
+}
+

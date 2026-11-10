@@ -1,0 +1,179 @@
+/**
+ * The Overview's Findings card (design frame 27:53145): body 16 padded with
+ * 24 between the summary and the views; 90 ticks 4 by 20; legend dots 7.
+ * On a card narrower than the frame (a phone's), the ticks narrow to fit,
+ * 1 apart, rather than run past its edge, and the legend wraps onto a
+ * second line rather than clipping its last item.
+ */
+
+.bs-ds-findings__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-lg);
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-findings__summary {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-findings__totals {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.bs-ds-app .bs-ds-findings__total {
+	margin: 0;
+	font-size: var(--bs-ds-size-heading-xxlarge);
+	font-weight: 600;
+	line-height: normal;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-findings__severity {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	overflow: clip;
+}
+
+.bs-ds-sevbar {
+	display: flex;
+	justify-content: space-between;
+	column-gap: 1px;
+	overflow: clip;
+	width: 100%;
+	min-height: 20px;
+}
+
+.bs-ds-sevbar__tick {
+	flex: 0 1 4px;
+	min-inline-size: 1px;
+	height: 20px;
+	border-radius: 2px;
+}
+
+.bs-ds-sevbar__tick--critical,
+.bs-ds-legend__dot--critical {
+	background: var(--bs-ds-color-severity-critical);
+}
+
+.bs-ds-sevbar__tick--high,
+.bs-ds-legend__dot--high {
+	background: var(--bs-ds-color-severity-high);
+}
+
+.bs-ds-sevbar__tick--medium,
+.bs-ds-legend__dot--medium {
+	background: var(--bs-ds-color-severity-medium);
+}
+
+.bs-ds-sevbar__tick--low,
+.bs-ds-legend__dot--low {
+	background: var(--bs-ds-color-severity-low);
+}
+
+.bs-ds-sevbar__tick--info,
+.bs-ds-legend__dot--info {
+	background: var(--bs-ds-color-severity-info);
+}
+
+.bs-ds-legend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-14);
+	overflow: clip;
+}
+
+.bs-ds-legend__item {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-5);
+	overflow: clip;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: normal;
+}
+
+.bs-ds-legend__dot {
+	flex: none;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+}
+
+.bs-ds-findings__views {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-fpanel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+/* The panel's name, for screen readers and focus only (#2517). */
+.bs-ds-app .bs-ds-fpanel__title {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.bs-ds-findings__unknown {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-fpanel__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.bs-ds-fpanel__list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+/* Three cards' height; the rest scrolls inside the card. */
+.bs-ds-fpanel__list--scroll {
+	max-height: 216px;
+	overflow-y: auto;
+	scrollbar-color: var(--bs-ds-color-surface-tertiary-em) transparent;
+	scrollbar-width: thin;
+}
+
+/* Focusable so the keyboard can scroll it (#2186), and shown when it is. */
+.bs-ds-app .bs-ds-fpanel__list--scroll:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+/* What the counts above leave out, and where to find it. */
+.bs-ds-app .bs-ds-findings__snoozed {
+	margin: 0;
+}
+
+/* In the screen's own ink, underlined, as its other inline links are. */
+.bs-ds-app .bs-ds-findings__snoozed a {
+	color: var(--bs-ds-color-text-primary);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* What the rows of a view have in common, under its heading. */
+.bs-ds-app .bs-ds-fpanel__lede {
+	margin: 0;
+}

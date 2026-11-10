@@ -1,0 +1,56 @@
+/**
+ * The sheet beside the sidebar (design frame 27:53098): inset 8 on top,
+ * right and bottom, holding the main panel, which is the design's one
+ * radius-10 surface and clips what it holds.
+ */
+
+.bs-ds-sheet {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-xs) var(--bs-ds-space-xs) 0;
+}
+
+.bs-ds-side + .bs-ds-sheet {
+	padding-inline-start: 0;
+}
+
+.bs-ds-sheet:first-child {
+	padding-inline-start: var(--bs-ds-space-xs);
+}
+
+.bs-ds-main {
+	min-height: 100%;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 10px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+/*
+ * The box a screen lays itself out against. Named twice: the redrawn screens
+ * ask about `bs-ds-content`, and the screens and parts not redrawn yet ask
+ * about `bs-content`, as they did in the frame they came from. Without the
+ * second name their narrow layouts never applied.
+ */
+.bs-ds-content {
+	container: bs-ds-content bs-content / inline-size;
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	padding: var(--bs-ds-space-lg);
+}
+
+/* A screen not redrawn yet, inside the sheet: its own roles, none of its
+   column's outer spacing. */
+.bs-app.bs-ds-current {
+	margin: 0;
+	padding: var(--bs-ds-space-lg);
+}
+
+/* A narrow screen: the sidebar is a strip above the sheet. */
+@media (max-width: 782px) {
+
+	.bs-ds-side + .bs-ds-sheet {
+		padding-inline-start: var(--bs-ds-space-xs);
+	}
+}

@@ -1,0 +1,357 @@
+/**
+ * The sidebar (design frame 27:53064): 240 wide on the page's own background,
+ * brand block 64 tall, nav padded 24/12 with 12 between entries, the
+ * documentation link under a rule at the foot.
+ */
+
+.bs-ds-side {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	width: 240px;
+}
+
+.bs-ds-brand {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	height: 64px;
+	padding: 0 var(--bs-ds-space-md);
+}
+
+.bs-ds-brand__mark {
+	position: relative;
+	flex: none;
+	width: 32px;
+	height: 32px;
+	overflow: clip;
+}
+
+.bs-ds-brand__mark img {
+	position: absolute;
+	top: 50%;
+	left: calc(50% - 0.24px);
+	width: 23.522px;
+	height: 32px;
+	transform: translate(-50%, -50%);
+}
+
+/* An owner's image, of any shape, held inside the mark's square. */
+.bs-ds-brand__mark--owner img {
+	left: 50%;
+	width: 32px;
+	height: 32px;
+	object-fit: contain;
+}
+
+.bs-ds-brand__name {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 1px;
+}
+
+.bs-ds-brand__row {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-6);
+}
+
+.bs-ds-nav {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-lg) var(--bs-ds-space-sm);
+}
+
+.bs-ds-nav__zone,
+.bs-ds-nav__list,
+.bs-ds-nav__sub {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-nav__list li {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	margin: 0;
+}
+
+.bs-ds-nav__sub[hidden] {
+	display: none;
+}
+
+.bs-ds-nav__item {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	width: 100%;
+	/* 32 tall, and taller for a label that wraps. */
+	min-height: 32px;
+	padding: var(--bs-ds-space-2) var(--bs-ds-space-xs);
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	font: inherit;
+	text-align: start;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.bs-ds-nav__item:focus {
+	box-shadow: none;
+}
+
+.bs-ds-nav__item:not(.is-active):hover {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-nav__item.is-active {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-nav__label {
+	flex: 1 0 0;
+	min-width: 1px;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-nav__item.is-active .bs-ds-nav__label {
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* A group's screens line up with its name. */
+.bs-ds-nav__item--child {
+	position: relative;
+	padding-inline-start: calc(var(--bs-ds-space-xs) * 4);
+}
+
+/*
+ * An open group's guide: a rule down beside its screens, under the group's
+ * icon, so they read as the group's and not as entries of their own (#1941).
+ * The screen open now marks its stretch of the rule in the brand color. Over
+ * the screens, so a hovered one's tint does not break it.
+ */
+.bs-ds-nav__sub {
+	position: relative;
+}
+
+.bs-ds-nav__sub::before,
+.bs-ds-nav__sub .bs-ds-nav__item--child.is-active::before {
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: calc(var(--bs-ds-space-xs) * 2);
+	z-index: 1;
+	width: 1px;
+	background: var(--bs-ds-color-border-primary);
+	content: "";
+}
+
+.bs-ds-nav__sub .bs-ds-nav__item--child.is-active::before {
+	background: var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-nav__count {
+	display: flex;
+	align-items: flex-start;
+	overflow: clip;
+	padding: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-nav__item.is-active .bs-ds-nav__count {
+	background: var(--bs-ds-color-surface-brand);
+	color: var(--bs-ds-color-text-on-brand);
+}
+
+.bs-ds-nav__overline {
+	display: flex;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-10);
+}
+
+/* An add-on's group it gave no mark: its name over its screens. */
+.bs-ds-app .bs-ds-nav__heading {
+	display: flex;
+	margin: 0;
+	padding: var(--bs-ds-space-xxs) var(--bs-ds-space-10) 0;
+}
+
+.bs-ds-side__foot {
+	display: flex;
+	flex-direction: column;
+	margin-top: auto;
+	padding: var(--bs-ds-space-sm);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* Shown only on a narrow screen, where the list is a strip's. */
+.bs-ds-side__menu {
+	display: none;
+}
+
+/*
+ * Folded: a rail of the entries' icons. Each name shows beside its icon under
+ * the pointer or the keyboard and stays the control's name either way; a
+ * group's screens open beside the rail.
+ */
+@media (min-width: 783px) {
+
+	.bs-ds-side.is-collapsed {
+		width: 56px;
+	}
+
+	.bs-ds-side.is-collapsed .bs-ds-brand {
+		justify-content: center;
+		padding: 0;
+	}
+
+	.bs-ds-side.is-collapsed .bs-ds-brand__name,
+	.bs-ds-side.is-collapsed .bs-ds-nav__chevron {
+		display: none;
+	}
+
+	.bs-ds-side.is-collapsed .bs-ds-nav {
+		padding-inline: var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-side.is-collapsed .bs-ds-side__foot {
+		padding-inline: var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-side.is-collapsed .bs-ds-nav__item:not(.bs-ds-nav__item--child) {
+		position: relative;
+		justify-content: center;
+		padding: 0;
+	}
+
+	.bs-ds-side.is-collapsed .bs-ds-nav__item:not(.bs-ds-nav__item--child) > .bs-ds-nav__label {
+		position: absolute;
+		inset-inline-start: calc(100% + var(--bs-ds-space-xs));
+		z-index: 4;
+		flex: none;
+		padding: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+		border-radius: 6px;
+		background: var(--bs-ds-color-text-primary);
+		color: var(--bs-ds-color-surface-primary);
+		white-space: nowrap;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	/* The gap between the icon and its name, part of the name, so the
+	   pointer can cross it without the name going. */
+	.bs-ds-side.is-collapsed .bs-ds-nav__item:not(.bs-ds-nav__item--child) > .bs-ds-nav__label::before {
+		position: absolute;
+		inset-block: 0;
+		inset-inline-end: 100%;
+		width: var(--bs-ds-space-xs);
+		content: "";
+	}
+
+	/* Shown, the name can be hovered: it stays while the pointer is on it. */
+	.bs-ds-side.is-collapsed .bs-ds-nav__item:not(.bs-ds-nav__item--child):hover > .bs-ds-nav__label,
+	.bs-ds-side.is-collapsed .bs-ds-nav__item:not(.bs-ds-nav__item--child):focus-visible > .bs-ds-nav__label {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	/* Escape dismisses it until the pointer leaves or focus moves on. */
+	.bs-ds-side.is-collapsed .bs-ds-nav__item:not(.bs-ds-nav__item--child)[data-hide-tip] > .bs-ds-nav__label {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	/* An open group's flyout sits where its name would, and names it already. */
+	.bs-ds-side.is-collapsed .bs-ds-nav__item:not(.bs-ds-nav__item--child)[aria-expanded="true"] > .bs-ds-nav__label {
+		opacity: 0;
+	}
+
+	.bs-ds-side.is-collapsed .bs-ds-nav__item:not(.bs-ds-nav__item--child) > .bs-ds-nav__count {
+		position: absolute;
+		top: calc(-1 * var(--bs-ds-space-xxs));
+		inset-inline-end: calc(-1 * var(--bs-ds-space-xxs));
+		padding: 0 var(--bs-ds-space-xxs);
+	}
+
+	.bs-ds-side.is-collapsed .bs-ds-nav__group {
+		position: relative;
+	}
+
+	/* A zone's name is left to screen readers here, so a rule keeps an
+	   add-on's marks apart from the plugin's own. */
+	.bs-ds-side.is-collapsed .bs-ds-nav__zone + .bs-ds-nav__zone {
+		padding-top: var(--bs-ds-space-sm);
+		border-top: 1px solid var(--bs-ds-color-border-primary);
+	}
+
+	.bs-ds-nav__sub--flyout {
+		position: absolute;
+		top: 0;
+		inset-inline-start: calc(100% + var(--bs-ds-space-xs));
+		z-index: 3;
+		min-width: 200px;
+		padding: var(--bs-ds-space-xs);
+		border: 1px solid var(--bs-ds-color-border-primary);
+		border-radius: 10px;
+		background: var(--bs-ds-color-surface-primary);
+		box-shadow: var(--bs-ds-elevation-alert);
+	}
+
+	.bs-ds-nav__sub--flyout .bs-ds-nav__item--child {
+		padding-inline-start: var(--bs-ds-space-xs);
+	}
+
+	/* The flyout is its own box beside the rail, with no icon to hang from. */
+	.bs-ds-nav__sub--flyout::before,
+	.bs-ds-nav__sub--flyout .bs-ds-nav__item--child.is-active::before {
+		content: none;
+	}
+}
+
+/*
+ * A narrow screen: a strip across the top whose list opens under the Menu
+ * button, because a column there leaves the screen a sliver. Folded or not,
+ * the names show.
+ */
+@media (max-width: 782px) {
+
+	.bs-ds-side {
+		width: auto;
+	}
+
+	.bs-ds-side__menu {
+		display: flex;
+		flex: none;
+		align-items: center;
+		gap: var(--bs-ds-space-6);
+		height: 32px;
+		padding: 0 var(--bs-ds-space-xs);
+		border: 0;
+		border-radius: 8px;
+		background: transparent;
+		color: var(--bs-ds-color-text-secondary);
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.bs-ds-side__menu:hover {
+		background: var(--bs-ds-color-surface-tertiary);
+	}
+
+	.bs-ds-side:not(.is-menu-open) .bs-ds-nav,
+	.bs-ds-side:not(.is-menu-open) .bs-ds-side__foot {
+		display: none;
+	}
+
+	.bs-ds-side .bs-ds-nav {
+		padding-top: 0;
+	}
+}

@@ -1,0 +1,88 @@
+/**
+ * The two-factor and passkey panels on core's profile screen. Core admin
+ * styles carry the type and the buttons; this file only shapes the pieces core
+ * has no idiom for. No colors: the panels inherit the admin palette they sit
+ * in.
+ */
+
+.bs-profile-2fa {
+	max-width: 40em;
+}
+
+.bs-profile-2fa__qr {
+	width: 180px;
+	height: 180px;
+	margin: var(--bs-space-md) 0;
+}
+
+.bs-profile-2fa__qr svg {
+	width: 100%;
+	height: 100%;
+}
+
+/*
+ * The key sits on its own line under its label, in groups of four that never
+ * break inside, so a narrow screen wraps it only between groups. The groups
+ * are spaced here rather than by spaces in the text, so selecting the key
+ * copies it bare (#2172).
+ */
+.bs-profile-2fa__key code {
+	display: block;
+	width: fit-content;
+	max-width: 100%;
+	margin-top: var(--bs-space-sm);
+	user-select: all;
+}
+
+.bs-profile-2fa__key code span {
+	display: inline-block;
+	margin-inline-end: 0.5em;
+	white-space: nowrap;
+}
+
+.bs-profile-2fa__key code span:last-child {
+	margin-inline-end: 0;
+}
+
+.bs-profile-2fa__codes {
+	font-family: Menlo, Consolas, monospace;
+	font-size: var(--bs-text-lg);
+	line-height: 1.8;
+	columns: 2;
+	user-select: all;
+	max-width: 24em;
+}
+
+.bs-profile-2fa__codes span {
+	display: block;
+}
+
+.bs-profile-2fa__row {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-space-sm);
+	flex-wrap: wrap;
+}
+
+.bs-profile-2fa__error {
+	font-weight: 600;
+}
+
+.bs-profile-passkeys {
+	margin: 0 0 var(--bs-space-md);
+	max-width: 40em;
+}
+
+.bs-profile-passkeys li {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-space-md);
+	margin: 0;
+	padding: var(--bs-space-sm) 0;
+}
+
+.bs-profile-passkeys__label {
+	flex: 1 1 auto;
+	font-weight: 600;
+	word-break: break-word;
+}

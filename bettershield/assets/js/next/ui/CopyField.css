@@ -1,0 +1,123 @@
+/**
+ * A value to copy: the label a 12 medium line, then the value in a field the
+ * design's input height (or a recessed block that keeps its lines) and the
+ * copy button beside it, wrapping under it when the row is narrow.
+ */
+
+.bs-ds-copyfield {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-copyfield__label {
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-copyfield__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-copyfield--block .bs-ds-copyfield__row {
+	align-items: flex-start;
+}
+
+.bs-ds-app .bs-ds-copyfield__value {
+	flex: 1 1 240px;
+	min-width: 0;
+	height: 32px;
+	min-height: 32px; /* over the admin's 40 for text inputs */
+	margin: 0;
+	padding: 0 var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: none;
+	font-family: inherit;
+	font-size: var(--bs-ds-size-small);
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-copyfield__value:focus {
+	border-color: var(--bs-ds-color-border-brand);
+	outline: none;
+	box-shadow: 0 0 0 1px var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-app .bs-ds-copyfield__block {
+	flex: 1 1 100%;
+	min-width: 0;
+	max-height: 240px;
+	margin: 0;
+	padding: var(--bs-ds-space-sm);
+	overflow: auto;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary);
+	font-family: inherit;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-copyfield__block:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+.bs-ds-copybutton {
+	display: inline-flex;
+	flex: none;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	max-width: 100%;
+}
+
+/* Beside the field the button takes the field's 32 height, so their tops and
+   bottoms line up, and its label stays on one line: the row puts the button
+   under the field when both do not fit. Only a row narrower than the label
+   itself wraps the words, and the button then grows to hold them. */
+.bs-ds-app .bs-ds-copyfield__row .components-button.bs-ds-btn {
+	width: max-content;
+	max-width: 100%;
+	height: auto;
+	min-height: 32px;
+}
+
+/* The word shown and the other one share a cell: the button keeps the
+   longer one's width, and a hidden word is not read out. */
+.bs-ds-copybutton__words {
+	display: inline-grid;
+}
+
+.bs-ds-copybutton__words > span,
+.bs-ds-copybutton__words::after {
+	grid-area: 1 / 1;
+}
+
+.bs-ds-copybutton__words::after {
+	content: attr(data-other);
+	visibility: hidden;
+}
+
+/* Always in the page, empty or not: a live region added only when it has
+   something to say is often never announced. */
+.bs-ds-copied {
+	font-size: var(--bs-ds-size-xsmall);
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}

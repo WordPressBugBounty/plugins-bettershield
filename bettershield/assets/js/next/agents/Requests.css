@@ -1,0 +1,112 @@
+/**
+ * Agents › Requests: the card's intro line and notes, and each request's
+ * row with what opens under it (the plan, the confirmation shown once, the
+ * outcome), drawn as one with the row: no rule between them.
+ */
+
+.bs-ds-app .bs-ds-requests__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-requests__notes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-proposal__name {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-proposal__name:focus {
+	outline: none;
+}
+
+.bs-ds-proposal__meta {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.bs-ds-proposal__meta > span + span::before {
+	content: "·";
+	padding: 0 var(--bs-ds-space-6);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-proposal__reason {
+	color: var(--bs-ds-color-text-warning);
+}
+
+/* A request's row runs into what opens under it. */
+.bs-ds-tbl__row:has(+ .bs-ds-proposal__under) {
+	border-bottom: 0;
+}
+
+.bs-ds-proposal__under {
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-sm);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-proposal__under:has(+ .bs-ds-proposal__under) {
+	border-bottom: 0;
+}
+
+.bs-ds-proposal__under--open {
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-plan,
+.bs-ds-proposal__minted {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-plan p,
+.bs-ds-app .bs-ds-proposal__minted p {
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-plan .bs-ds-plan__what,
+.bs-ds-app .bs-ds-proposal__once {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-plan__lines {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-plan__meta {
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-proposal__bones {
+	display: flex;
+	flex-direction: column;
+}

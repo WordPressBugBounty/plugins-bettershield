@@ -1,0 +1,77 @@
+/**
+ * What an update added. Quiet on purpose: its headline is reassurance rather
+ * than a demand, so it is the card's title (wrapping where it is long, rather
+ * than cut at the card's edge) with Dismiss at its end, each addition a title
+ * over what it changes, and the versions in a footnote.
+ */
+
+.bs-ds-release .bs-ds-card__head {
+	align-items: flex-start;
+	min-height: 60px;
+}
+
+.bs-ds-app .bs-ds-release .bs-ds-card__title {
+	flex: 1 1 0;
+	min-width: 0;
+	padding-top: var(--bs-ds-space-xxs);
+	line-height: 1.4;
+	white-space: normal;
+}
+
+.bs-ds-release .bs-ds-card__head > .bs-ds-spacer {
+	display: none;
+}
+
+.bs-ds-app .bs-ds-release__list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-release__item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-release__what {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* A named feature: its name leads, and its sentence reads as the detail. */
+.bs-ds-app .bs-ds-release__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-release__title + .bs-ds-release__what {
+	font-weight: 400;
+}
+
+.bs-ds-app .bs-ds-release__changes,
+.bs-ds-app .bs-ds-release__lede,
+.bs-ds-app .bs-ds-release__note {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-release__lede,
+.bs-ds-app .bs-ds-release__note {
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+}

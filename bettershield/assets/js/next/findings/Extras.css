@@ -1,0 +1,87 @@
+/**
+ * What a finding's detail holds beyond its four facts: cards across the
+ * detail's full width under them (the vulnerable versions and the leftover
+ * tools as the shared Table, the explanation with the evidence it was built
+ * from), the ask that brings the explanation, and the alert question.
+ */
+
+.bs-ds-fx-wide {
+	flex: 1 0 100%;
+}
+
+/* A table that is the whole card: the card's own edge is its top rule. */
+.bs-ds-fx-table .bs-ds-tbl__head {
+	border-top: 0;
+}
+
+.bs-ds-fx-ids {
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-ftools__large {
+	display: block;
+	margin-top: var(--bs-ds-space-xxs);
+}
+
+/* The explanation: its paragraphs in the body's ink, then where it came from. */
+.bs-ds-fexplain:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-fexplain__para {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-fexplain__source {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fexplain__evidence.bs-ds-kvs {
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-sm) 0 0;
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-fexplain__ask,
+.bs-ds-ffeedback {
+	display: flex;
+	flex: 1 0 100%;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-ffeedback {
+	margin: 0;
+	padding-top: var(--bs-ds-space-sm);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* The note under the report on where advisories come from. */
+.bs-ds-app .bs-ds-ffeed {
+	flex: 1 1 0;
+	min-width: 0;
+	max-width: 100ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}

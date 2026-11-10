@@ -1,0 +1,106 @@
+/**
+ * The question on the Plugins screen: core's own screen, so core's buttons
+ * and type, on a native dialog. Spacing, surfaces and ink come from the token
+ * layer, which tokens.css declares on .bs-deactivate.
+ */
+
+.bs-deactivate {
+	box-sizing: border-box;
+	width: min(32rem, calc(100vw - var(--bs-space-xl)));
+	max-height: calc(100vh - var(--bs-space-xl));
+	padding: var(--bs-space-xl);
+	border: 1px solid var(--bs-border-strong);
+	border-radius: var(--bs-radius-card);
+	background: var(--bs-surface);
+	color: var(--bs-ink);
+	box-shadow: var(--bs-shadow-overlay);
+	overflow: auto;
+}
+
+.bs-deactivate::backdrop {
+	background: color-mix(in srgb, var(--bs-ink) 60%, transparent);
+}
+
+.bs-deactivate__close {
+	position: absolute;
+	inset-block-start: var(--bs-space-sm);
+	inset-inline-end: var(--bs-space-sm);
+	width: var(--bs-space-2xl);
+	height: var(--bs-space-2xl);
+	padding: 0;
+	border: 0;
+	border-radius: var(--bs-radius-control);
+	background: transparent;
+	color: var(--bs-ink-2);
+	font-size: var(--bs-text-xl);
+	line-height: 1;
+	cursor: pointer;
+}
+
+.bs-deactivate__close:hover {
+	color: var(--bs-ink);
+	background: var(--bs-surface-subtle);
+}
+
+.bs-deactivate__close:focus-visible {
+	outline: 2px solid var(--wp-admin-theme-color, currentcolor);
+	outline-offset: 1px;
+}
+
+.bs-deactivate__title {
+	margin: 0 var(--bs-space-2xl) var(--bs-space-sm) 0;
+	font-size: var(--bs-text-lg);
+	line-height: 1.4;
+}
+
+.bs-deactivate__lead {
+	margin: 0 0 var(--bs-space-lg);
+	color: var(--bs-ink-2);
+}
+
+.bs-deactivate__reasons {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.bs-deactivate__reasons ul {
+	margin: 0;
+}
+
+.bs-deactivate__reasons li {
+	margin: 0 0 var(--bs-space-sm);
+}
+
+.bs-deactivate__reasons label {
+	display: flex;
+	gap: var(--bs-space-sm);
+	align-items: center;
+}
+
+.bs-deactivate__reasons input[type="radio"] {
+	margin: 0;
+}
+
+.bs-deactivate__details {
+	box-sizing: border-box;
+	width: 100%;
+	margin: var(--bs-space-sm) 0 0;
+}
+
+.bs-deactivate__details[hidden] {
+	display: none;
+}
+
+.bs-deactivate__status {
+	min-height: 1.4em;
+	margin: var(--bs-space-sm) 0 0;
+	color: var(--bs-ink-2);
+}
+
+.bs-deactivate__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-space-sm);
+	margin-top: var(--bs-space-lg);
+}

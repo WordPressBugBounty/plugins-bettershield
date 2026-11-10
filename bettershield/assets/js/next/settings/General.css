@@ -1,0 +1,392 @@
+/**
+ * Settings › General: each group a panel of cards under the tab row, then
+ * what the rows hold — a button and the line it earns, notes and points, the
+ * password policy's two numbers, the security contact's fields, the
+ * diagnostic report, an import's plan, the settings history and the facts.
+ */
+
+.bs-ds-gen__panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	min-width: 0;
+}
+
+/* The flex above outranks the browser's own rule for `hidden`. */
+.bs-ds-gen__panel[hidden] {
+	display: none;
+}
+
+/* A row with nothing under it, or nothing produced yet, takes no room. */
+.bs-ds-gen__panel .bs-ds-setting__under:empty,
+.bs-ds-gen__panel .bs-ds-setting__output:empty {
+	display: none;
+}
+
+/* The tab row's stand-in: four words over the row's rule. */
+.bs-ds-gen__tabsbone {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-lg);
+	padding: var(--bs-ds-space-md) var(--bs-ds-space-sm);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* ---- inside a row ---- */
+
+/* A button and the line that says what it did, wrapping under it. */
+.bs-ds-gen__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-gen__note {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-gen__actions .bs-ds-gen__note {
+	flex: 1 1 16em;
+	min-width: 0;
+}
+
+/* "Audited just now.": the look of "Saved.", for a control that saved nothing. */
+.bs-ds-gen__done {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-success);
+}
+
+.bs-ds-app .bs-ds-gen__points {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	max-width: 80ch;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-gen__points li {
+	position: relative;
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-md);
+}
+
+.bs-ds-gen__points li::before {
+	content: "";
+	position: absolute;
+	top: 0.6em;
+	inset-inline-start: var(--bs-ds-space-xxs);
+	width: 4px;
+	height: 4px;
+	border-radius: 999px;
+	background: var(--bs-ds-color-icon-tertiary);
+}
+
+/* ---- the password policy's three numbers, each with its default under it ----
+ *
+ * A grid whose columns share four rows: label, box, help, default. Each field
+ * is a subgrid over those rows, and the field's own wrappers step aside
+ * (`display: contents`), so its label, box and help sit in the shared rows.
+ * A label that wraps (a longer one, or a longer translation) makes the label
+ * row taller for every column, and the three boxes stay on one line. The
+ * switch for the third number's reach is a line of its own under the grid,
+ * as wide as the card allows.
+ */
+
+.bs-ds-policy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	min-width: 0;
+}
+
+.bs-ds-policy__fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 240px));
+	align-items: start;
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-policy__field {
+	display: grid;
+	grid-row: span 4;
+	grid-template-rows: subgrid;
+	row-gap: 0;
+	min-width: 0;
+}
+
+.bs-ds-policy__field > .bs-ds-field,
+.bs-ds-policy__field > .bs-ds-field > .components-base-control,
+.bs-ds-policy__field > .bs-ds-field > .components-base-control > .components-base-control__field {
+	display: contents;
+}
+
+.bs-ds-app .bs-ds-policy__field .components-base-control__label {
+	align-self: end;
+}
+
+.bs-ds-app .bs-ds-policy__field .bs-ds-gen__default {
+	margin-top: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-app .bs-ds-gen__default {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- the security contact's fields ---- */
+
+.bs-ds-contact__fields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	max-width: 480px;
+}
+
+/* ---- the diagnostic report: read-only, all of it there at once ---- */
+
+.bs-ds-report__out {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* Its own class: the Overview's Security report card is .bs-ds-report, and this
+   textarea's gray fill and inset leaked onto it (#2487). */
+.bs-ds-app .bs-ds-report__text {
+	display: block;
+	width: 100%;
+	min-height: 160px;
+	margin: 0;
+	padding: var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-secondary);
+	box-shadow: none;
+	font-family: inherit;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+	resize: vertical;
+}
+
+.bs-ds-app .bs-ds-report__text:focus {
+	border-color: var(--bs-ds-color-border-brand);
+	outline: none;
+	box-shadow: 0 0 0 1px var(--bs-ds-color-border-brand);
+}
+
+/* ---- an import: the other plugins found, and the plan ---- */
+
+.bs-ds-sources,
+.bs-ds-import__plan {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-sources__list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-sources__list li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-md);
+	margin: 0;
+	padding: var(--bs-ds-space-xs) 0;
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-sources__name {
+	min-width: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-sources__state {
+	font-weight: 400;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-sources__left ul {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: var(--bs-ds-space-xxs) 0 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-sources__left li {
+	margin: 0;
+}
+
+.bs-ds-sources__left strong {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* One line per thing, what would happen to it, and why not where nothing
+   would. Rows that already match are quieter than the ones that change. */
+.bs-ds-app .bs-ds-import {
+	margin: 0;
+	padding: 0;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-import__row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-md);
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-import__row + .bs-ds-import__row {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-import__title {
+	min-width: 0;
+	font-weight: 500;
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-import__row.is-quiet {
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-import__row.is-quiet .bs-ds-import__title {
+	font-weight: 400;
+}
+
+.bs-ds-import__action {
+	font-size: var(--bs-ds-size-xsmall);
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* Each setting a change would move, from and to; one that leaves the site
+   less protected in the warning ink, with its mark. */
+.bs-ds-app .bs-ds-import__changes {
+	display: flex;
+	flex-direction: column;
+	grid-column: 1 / -1;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-import__changes li {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-import__changes li.is-weaker {
+	color: var(--bs-ds-color-text-warning);
+}
+
+.bs-ds-import__note {
+	grid-column: 1 / -1;
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A narrow card: what would happen goes under the thing it happens to. */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-app .bs-ds-import__row {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.bs-ds-import__action {
+		white-space: normal;
+	}
+}
+
+/* ---- the settings history ---- */
+
+.bs-ds-undo__title:focus {
+	outline: none;
+}
+
+/* What putting one back did; no room taken until it has something to say. */
+.bs-ds-app .bs-ds-undo__message {
+	padding: 0 var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-success);
+}
+
+.bs-ds-app .bs-ds-undo__message:not(:empty) {
+	padding-bottom: var(--bs-ds-space-sm);
+}
+
+/* The header strip is kept for assistive technology only, so the rows take
+   the rule under the card's header, and the footer the rule over it. */
+.bs-ds-undo .bs-ds-tbl {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-undo .bs-ds-tbl__whole--foot {
+	border-top: 0;
+}
+
+.bs-ds-undo__change,
+.bs-ds-undo__when {
+	display: block;
+}
+
+/* Only a wrapper that hears the press before the field's blur; it draws nothing. */
+.bs-ds-contact__switch {
+	display: contents;
+}

@@ -1,0 +1,34 @@
+{
+	"name": "bettershield",
+	"version": "1.1.7",
+	"private": true,
+	"description": "Development tooling for the BetterShield plugin. The plugin itself ships no Node runtime code.",
+	"scripts": {
+		"build": "wp-scripts build assets/js/setup.js assets/js/widget.js assets/js/profile.js assets/js/deactivate.js assets/js/account-block.js next=./assets/js/next/index.js --output-path=assets/build && node bin/postbuild.js",
+		"start": "wp-scripts start assets/js/setup.js assets/js/widget.js assets/js/profile.js assets/js/deactivate.js assets/js/account-block.js next=./assets/js/next/index.js --output-path=assets/build",
+		"plugin-zip": "node bin/make-zip.js",
+		"deps": "composer install --no-dev --optimize-autoloader --no-interaction --working-dir=dependencies",
+		"dist": "npm run build && npm run deps && npm run i18n && npm run plugin-zip",
+		"i18n": "node bin/make-pot.js",
+		"env:start": "wp-env start",
+		"env:stop": "wp-env stop",
+		"env:destroy": "wp-env destroy",
+		"wp": "wp-env run cli wp",
+		"test:js": "wp-scripts test-unit-js",
+		"lint:css": "wp-scripts lint-style 'assets/css/**/*.css' 'assets/js/**/*.css'",
+		"test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/bettershield vendor/bin/phpunit",
+		"manifest": "bash bin/abilities-manifest.sh",
+    "test:php:multisite": "wp-env run tests-cli --env-cwd=wp-content/plugins/bettershield bash -c \"WP_MULTISITE=1 vendor/bin/phpunit -c phpunit-multisite.xml.dist\"",
+		"env:floor": "wp-env start --config=.wp-env.floor.json",
+		"test:php:floor": "wp-env run tests-cli --config=.wp-env.floor.json --env-cwd=wp-content/plugins/bettershield vendor/bin/phpunit",
+		"env:ceiling": "wp-env start --config=.wp-env.ceiling.json",
+		"test:php:ceiling": "wp-env run tests-cli --config=.wp-env.ceiling.json --env-cwd=wp-content/plugins/bettershield vendor/bin/phpunit",
+		"design-system": "wp-scripts build docs/design-system/gallery.js --output-path=docs/design-system/build"
+	},
+	"devDependencies": {
+		"@wordpress/env": "^11.12.0",
+		"@wordpress/scripts": "^34.0.0",
+		"adm-zip": "^0.6.0",
+		"qrcode-generator": "^2.0.4"
+	}
+}

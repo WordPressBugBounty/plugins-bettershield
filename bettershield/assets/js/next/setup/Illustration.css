@@ -1,0 +1,181 @@
+/**
+ * The first step's picture, drawn in the design's tokens.
+ *
+ * A small card on the panel's surface with the mark and a grade ringed like
+ * a good score, three rows being ticked off in the brand tag's colors, and two
+ * chips naming what the setup is about to do, each on the panel's surface
+ * with its border and the alert's lift. A brand glow sits behind it, as the
+ * dashboard's hero has one. It arrives once, gently, and is still for anybody
+ * who asked the system for less motion.
+ */
+
+.bs-ds-setup-art {
+	position: relative;
+	width: min(100%, 380px);
+	height: 220px;
+}
+
+.bs-ds-setup-art__glow {
+	position: absolute;
+	inset: -10% 5%;
+	border-radius: 50%;
+	background: radial-gradient(closest-side, color-mix(in srgb, var(--bs-ds-color-surface-brand) 22%, transparent), transparent);
+	filter: blur(6px);
+}
+
+.bs-ds-setup-art__card {
+	position: absolute;
+	top: 26px;
+	left: 50%;
+	width: 240px;
+	padding: var(--bs-ds-space-md);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-alert);
+	transform: translateX(-50%);
+	animation: bs-ds-setup-art-rise 0.24s ease both;
+}
+
+.bs-ds-setup-art__top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--bs-ds-space-md);
+}
+
+.bs-ds-setup-art__mark {
+	display: block;
+	width: 48px;
+	height: 48px;
+}
+
+.bs-ds-setup-art__mark--glyph {
+	display: grid;
+	place-items: center;
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+/* The grade, ringed as the dashboard's gauge rings a good score. */
+.bs-ds-setup-art__grade {
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	border: 3px solid var(--bs-ds-color-surface-brand);
+	border-radius: 50%;
+	font-size: var(--bs-ds-size-heading-medium);
+	font-weight: 600;
+	line-height: 1;
+	color: var(--bs-ds-color-tag-brand-text);
+}
+
+.bs-ds-setup-art__rows {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-setup-art__rows li {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	animation: bs-ds-setup-art-rise 0.24s ease both;
+	animation-delay: calc(120ms + var(--bs-ds-art-order) * 90ms);
+}
+
+.bs-ds-setup-art__tick {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: var(--bs-ds-color-tag-brand-bg);
+	color: var(--bs-ds-color-tag-brand-text);
+}
+
+.bs-ds-setup-art__bar {
+	display: block;
+	width: var(--bs-ds-art-width);
+	height: 8px;
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-setup-art__chip {
+	position: absolute;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	padding: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-alert);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-primary);
+	animation: bs-ds-setup-art-rise 0.24s ease both;
+	animation-delay: 360ms;
+}
+
+.bs-ds-setup-art__chip--one {
+	top: 6px;
+	left: 0;
+}
+
+.bs-ds-setup-art__chip--two {
+	right: 0;
+	bottom: 8px;
+	animation-delay: 440ms;
+}
+
+@keyframes bs-ds-setup-art-rise {
+
+	from {
+		opacity: 0;
+		translate: 0 6px;
+	}
+
+	to {
+		opacity: 1;
+		translate: 0 0;
+	}
+}
+
+@container bs-ds-setup (max-width: 420px) {
+
+	.bs-ds-setup-art {
+		height: 200px;
+	}
+
+	.bs-ds-setup-art__card {
+		width: 210px;
+	}
+
+	.bs-ds-setup-art__chip--one {
+		top: 0;
+	}
+
+	.bs-ds-setup-art__chip--two {
+		bottom: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-setup-art__card,
+	.bs-ds-setup-art__rows li,
+	.bs-ds-setup-art__chip {
+		animation: none;
+	}
+}

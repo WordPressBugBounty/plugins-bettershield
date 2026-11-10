@@ -1,0 +1,58 @@
+/**
+ * A switch and its words: the 36 by 20 Toggle leading, 12 to a 14 line that
+ * wraps beside it, then whatever the save said. The line about it sits under
+ * the words, lined up with them rather than with the switch.
+ */
+
+.bs-ds-switch {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+.bs-ds-switch__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-switch__line {
+	display: inline-flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+	cursor: pointer;
+}
+
+.bs-ds-switch__line .components-form-toggle {
+	flex: none;
+}
+
+.bs-ds-app .bs-ds-switch__label {
+	min-width: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* A switch that cannot be thrown yet reads as such, and is not offered to the pointer. */
+.bs-ds-switch__line:has(input:disabled) {
+	cursor: default;
+}
+
+.bs-ds-app .bs-ds-switch__line:has(input:disabled) .bs-ds-switch__label {
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-switch__help {
+	margin: 0;
+	padding-inline-start: calc(36px + var(--bs-ds-space-sm));
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}

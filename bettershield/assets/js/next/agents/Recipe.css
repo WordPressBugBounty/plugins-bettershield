@@ -1,0 +1,14 @@
+/**
+ * The line under a client's configuration: how it signs in, or where its
+ * token goes. A 12 secondary line that wraps, as any helper line does.
+ */
+
+.bs-ds-app .bs-ds-recipe__meta {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}

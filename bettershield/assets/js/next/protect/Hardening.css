@@ -1,0 +1,24 @@
+/**
+ * Protection › Hardening: the score's value with its grade beside it, and the
+ * two lines under the score (what the fixes on offer would make it, and how
+ * it has moved), one under the other.
+ */
+
+.bs-ds-hstrip__score {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-hstrip__grade {
+	display: inline-flex;
+}
+
+.bs-ds-hstrip__line {
+	display: block;
+}
+
+.bs-ds-hstrip__line + .bs-ds-hstrip__line {
+	margin-top: var(--bs-ds-space-xxs);
+}

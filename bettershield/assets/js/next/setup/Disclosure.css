@@ -1,0 +1,96 @@
+/**
+ * A folded part of a step: a full-width row that names it, with what it
+ * holds summed up beside the name and a chevron that turns when it opens.
+ * It reads as a Ghost control: no fill at rest, the Ghost hover fill.
+ */
+
+.bs-ds-setup-fold {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-setup-fold__toggle {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-sm);
+	width: 100%;
+	min-height: 48px;
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border: 0;
+	border-radius: 12px;
+	background: none;
+	font-family: inherit;
+	text-align: start;
+	cursor: pointer;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-setup-fold__toggle:hover {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-app .bs-ds-setup-fold__toggle:focus:not(:focus-visible) {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-setup-fold__toggle:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+.bs-ds-setup-fold.is-open > .bs-ds-setup-fold__toggle {
+	border-end-start-radius: 0;
+	border-end-end-radius: 0;
+}
+
+.bs-ds-setup-fold__label {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-setup-fold__summary {
+	flex: 1 1 12em;
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setup-fold__chevron {
+	flex: none;
+	margin-inline-start: auto;
+	transition: transform 0.15s ease;
+}
+
+.bs-ds-setup-fold.is-open > .bs-ds-setup-fold__toggle .bs-ds-setup-fold__chevron {
+	transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-setup-fold__chevron {
+		transition: none;
+	}
+}
+
+.bs-ds-setup-fold__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	min-width: 0;
+}
+
+.bs-ds-setup-fold__body[hidden] {
+	display: none;
+}

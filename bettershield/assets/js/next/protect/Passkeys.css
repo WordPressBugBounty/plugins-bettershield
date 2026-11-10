@@ -1,0 +1,36 @@
+/**
+ * Passkeys: the list as rows of the table kit under a rule, each name
+ * breaking where it has to rather than pushing its row off the card, the
+ * proof a removal or an addition asks for, and the field that names a new
+ * device, under a rule of its own.
+ */
+
+.bs-ds-passkeys__list {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-passkeys__name {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+/* Focus lands on a passkey's name, or the card's, after a change; the row
+   and the heading say so, not a ring. */
+.bs-ds-passkeys__name:focus,
+.bs-ds-passkeys__title:focus {
+	outline: none;
+}
+
+.bs-ds-passkeys__proof {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-passkeys__add {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}

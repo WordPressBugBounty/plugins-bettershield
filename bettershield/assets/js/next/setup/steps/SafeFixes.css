@@ -1,0 +1,19 @@
+/**
+ * Safe Fixes: one card of setting rows, a fix each. The card has no header
+ * of its own, the step's heading names it, so the first row carries no rule.
+ * What the dry run says a fix would do is behind the row's "What it does".
+ */
+
+.bs-ds-setup-fixes {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-setup-fixes__item {
+	margin: 0;
+}
+
+.bs-ds-setup-fixes__item:first-child > .bs-ds-setting {
+	border-top: 0;
+}

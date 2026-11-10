@@ -1,0 +1,125 @@
+/**
+ * The design's Score gauge (component 23:26391), 212 by 136: the half-disc
+ * layers at (31, 39), 41 ticks 17 by 3 on an arc of radius 97.5 around
+ * (106, 114), the score at (106, 65), the caption at (106, 112) and the
+ * scale's ends at (5, 126) and (195, 126).
+ */
+
+.bs-ds-gauge {
+	position: relative;
+	flex: none;
+	width: 212px;
+	height: 136px;
+	overflow: clip;
+}
+
+.bs-ds-gauge__disc {
+	position: absolute;
+	top: 39px;
+	left: 31px;
+	overflow: visible;
+}
+
+.bs-ds-gauge__glow {
+	fill: var(--bs-ds-color-surface-brand);
+	opacity: 0.18;
+}
+
+.bs-ds-gauge__rim {
+	stroke: var(--bs-ds-color-surface-brand);
+	opacity: 0.45;
+}
+
+.bs-ds-gauge__fade {
+	fill: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-gauge--fair .bs-ds-gauge__glow {
+	fill: var(--bs-ds-color-icon-warning);
+}
+
+.bs-ds-gauge--fair .bs-ds-gauge__rim {
+	stroke: var(--bs-ds-color-icon-warning);
+}
+
+/* Orange, not the error red: a poor grade is posture, and red is kept for
+   critical findings. */
+.bs-ds-gauge--poor .bs-ds-gauge__glow {
+	fill: var(--bs-ds-color-icon-grade-poor);
+}
+
+.bs-ds-gauge--poor .bs-ds-gauge__rim {
+	stroke: var(--bs-ds-color-icon-grade-poor);
+}
+
+.bs-ds-gauge--nodata .bs-ds-gauge__glow {
+	fill: var(--bs-ds-color-surface-disable);
+	opacity: 0.4;
+}
+
+.bs-ds-gauge__ticks {
+	position: absolute;
+	inset: 0;
+}
+
+.bs-ds-gauge__tick {
+	position: absolute;
+	width: 17px;
+	height: 3px;
+	border-radius: 1.5px;
+	background: var(--bs-ds-color-surface-disable);
+}
+
+.bs-ds-gauge__tick.is-on {
+	background: var(--bs-ds-color-surface-brand);
+}
+
+.bs-ds-gauge--fair .bs-ds-gauge__tick.is-on {
+	background: var(--bs-ds-color-icon-warning);
+}
+
+.bs-ds-gauge--poor .bs-ds-gauge__tick.is-on {
+	background: var(--bs-ds-color-icon-grade-poor);
+}
+
+.bs-ds-app .bs-ds-gauge__score,
+.bs-ds-app .bs-ds-gauge__caption {
+	position: absolute;
+	left: 106px;
+	width: 120px;
+	margin: 0;
+	transform: translateX(-50%);
+	text-align: center;
+}
+
+.bs-ds-app .bs-ds-gauge__score {
+	top: 65px;
+	font-size: var(--bs-ds-size-heading-xxlarge);
+	font-weight: 600;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-gauge--nodata .bs-ds-gauge__score {
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-app .bs-ds-gauge__caption {
+	top: 112px;
+	font-size: var(--bs-ds-size-xxsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-gauge__scale {
+	position: absolute;
+	top: 126px;
+	margin: 0;
+	font-size: var(--bs-ds-size-xxsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-tertiary);
+}

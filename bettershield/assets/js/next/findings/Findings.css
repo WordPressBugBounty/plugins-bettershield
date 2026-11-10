@@ -1,0 +1,169 @@
+/**
+ * The Findings report's card (design frame 23:33003): the header with its
+ * points, 12 between the tab row and the table; the tab row's Group by and
+ * search; the advisory banner and the empty line.
+ */
+
+.bs-ds-fcard-head {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/*
+ * The points badge follows its title. Every card title grows to fill its
+ * header so a badge after the spacer reaches the far end, but here the badge
+ * comes before the spacer: both grew, and the badge floated in the middle of
+ * the header (#2546).
+ */
+.bs-ds-app .bs-ds-fcard-head .bs-ds-card__title {
+	flex: 0 1 auto;
+	min-width: 0;
+}
+
+.bs-ds-fcard-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-ftable {
+	display: flex;
+	flex-direction: column;
+}
+
+.bs-ds-fselect,
+.bs-ds-fsearch {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	height: 32px;
+	padding: 0 var(--bs-ds-space-xs);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+	font-family: inherit;
+}
+
+.bs-ds-fselect {
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	cursor: pointer;
+}
+
+.bs-ds-fsearch {
+	width: 260px;
+	cursor: text;
+}
+
+.bs-ds-app .bs-ds-fsearch input {
+	flex: 1 0 0;
+	min-width: 1px;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	outline: 0;
+	font: inherit;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-fsearch input::placeholder {
+	color: var(--bs-ds-color-text-secondary);
+	opacity: 1;
+}
+
+.bs-ds-fsearch:focus-within {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 1px;
+}
+
+/* Where the report's advisories come from, under the table, when a source is connected. */
+.bs-ds-fnote {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+}
+
+/* The checks that could not run, opened in the notice above the report. */
+.bs-ds-app .bs-ds-fchecks {
+	margin: var(--bs-ds-space-xxs) 0 0;
+	padding-left: var(--bs-ds-space-md);
+	list-style: disc;
+}
+
+/* Alert, Banner layout, Info tone: inside the table, 44 tall. */
+.bs-ds-fbanner {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	height: 44px;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-xs) var(--bs-ds-space-xs) var(--bs-ds-space-md);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-info-transparent);
+}
+
+.bs-ds-fbanner__title {
+	flex: none;
+	font-weight: 500;
+	color: var(--bs-ds-color-tag-blue-text);
+}
+
+.bs-ds-app .bs-ds-fempty {
+	margin: 0;
+	padding: var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fempty--retry {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+}
+
+/*
+ * A narrow card. Group by and the 260px search held the whole tab row, so
+ * the status tabs were squeezed to no width. The controls take the row's
+ * second line instead, the search sharing it with Group by, and the tabs
+ * have the first line to themselves, scrolling where they do not all fit.
+ * The five tabs and the two controls need about 960px side by side: at a
+ * 1100px window, Fixed, Not applicable and All were hidden (#2483).
+ */
+@container bs-ds-content (max-width: 960px) {
+
+	.bs-ds-fcard-body > .bs-ds-tabs {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-fcard-body > .bs-ds-tabs > .bs-ds-tabs__list {
+		flex: 1 1 100%;
+	}
+
+	.bs-ds-fcard-body > .bs-ds-tabs > .bs-ds-tabs__actions {
+		flex: 1 1 100%;
+		flex-wrap: wrap;
+		min-width: 0;
+		padding: var(--bs-ds-space-sm) 0 var(--bs-ds-space-sm) var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-fsearch {
+		flex: 1 1 auto;
+		width: auto;
+		min-width: 0;
+	}
+}

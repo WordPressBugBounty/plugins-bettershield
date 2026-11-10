@@ -1,0 +1,50 @@
+/**
+ * An incident's explanation: what would be sent, in the design's type and
+ * scrolling on its own; the two requests side by side or wrapped; and the
+ * draft, its body in the primary ink with each citation underlined.
+ */
+
+.bs-ds-app .bs-ds-explain__evidence {
+	max-height: 24rem;
+	overflow: auto;
+	margin: 0;
+	padding: var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary);
+	font-family: inherit;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* Explain and Draft a summary, set apart on one line or wrapped onto two. */
+.bs-ds-explain__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-explain__draft {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-explain__paragraph {
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-explain__paragraph a {
+	font-variant-numeric: tabular-nums;
+	color: var(--bs-ds-color-text-primary);
+	text-decoration: underline;
+}

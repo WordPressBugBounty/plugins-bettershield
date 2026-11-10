@@ -1,0 +1,270 @@
+/**
+ * Network › Overview: the column of cards, each card's intro, notes, foot and
+ * "How this works" row, the sites table's cells and their names on a narrow
+ * card, the policy rows' fields, the link shown once, the key rotation's
+ * confirmation and the rulings that can be put back.
+ */
+
+.bs-ds-network {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-network__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A card's title that takes focus after an action; the focus is not drawn. */
+.bs-ds-network__title:focus {
+	outline: none;
+}
+
+.bs-ds-network__notes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-network__foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-network__footnote {
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-network__topics {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-sm);
+}
+
+.bs-ds-network__foot + .bs-ds-network__topics {
+	padding-top: 0;
+}
+
+.bs-ds-network__boneintro,
+.bs-ds-network__bonefoot {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-network__bonefoot {
+	padding-top: var(--bs-ds-space-sm);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* ---- the sites table ---- */
+
+.bs-ds-app .bs-ds-netsites__count {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-netsites__error {
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml) 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-error);
+}
+
+.bs-ds-app .bs-ds-netsites__name {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* A site not set up yet says so across the columns it has no figures for. */
+.bs-ds-netsites__rest {
+	grid-column: 2 / -1;
+}
+
+.bs-ds-netsites__quiet {
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-netsites__score {
+	align-items: baseline;
+}
+
+.bs-ds-netsites__figure {
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+}
+
+.bs-ds-netsites__grade {
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-netsites__open,
+.bs-ds-netsites__audited {
+	font-variant-numeric: tabular-nums;
+}
+
+/* Drawn only where the header strip is not. */
+.bs-ds-netsites__label {
+	display: none;
+}
+
+.bs-ds-netsites__bonehead,
+.bs-ds-netsites__bonerow {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 96px 112px 176px 120px;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-ml);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-netsites__bonehead {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-netsites__bonerow {
+	padding-block: var(--bs-ds-space-sm);
+}
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-netsites__label {
+		display: inline;
+		color: var(--bs-ds-color-text-secondary);
+	}
+
+	.bs-ds-netsites__label::after {
+		content: ":";
+	}
+
+	.bs-ds-netsites__bonehead {
+		display: none;
+	}
+
+	.bs-ds-netsites__bonerow {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}
+
+/* ---- the two policies ---- */
+
+.bs-ds-netpolicy .bs-ds-setting__under {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-netpolicy__save {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-netpolicy__bone {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-netpolicy__boneroles {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-md);
+}
+
+/* ---- the migration ---- */
+
+.bs-ds-netmove__figures {
+	padding-bottom: var(--bs-ds-space-md);
+}
+
+/* ---- the way back in ---- */
+
+.bs-ds-netrecovery > .bs-ds-saved {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+/*
+ * The link shown once, on a recessed panel of its own: the one thing on the
+ * card that cannot be shown again.
+ */
+.bs-ds-netrecovery__reveal {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+	margin: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	padding: calc(var(--bs-ds-space-sm) - 1px) calc(var(--bs-ds-space-md) - 1px);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-secondary);
+}
+
+.bs-ds-app .bs-ds-netrecovery__secret {
+	margin: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-netrecovery__said {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-netkeys__act {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* ---- the rulings that can be put back ---- */
+
+.bs-ds-netundo__said:empty {
+	display: none;
+}
+
+.bs-ds-netundo__said {
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}

@@ -1,0 +1,184 @@
+/**
+ * The hub step once connected, and the dialog that says the setup is done.
+ * Both arrive once, gently, and are still for anybody who asked the system for
+ * less motion.
+ */
+
+.bs-ds-setup-link {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: var(--bs-ds-space-lg);
+}
+
+.bs-ds-setup-link__glow {
+	position: absolute;
+	inset: -40% 10%;
+	border-radius: 50%;
+	background: radial-gradient(closest-side, color-mix(in srgb, var(--bs-ds-color-surface-brand) 22%, transparent), transparent);
+	filter: blur(6px);
+}
+
+.bs-ds-setup-link__tile {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 64px;
+	height: 64px;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 16px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-alert);
+}
+
+.bs-ds-setup-link__line {
+	position: relative;
+	width: 40px;
+	border-top: 2px solid var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-setup-link__seal {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	background: var(--bs-ds-color-surface-brand);
+	box-shadow: 0 0 0 6px color-mix(in srgb, var(--bs-ds-color-surface-brand) 22%, transparent);
+	color: var(--bs-ds-color-text-on-brand);
+	animation: bs-ds-setup-done-pop 0.32s ease both;
+}
+
+/* Core's Modal draws this at the end of the document, where only the tokens on
+   the body reach it. Its header holds just the close button, over the picture. */
+.bs-ds-setup-done.components-modal__frame {
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	font-family: var(--bs-ds-font);
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-setup-done .components-modal__header {
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: auto;
+	width: auto;
+	height: auto;
+	padding: var(--bs-ds-space-sm);
+	border: 0;
+	background: transparent;
+}
+
+.bs-ds-setup-done .components-modal__header .components-button {
+	color: var(--bs-ds-color-icon-secondary);
+}
+
+.bs-ds-setup-done__body {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-lg) var(--bs-ds-space-md) var(--bs-ds-space-md);
+	text-align: center;
+}
+
+.bs-ds-setup-done__art {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+.bs-ds-setup-done__halo {
+	fill: color-mix(in srgb, var(--bs-ds-color-surface-brand) 14%, transparent);
+}
+
+.bs-ds-setup-done__cone {
+	fill: var(--bs-ds-color-surface-brand);
+}
+
+.bs-ds-setup-done__stripe {
+	fill: var(--bs-ds-color-surface-primary);
+	opacity: 0.55;
+}
+
+.bs-ds-setup-done__mouth {
+	fill: var(--bs-ds-color-surface-brand-hover);
+}
+
+.bs-ds-setup-done__seal {
+	fill: var(--bs-ds-color-icon-success);
+	stroke: var(--bs-ds-color-surface-primary);
+	stroke-width: 3;
+}
+
+.bs-ds-setup-done__tick {
+	fill: none;
+	stroke: var(--bs-ds-color-surface-primary);
+	stroke-width: 5;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.bs-ds-setup-done__bit {
+	animation: bs-ds-setup-done-pop 0.32s ease both;
+	animation-delay: calc(var(--bs-ds-bit-order) * 40ms);
+}
+
+.bs-ds-setup-done__bit--brand {
+	fill: var(--bs-ds-color-icon-brand);
+}
+
+.bs-ds-setup-done__bit--info {
+	fill: var(--bs-ds-color-icon-info);
+}
+
+.bs-ds-setup-done__bit--warning {
+	fill: var(--bs-ds-color-icon-warning);
+}
+
+.bs-ds-setup-done__bit--success {
+	fill: var(--bs-ds-color-icon-success);
+}
+
+/* Above core's own rule for a heading in a modal, which fixes its ink. */
+.components-modal__frame .bs-ds-setup-done__title {
+	margin: 0;
+	font-family: var(--bs-ds-font);
+	font-size: var(--bs-ds-size-heading-xlarge);
+	font-weight: 600;
+	line-height: 1.25;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-setup-done__text {
+	margin: 0;
+	font-size: var(--bs-ds-size-medium);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+@keyframes bs-ds-setup-done-pop {
+
+	from {
+		opacity: 0;
+		transform: scale(0.8);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-setup-link__seal,
+	.bs-ds-setup-done__bit {
+		animation: none;
+	}
+}

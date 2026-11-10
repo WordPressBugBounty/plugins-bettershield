@@ -1,0 +1,84 @@
+/**
+ * "Explain my audit". The ask is one row of a card: the tile, what is sent
+ * and to whom, and the button. The answer is a card: its paragraphs with the
+ * numbers of the findings each sentence rests on, where it came from, then
+ * the numbered findings under a rule.
+ */
+
+.bs-ds-card.bs-ds-audit--ask {
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-audit__said {
+	flex: 1 1 20em;
+	min-width: 0;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-audit__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-audit__para {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-audit__cites a {
+	margin-inline-end: var(--bs-ds-space-xxs);
+	font-size: var(--bs-ds-size-xsmall);
+	font-variant-numeric: tabular-nums;
+}
+
+.bs-ds-app .bs-ds-audit__source {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-audit__findings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md) var(--bs-ds-space-md) calc(var(--bs-ds-space-md) + var(--bs-ds-space-ml));
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+	list-style: decimal;
+}
+
+.bs-ds-app .bs-ds-audit__findings li {
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-app .bs-ds-audit__findings li > * + * {
+	margin-inline-start: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-audit__findings a {
+	font-size: var(--bs-ds-size-small);
+	color: var(--bs-ds-color-text-primary);
+	overflow-wrap: anywhere;
+}

@@ -1,0 +1,141 @@
+/**
+ * The top bar (design frame 27:53100): 64 tall, padded 0/24, 12 between its
+ * parts, a hairline under it.
+ */
+
+/* Its own container: the room it has is the window less WordPress's menu
+   and the sidebar, which a viewport query cannot see. */
+.bs-ds-top {
+	container: bs-ds-top / inline-size;
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	height: 64px;
+	padding: 0 var(--bs-ds-space-lg);
+	border-bottom: 1px solid var(--bs-ds-color-border-secondary);
+}
+
+.bs-ds-top__toggle {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	cursor: pointer;
+}
+
+.bs-ds-top__toggle:hover {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-top__rule {
+	flex: none;
+	width: 1px;
+	height: 20px;
+	background: var(--bs-ds-color-border-primary-active);
+}
+
+.bs-ds-app .bs-ds-top__title {
+	margin: 0;
+	padding: 0;
+	font-size: var(--bs-ds-size-large);
+	font-weight: 500;
+	line-height: 1.3;
+	letter-spacing: -0.005em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-top__title:focus {
+	outline: none;
+}
+
+/* The first part to give way: a longer "Last audit …" or screen name would
+   otherwise push the scheme switch past the bar's clipped edge. */
+.bs-ds-top__audit {
+	display: flex;
+	flex: 0 1 auto;
+	align-items: center;
+	gap: var(--bs-ds-space-6);
+	min-width: 0;
+}
+
+.bs-ds-top__audit > span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.bs-ds-app .components-button.bs-ds-top__scheme {
+	width: 32px;
+	padding: 0;
+}
+
+/* A bar too narrow for every part, whatever the window: the sentence goes,
+   the hub keeps its icon and a long name takes two lines, as on a phone. */
+@container bs-ds-top (max-width: 720px) {
+
+	.bs-ds-top__audit,
+	.bs-ds-top__hub-label {
+		display: none;
+	}
+
+	.bs-ds-app .components-button.bs-ds-top__hub {
+		flex: none;
+		justify-content: center;
+		width: 36px;
+		padding: 0;
+	}
+
+	.bs-ds-app .bs-ds-top__title {
+		flex: 1 1 auto;
+		min-width: 0;
+		font-size: var(--bs-ds-size-medium);
+		white-space: normal;
+	}
+}
+
+/* On a narrow screen the sidebar has its own Menu button, so it is not folded from here. */
+@media (max-width: 782px) {
+
+	/* The sentence is the context and the button is the job: on a narrow bar
+	   the job is what has to stay reachable. */
+	.bs-ds-top__toggle,
+	.bs-ds-top__rule,
+	.bs-ds-top__audit,
+	.bs-ds-top__hub-label {
+		display: none;
+	}
+
+	/* The way to the hub keeps only its icon; its name stays its label. */
+	.bs-ds-app .components-button.bs-ds-top__hub {
+		flex: none;
+		justify-content: center;
+		width: 36px;
+		padding: 0;
+	}
+
+	/* A long screen name takes two lines rather than pushing the audit and
+	   the scheme past the edge. */
+	.bs-ds-app .bs-ds-top__title {
+		flex: 1 1 auto;
+		min-width: 0;
+		font-size: var(--bs-ds-size-medium);
+		white-space: normal;
+	}
+}
+
+/* On a phone the bar holds the name, Run Audit, the hub and the scheme:
+   tighter spacing keeps the name readable beside all three. */
+@media (max-width: 480px) {
+
+	.bs-ds-top {
+		gap: var(--bs-ds-space-6);
+		padding: 0 var(--bs-ds-space-sm);
+	}
+}

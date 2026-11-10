@@ -1,0 +1,150 @@
+/**
+ * A card of settings and its rows. The header has no rule of its own; every
+ * row has one on top (the design's card recipe: one style per card). A row is
+ * 16 padded, its title 14 medium over a 12 line about it, the control at the
+ * end, top-aligned with the title.
+ */
+
+.bs-ds-app .bs-ds-settings__intro {
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setting {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-setting__main {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-setting__lead {
+	display: flex;
+	flex: none;
+	align-items: center;
+	min-height: 20px;
+}
+
+.bs-ds-setting__text {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 1px;
+}
+
+.bs-ds-setting__titlerow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-height: 20px;
+}
+
+.bs-ds-app .bs-ds-setting__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-setting__about {
+	max-width: 72ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-setting__about p {
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-setting__about p + p {
+	margin-top: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-setting__meta {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-setting__control {
+	display: flex;
+	flex: none;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-xs);
+	min-height: 20px;
+}
+
+/* What sits under a row that leads with a switch lines up with its text. */
+.bs-ds-setting__under {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-setting__under--lead {
+	padding-inline-start: calc(36px + var(--bs-ds-space-sm));
+}
+
+/* A row's questions keep the gap above an answer inside the answer, so a
+   closed one takes no room: no gap between the questions and the panel. */
+.bs-ds-setting__under.bs-ds-topics {
+	gap: 0;
+}
+
+.bs-ds-setting__output {
+	min-width: 0;
+}
+
+/* A narrow card: the control goes under the text rather than beside it. */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-setting__main {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-setting__control {
+		justify-content: flex-start;
+		width: 100%;
+	}
+
+	.bs-ds-setting__lead + .bs-ds-setting__text + .bs-ds-setting__control {
+		padding-inline-start: calc(36px + var(--bs-ds-space-sm));
+	}
+
+	.bs-ds-setting__under--lead {
+		padding-inline-start: 0;
+	}
+}
+
+/* "Saved.": 12, the success ink, a check before it. */
+.bs-ds-app .bs-ds-saved {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-success);
+}

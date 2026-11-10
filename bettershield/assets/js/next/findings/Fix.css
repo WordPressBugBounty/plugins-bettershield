@@ -1,0 +1,63 @@
+/* A finding's Fix panel: the detail card, with its lines spaced as a form. */
+.bs-ds-fix__body {
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-fix__text {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.45;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-fix__note {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fix__counts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-fix__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-fix__list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-fix__done {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-fix__record {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-fix__record h4 {
+	margin: 0;
+}

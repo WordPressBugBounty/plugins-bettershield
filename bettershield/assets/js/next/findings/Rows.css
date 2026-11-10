@@ -1,0 +1,530 @@
+/**
+ * The report's rows (Table kit 23:20078 as the bulk frames use it). Columns:
+ * the 24 checkbox, the finding filling, category 176, impact 96, action 236;
+ * 16 between them and 16 at each end.
+ */
+
+.bs-ds-frow {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-md);
+	padding: 0 var(--bs-ds-space-md);
+}
+
+.bs-ds-frow--head {
+	height: 40px;
+	padding-top: var(--bs-ds-space-xs);
+	padding-bottom: var(--bs-ds-space-xs);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-frow--item {
+	min-height: 56px;
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* A row with a sentence under its title (a stale result, a paused fix), or an
+   open row saying its title in full, grows to hold it. */
+.bs-ds-frow--item.is-stale,
+.bs-ds-frow--item.is-open {
+	padding-top: var(--bs-ds-space-xs);
+	padding-bottom: var(--bs-ds-space-xs);
+}
+
+.bs-ds-frow--item:hover {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-frow--item.is-selected {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+/* An open row: the design's open state, with the brand indicator. */
+.bs-ds-frow--item.is-open {
+	border-bottom: 0;
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-frow--item:focus {
+	outline: none;
+}
+
+.bs-ds-frow--group {
+	height: 36px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-frow--summary {
+	height: 40px;
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-frow__gap {
+	flex: none;
+	width: 24px;
+}
+
+.bs-ds-frow__moregap {
+	flex: none;
+	width: 28px;
+}
+
+.bs-ds-fcol-find {
+	display: flex;
+	flex: 1 0 0;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 1px;
+}
+
+.bs-ds-fcol-cat {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	width: 176px;
+}
+
+/* The chip keeps to its column (#2475): a name longer than the column, such
+   as "Public information about your site", wraps onto a second line rather
+   than running under the severity bars. One line is still 20 high: a 16 line
+   in 2 of padding above and below. */
+.bs-ds-fcol-cat .bs-ds-badge {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 100%;
+	padding-top: var(--bs-ds-space-2);
+	padding-bottom: var(--bs-ds-space-2);
+	line-height: 16px;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-fcol-cat .bs-ds-badge .bs-ds-icon {
+	flex: none;
+}
+
+.bs-ds-fcol-imp {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-xs);
+	width: 96px;
+}
+
+.bs-ds-fcol-act {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-xs);
+	width: 236px;
+}
+
+.bs-ds-frow__acthead {
+	flex: 1 0 0;
+	text-align: right;
+}
+
+.bs-ds-frow__lead {
+	display: flex;
+	flex: 1 0 0;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 1px;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+}
+
+.bs-ds-frow__stack {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 1px;
+}
+
+/* The title wraps, open or closed: held to one line, four of eighteen were
+   cut off at 1440 px with no way to read the rest (#2630). */
+.bs-ds-frow__title {
+	display: block;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 16px;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* Its parts wrap rather than drawing past the cell into the category
+   column, whose chip then covered Explain. */
+.bs-ds-frow__meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+/* Wraps, unlike the line above it: it is a sentence to read, not a label. */
+.bs-ds-frow__stale {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-frow__explain {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+	cursor: pointer;
+}
+
+.bs-ds-frow__explain:hover {
+	text-decoration: underline;
+}
+
+/* Table/Impact meter: four 4 by 12 segments, lit by severity. */
+.bs-ds-meter {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-meter span {
+	width: 4px;
+	height: 12px;
+	border-radius: 2px;
+	background: var(--bs-ds-color-border-primary-active);
+}
+
+.bs-ds-meter .is-critical {
+	background: var(--bs-ds-color-severity-critical);
+}
+
+.bs-ds-meter .is-high {
+	background: var(--bs-ds-color-severity-high);
+}
+
+.bs-ds-meter .is-medium {
+	background: var(--bs-ds-color-severity-medium);
+}
+
+.bs-ds-meter .is-low {
+	background: var(--bs-ds-color-severity-low);
+}
+
+.bs-ds-fvalue {
+	display: flex;
+	align-items: baseline;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-xxs);
+	width: 52px;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+}
+
+/* The row's ⋯ menu; its recommended action is a design-system Button (#2293). */
+.bs-ds-fmore {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	cursor: pointer;
+}
+
+.bs-ds-fmore:hover,
+.bs-ds-fmore[aria-expanded="true"] {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+/* The summary's cells. */
+.bs-ds-fcell {
+	height: 16px;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+}
+
+.bs-ds-fcell b {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-fcell span {
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+/* Table/Row detail · Finding: the cards start at the finding title's edge
+   (#2472). The inset is the row's own sum, written with the same terms the
+   row places its title by: its end padding, the 24 checkbox column, and the
+   gap after it. The wrapped layout below sums them again with its own gap. */
+.bs-ds-fdetail {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-md);
+	/* As much room above the cards as below them, so their tops do not sit on
+	   the open row's gray edge (#2295). */
+	padding: var(--bs-ds-space-md);
+	padding-inline-start: calc(var(--bs-ds-space-md) + 24px + var(--bs-ds-space-md));
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-fdetail__card {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	align-self: stretch;
+	min-width: 1px;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-fdetail__card--inner {
+	flex: none;
+	align-self: auto;
+}
+
+.bs-ds-app .bs-ds-fdetail__head {
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	white-space: nowrap;
+}
+
+.bs-ds-fdetail__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-fdetail__text {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fdetail__tray {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	align-self: stretch;
+	min-width: 1px;
+	padding-bottom: var(--bs-ds-space-sm);
+	/* No outline of its own: the card inside draws the only one, as under the
+	   Overview's score card. Both drawn doubled the edges (#2296). */
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-fdetail__item {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-fdetail__item.is-value .bs-ds-fdetail__value {
+	font-size: var(--bs-ds-size-small);
+}
+
+.bs-ds-fdetail__value {
+	overflow-wrap: anywhere;
+	text-align: right;
+}
+
+/*
+ * A list under its label, one entry to a line and read from the left: joined
+ * beside the label and set right, it broke into a column a word wide (#1970).
+ */
+.bs-ds-fdetail__item.is-list {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.bs-ds-fdetail__item.is-list .bs-ds-fdetail__value {
+	text-align: left;
+}
+
+.bs-ds-app .bs-ds-fdetail__list,
+.bs-ds-app .bs-ds-fdetail__sublist {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	line-height: 1.4;
+}
+
+.bs-ds-app .bs-ds-fdetail__sublist {
+	margin-top: var(--bs-ds-space-xxs);
+	padding-left: var(--bs-ds-space-sm);
+	font-weight: 400;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fdetail__more {
+	margin-top: var(--bs-ds-space-xs);
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-primary);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.bs-ds-fdetail__foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xxs);
+	padding: 0 var(--bs-ds-space-md);
+	white-space: nowrap;
+}
+
+/* A row that is one block across the table: its one cell lays out as its contents. */
+
+.bs-ds-fwhole {
+	display: contents;
+}
+
+/*
+ * A narrow card. The three right-hand columns hold 508px between them, more
+ * than a phone has, so the finding column was crushed to nothing and the
+ * headers drew on top of each other. Each row wraps instead: the finding
+ * beside its checkbox, then its area, impact and action on the line under
+ * it. The headers for those three stay for screen readers.
+ *
+ * From 960 rather than from a phone: at laptop widths the columns left the
+ * finding a dozen characters (#2018). Below 960 the finding would have
+ * less than about 330px, and the title reads better on a line of its own.
+ */
+@container bs-ds-content (max-width: 960px) {
+
+	.bs-ds-frow {
+		flex-wrap: wrap;
+		column-gap: var(--bs-ds-space-sm);
+		row-gap: var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-fcol-cat,
+	.bs-ds-fcol-imp,
+	.bs-ds-fcol-act {
+		width: auto;
+	}
+
+	.bs-ds-frow--head .bs-ds-fcol-cat,
+	.bs-ds-frow--head .bs-ds-fcol-imp,
+	.bs-ds-frow--head .bs-ds-fcol-act {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	/* The checkbox sits in the row's indent, so every line the row wraps
+	   onto starts under the title rather than under the checkbox. */
+	.bs-ds-frow--item,
+	.bs-ds-frow--item.is-stale,
+	.bs-ds-frow--item.is-open {
+		position: relative;
+		padding-top: var(--bs-ds-space-sm);
+		padding-bottom: var(--bs-ds-space-sm);
+		padding-inline-start: calc(var(--bs-ds-space-md) + 24px + var(--bs-ds-space-sm));
+	}
+
+	/* An opened finding's detail starts where the wrapped row's title does. */
+	.bs-ds-fdetail {
+		padding-inline-start: calc(var(--bs-ds-space-md) + 24px + var(--bs-ds-space-sm));
+	}
+
+	.bs-ds-frow--item > :first-child {
+		position: absolute;
+		top: var(--bs-ds-space-sm);
+		inset-inline-start: var(--bs-ds-space-md);
+	}
+
+	/* The finding takes the whole first line. */
+	.bs-ds-frow--item .bs-ds-fcol-find {
+		flex: 1 1 100%;
+	}
+
+	.bs-ds-frow--item .bs-ds-frow__title {
+		height: auto;
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+
+	.bs-ds-frow--item .bs-ds-fcol-act {
+		margin-inline-start: auto;
+	}
+
+	.bs-ds-frow--group,
+	.bs-ds-frow--summary {
+		height: auto;
+		min-height: 36px;
+		padding-top: var(--bs-ds-space-xs);
+		padding-bottom: var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-frow--group .bs-ds-frow__lead {
+		flex-wrap: wrap;
+		white-space: normal;
+	}
+
+	.bs-ds-frow--summary .bs-ds-fcol-find {
+		flex: 0 1 auto;
+	}
+}
+
+/* On a phone the detail's cards stack rather than sharing one line a word
+   wide. */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-fdetail {
+		flex-direction: column;
+		align-items: stretch;
+		padding-inline-start: var(--bs-ds-space-md);
+	}
+
+	.bs-ds-fdetail__card,
+	.bs-ds-fdetail__tray {
+		flex: none;
+	}
+}

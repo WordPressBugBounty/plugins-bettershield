@@ -1,0 +1,282 @@
+/**
+ * Agents › Surface: the inventory card (its intro and question, the tab row
+ * with the design's Input/Search at its end, 12 above the table, a group row
+ * per registering plugin that opens in place), and the rows of what else can
+ * reach the site (a password's limit opening under its row, the decoy's state
+ * line, a connector's meta).
+ */
+
+.bs-ds-app .bs-ds-surface__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-surface__notes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-surface__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-surface__panel {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+/* Straight under the tab row, whose rule already divides it from the card. */
+.bs-ds-app .bs-ds-surface__panel > .bs-ds-empty:first-child {
+	padding-top: 0;
+	border-top: 0;
+}
+
+/* ---- Input/Search at the tab row's end ---- */
+
+.bs-ds-surface__search {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	width: 260px;
+	height: 32px;
+	padding: 0 var(--bs-ds-space-xs);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+	cursor: text;
+}
+
+.bs-ds-app .bs-ds-surface__search input {
+	flex: 1 0 0;
+	min-width: 1px;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	outline: 0;
+	font: inherit;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-surface__search input::placeholder {
+	color: var(--bs-ds-color-text-secondary);
+	opacity: 1;
+}
+
+.bs-ds-surface__search:focus-within {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 1px;
+}
+
+/* ---- a registering plugin's group ---- */
+
+.bs-ds-surface__grouphead {
+	display: flex;
+	flex: 1 1 auto;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	text-align: start;
+	color: inherit;
+	cursor: pointer;
+}
+
+.bs-ds-tbl__whole--group:has(.bs-ds-surface__grouphead:hover) {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-app .bs-ds-surface__groupname {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-surface__chevron {
+	transition: transform 0.2s ease;
+}
+
+.bs-ds-surface__grouphead[aria-expanded="true"] .bs-ds-surface__chevron {
+	transform: rotate(180deg);
+}
+
+.bs-ds-surface__rows {
+	display: flex;
+	flex-direction: column;
+}
+
+/* The last open group's last row ends at the card's edge, as the table's last row does. */
+.bs-ds-app .bs-ds-surface__rows:last-child > :last-child {
+	border-bottom: 0;
+}
+
+.bs-ds-app .bs-ds-surface__name {
+	min-width: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-surface__by {
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-tbl__cell.bs-ds-surface__chips {
+	gap: var(--bs-ds-space-xxs);
+}
+
+/* ---- what else can reach the site ---- */
+
+.bs-ds-surface__holder {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	min-width: 0;
+}
+
+.bs-ds-surface__holder > span + span::before {
+	content: "·";
+	padding: 0 var(--bs-ds-space-6);
+	font-weight: 400;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-app .bs-ds-surface__login {
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-surface__limit {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-surface__reach {
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-surface__limitactions,
+.bs-ds-surface__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+/* A password's limit opens under its row, drawn as one with it. */
+.bs-ds-tbl__row:has(+ .bs-ds-surface__under) {
+	border-bottom: 0;
+}
+
+.bs-ds-surface__under {
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-sm);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-surface__limitform {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+/* The decoy's state: the line focus lands on once its controls have swapped. */
+.bs-ds-app .bs-ds-surface__state {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-surface__state:focus,
+.bs-ds-surface__reach:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-surface__url {
+	font-weight: 500;
+}
+
+.bs-ds-app .bs-ds-surface__line {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-surface__where {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xxs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-surface__chevron {
+		transition: none;
+	}
+}
+
+/* ---- a narrow card ---- */
+
+@container bs-ds-content (max-width: 600px) {
+
+	/* The search takes a line of its own under the tabs. */
+	.bs-ds-surface__tabs .bs-ds-tabs {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-surface__tabs .bs-ds-tabs__actions {
+		flex: 1 0 100%;
+		padding-bottom: var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-surface__search {
+		width: 100%;
+	}
+}

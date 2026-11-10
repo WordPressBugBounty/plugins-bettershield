@@ -1,0 +1,215 @@
+/**
+ * The Quick Setup's page: its root, the main panel the steps are drawn on,
+ * and the few classes more than one step uses.
+ *
+ * The root carries the app's class, for the components' rules and the type,
+ * but not the dashboard's frame: no sidebar beside it, so no row, no reach
+ * back over wp-admin's gutter and no full-height column. It is a centered
+ * page instead.
+ *
+ * The panel is a container, so the stepper and the steps lay themselves out
+ * against its own width rather than the window's: the admin menu folding and
+ * unfolding changes the panel by 140px on the same window. It answers to the
+ * dashboard's content name too, so the shared components' narrow layouts
+ * apply in it as they do there.
+ */
+
+.bs-ds-app.bs-ds-setup {
+	display: block;
+	min-height: 0;
+	margin-inline-start: 0;
+	padding: var(--bs-ds-space-lg) var(--bs-ds-admin-gutter) calc(var(--bs-ds-space-lg) * 2) 0;
+}
+
+/* The mount's stand-in, before the bundle draws: the panel's own height, so
+   nothing jumps when it does. */
+.bs-ds-setup-mount {
+	min-height: 70vh;
+}
+
+.bs-ds-setup-noscript {
+	max-width: 640px;
+	margin: calc(var(--bs-ds-space-lg) * 2) auto;
+	font-family: var(--bs-ds-font);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-setup__frame {
+	max-width: 1080px;
+	margin: 0 auto;
+}
+
+/* ---- the panel ---------------------------------------------------------- */
+
+.bs-ds-setup__panel {
+	container: bs-ds-setup bs-ds-content / inline-size;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 10px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-setup__panel--error {
+	padding: var(--bs-ds-space-lg);
+}
+
+/* ---- shared by the steps ---------------------------------------------- */
+
+/*
+ * A card's title here is a question or a name, and can run longer than a
+ * card's one line: it wraps under its own tile rather than being cut off at
+ * the card's edge.
+ */
+.bs-ds-setup .bs-ds-card__head {
+	height: auto;
+	min-height: 60px;
+}
+
+.bs-ds-setup .bs-ds-card__title {
+	min-width: 0;
+	line-height: 1.4;
+	white-space: normal;
+}
+
+/* What ends a card's header, a badge most often. */
+.bs-ds-setup-card__trailing {
+	display: flex;
+	flex: none;
+	align-items: center;
+}
+
+/* What a card holds under its header and its line, 16 in from its edges. */
+.bs-ds-setup-card__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	min-width: 0;
+}
+
+/* A part of a card under a rule, as its setting rows are. */
+.bs-ds-setup-card__row {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	min-width: 0;
+}
+
+/* The paragraph a card's body opens with, when it has more than one line. */
+.bs-ds-app .bs-ds-setup__text {
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+	margin-top: var(--bs-ds-space-ml);
+}
+
+/* A note under a card or a control: 12, the secondary ink. */
+.bs-ds-app .bs-ds-setup__note {
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A note under a card that runs the card's full width, like its rows (#2304). */
+.bs-ds-app .bs-ds-setup__note--wide {
+	max-width: none;
+}
+
+/* A link in a note never splits across two lines (#2495). */
+.bs-ds-app .bs-ds-setup__note a {
+	white-space: nowrap;
+}
+
+/* What is wrong with a control, said under it. */
+.bs-ds-app .bs-ds-setup__problem {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-error);
+}
+
+/* A link inside a sentence. */
+.bs-ds-setup a:not([class]) {
+	font-weight: 500;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	color: var(--bs-ds-color-tag-brand-text);
+}
+
+/* A row of buttons: 8 between them, wrapping when there is no room. */
+.bs-ds-setup__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* An arrow that means back points the way the page reads. */
+html[dir="rtl"] .bs-ds-app .bs-ds-setup__flip {
+	transform: scaleX(-1);
+}
+
+/* A button whose words are a sentence wraps them on a narrow panel rather
+   than running past its edge, keeping its own height while it fits. */
+.bs-ds-app .components-button.bs-ds-btn.bs-ds-setup__wrap {
+	flex-shrink: 1;
+	max-width: 100%;
+	height: auto;
+	padding-block: var(--bs-ds-space-6);
+	line-height: 1.3;
+	text-align: start;
+	white-space: normal;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--sm.bs-ds-setup__wrap {
+	min-height: 28px;
+}
+
+.bs-ds-app .components-button.bs-ds-btn--md.bs-ds-setup__wrap {
+	min-height: 32px;
+}
+
+/* ---- narrow ------------------------------------------------------------- */
+
+/*
+ * A narrow card: the header's question keeps the line beside its tile, and
+ * what ends the header moves under it, lined up with its words, rather than
+ * squeezing the question into a column a word wide.
+ */
+@container bs-ds-setup (max-width: 600px) {
+
+	.bs-ds-setup .bs-ds-card__head {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-setup .bs-ds-card__head > .bs-ds-spacer {
+		display: none;
+	}
+
+	.bs-ds-setup .bs-ds-card__title {
+		flex: 1 1 0;
+	}
+
+	/* The tile's width and its gap. */
+	.bs-ds-setup-card__trailing {
+		flex: 0 0 100%;
+		padding-inline-start: calc(28px + var(--bs-ds-space-xs));
+	}
+}
+
+/* wp-admin's own gutter is 10 here, so the right one matches it. */
+@media (max-width: 782px) {
+
+	.bs-ds-app.bs-ds-setup {
+		padding-top: var(--bs-ds-space-md);
+		padding-inline-end: var(--bs-ds-space-10);
+	}
+}

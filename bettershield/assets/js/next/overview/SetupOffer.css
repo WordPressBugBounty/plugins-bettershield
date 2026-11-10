@@ -1,0 +1,34 @@
+/**
+ * The Quick Setup offer: the card's header with Dismiss at its end, then the
+ * sentence with the offer on the same line at the far end, 16 in from the
+ * card's edges. Where the line is too narrow for both, the offer goes under
+ * the sentence.
+ */
+
+.bs-ds-setup-offer__body {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-sm) var(--bs-ds-space-lg);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-setup-offer__text {
+	flex: 1 1 20em;
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-setup-offer__go {
+	flex: none;
+	margin-inline-start: auto;
+}
+
+/* "Forward" points the reading direction. */
+html[dir="rtl"] .bs-ds-app .bs-ds-setup-offer__arrow {
+	transform: scaleX(-1);
+}

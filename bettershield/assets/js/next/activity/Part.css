@@ -1,0 +1,51 @@
+/**
+ * One part of an open incident: a card on the open row's recessed panel, its
+ * body 16 in from the card's edges with 12 between its lines, and the lines
+ * it is written in.
+ */
+
+.bs-ds-part__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+/* Focus lands on the part's name after an action, and is not drawn there. */
+.bs-ds-part__title:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-part__text {
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A disclosure: its question, and what it opens under it. */
+.bs-ds-part__disclosure {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-part__disclosure > :not(button) {
+	align-self: stretch;
+}
+
+/* Facts in a part's body, which is already inset. */
+.bs-ds-part__facts {
+	padding: 0;
+}
+
+.bs-ds-part__bones {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}

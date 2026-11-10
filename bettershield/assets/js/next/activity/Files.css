@@ -1,0 +1,499 @@
+/**
+ * Activity › File changes: the report card (its intro, the check's state, the
+ * notes, the plugins by version, the changed files and what opens under each)
+ * and the quarantine card.
+ */
+
+/* ---- the card's lines: intro, the check's state, the notes ---- */
+
+.bs-ds-app .bs-ds-files__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-files__state {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-files__when {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* Focus lands here once the row that had it is gone, and is not drawn. */
+.bs-ds-files__when:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-files__next,
+.bs-ds-app .bs-ds-files__showing {
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-files__showing {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-files__showing p {
+	margin: 0;
+	font: inherit;
+	color: inherit;
+}
+
+/* ---- narrowing the list: the path search and the three filters ---- */
+
+/* The block above it (the notes, the card head) ends with its own inset; the
+   plugins section ends on a gray band with none, so there the bar brings its
+   own (#2440), or its labels sat on the band's last pixel. */
+.bs-ds-files__filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-files__packages + .bs-ds-files__filters {
+	padding-top: var(--bs-ds-space-md);
+}
+
+/* Input/Search (2:4168), as the activity log's search is drawn. */
+.bs-ds-files__search {
+	display: flex;
+	flex: 0 1 240px;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	max-width: 100%;
+	height: 32px;
+	padding: 0 var(--bs-ds-space-xs);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+	cursor: text;
+}
+
+.bs-ds-app .bs-ds-files__search input {
+	flex: 1 0 0;
+	min-width: 1px;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	outline: 0;
+	font: inherit;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-files__search input::placeholder {
+	color: var(--bs-ds-color-text-secondary);
+	opacity: 1;
+}
+
+.bs-ds-files__search:focus-within {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 1px;
+}
+
+/* A narrow screen: the search takes the line, the filters share the next. */
+@container bs-ds-content (max-width: 600px) {
+	.bs-ds-files__search {
+		flex: 1 1 100%;
+	}
+}
+
+/*
+ * The check's own progress, on a track that does not change length as the
+ * count's wording does. Brand, as a progress number is: a scan running is the
+ * plugin working, not a warning about anything.
+ */
+.bs-ds-files__bar {
+	width: 16rem;
+	max-width: 100%;
+	height: 4px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-files__bardone {
+	display: block;
+	height: 100%;
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-brand);
+	transition: width 240ms ease-out;
+}
+
+.bs-ds-files__notes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-files__unverifiable {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: var(--bs-ds-space-xxs) 0 0;
+	padding-inline-start: var(--bs-ds-space-md);
+	list-style: disc;
+	overflow-wrap: anywhere;
+}
+
+/* ---- the plugins by version ---- */
+
+.bs-ds-files__packages {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-files__section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+}
+
+/* A group's name and its count, as the heading its rows are read under. */
+.bs-ds-app .bs-ds-files__group {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-files__line {
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-files__pkgname {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+.bs-ds-files__pkgtitle {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-files__pkgmeta {
+	font-weight: 400;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- a changed file ---- */
+
+.bs-ds-files__path {
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-files__meta {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.bs-ds-files__meta > span + span::before {
+	content: "·";
+	padding: 0 var(--bs-ds-space-6);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-files__why {
+	display: block;
+	max-width: 80ch;
+}
+
+/* The last row of a group, or of the card, draws no rule under it. */
+.bs-ds-files__rows:last-child > :last-child,
+.bs-ds-files__package:last-child > :last-child {
+	border-bottom: 0;
+}
+
+/* What opens under a row runs on from it: no rule between them. */
+.bs-ds-tbl__row:has(+ .bs-ds-files__under),
+.bs-ds-tbl__whole:has(+ .bs-ds-files__under) {
+	border-bottom: 0;
+}
+
+.bs-ds-files__under {
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-files__under--open {
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-files__undercell {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-sm);
+}
+
+.bs-ds-files__preview {
+	padding-top: var(--bs-ds-space-sm);
+}
+
+/* Keep in quarantine, asked once under the row (#1971). */
+.bs-ds-files__keep {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-files__lead {
+	max-width: 80ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-files__code {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: var(--bs-ds-space-xxs) 0;
+	padding-inline-start: var(--bs-ds-space-md);
+	list-style: disc;
+}
+
+.bs-ds-files__confirm {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-files__pkgfiles {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-files__pkgfile {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	min-height: 36px;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-files__pkgfile + .bs-ds-files__pkgfile {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/*
+ * Core's own diff table, in the design's type and the diff roles. It scrolls
+ * inside the row rather than widening the card: a long line in a source file
+ * must not make the whole screen scroll sideways.
+ */
+.bs-ds-files__diff {
+	max-height: 420px;
+	overflow: auto;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-files__diff table {
+	width: 100%;
+	border-collapse: collapse;
+	font-family: inherit;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/*
+ * Through the app's own root, so these outrank core's `table.diff td, th`,
+ * which otherwise set the cells in its 14 px monospace with 28 px of left
+ * padding (#2481). Lines wrap between words, and break inside one only when
+ * it cannot fit, rather than cutting "WordPress" in two.
+ */
+.bs-ds-app .bs-ds-files__diff td,
+.bs-ds-app .bs-ds-files__diff th {
+	padding: 1px var(--bs-ds-space-sm);
+	font: inherit;
+	line-height: 1.5;
+	vertical-align: top;
+	white-space: pre-wrap;
+	word-break: normal;
+	overflow-wrap: anywhere;
+	tab-size: 4;
+}
+
+/* The column heads and the file's path, in the plugin's table-head style. */
+.bs-ds-app .bs-ds-files__diff th {
+	padding-top: var(--bs-ds-space-xs);
+	padding-bottom: var(--bs-ds-space-xs);
+	font-weight: 500;
+	text-align: start;
+	color: var(--bs-ds-color-text-secondary);
+	white-space: normal;
+}
+
+/* The line the server puts above the table: inset like the cells under it. */
+.bs-ds-files__diff > p {
+	margin: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/*
+ * The two class names below are WordPress's, not ours: wp_text_diff generates
+ * them, so the plugin's own prefix rule cannot apply and renaming them is not
+ * available. They are reached only through a bs- ancestor, which is what keeps
+ * them from leaking into anything else on the page.
+ *
+ * The diff roles and not the severity ones: a removed line is not a critical
+ * finding and an added line is not a fix applied, so neither ladder gets to
+ * repaint this table when it is re-toned.
+ */
+/* stylelint-disable selector-class-pattern -- core-generated class names. */
+.bs-ds-files__diff .diff-deletedline {
+	background: var(--bs-ds-color-diff-removed-bg);
+}
+
+.bs-ds-files__diff .diff-addedline {
+	background: var(--bs-ds-color-diff-added-bg);
+}
+/* stylelint-enable selector-class-pattern */
+
+/* Core marks the changed characters inside a line; keep that legible against
+   the row colors above rather than letting it inherit a default. */
+.bs-ds-files__diff del,
+.bs-ds-files__diff ins {
+	padding: 0 1px;
+	border-radius: 2px;
+	text-decoration: none;
+}
+
+.bs-ds-files__diff del {
+	background: var(--bs-ds-color-diff-removed-mark);
+	color: var(--bs-ds-color-diff-removed-text);
+}
+
+.bs-ds-files__diff ins {
+	background: var(--bs-ds-color-diff-added-mark);
+	color: var(--bs-ds-color-diff-added-text);
+}
+
+/* ---- the empty line and the foot ---- */
+
+.bs-ds-files__emptytitle {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-files__compared {
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---- the quarantine ---- */
+
+.bs-ds-quarantine__note {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+/* What a kept copy of altered code is, on a line of its own under its size (#2244). */
+.bs-ds-quarantine__code {
+	display: block;
+}
+
+/* The delete warning wraps rather than taking the path's width (#2371). */
+.bs-ds-quarantine .bs-ds-armed__note {
+	max-width: 30ch;
+}
+
+/* ---- narrow ---- */
+
+@container bs-ds-content (max-width: 600px) {
+
+	/* A package's file over its control rather than squeezed beside it. */
+	.bs-ds-files__pkgfile {
+		flex-direction: column;
+		align-items: flex-start;
+		padding-block: var(--bs-ds-space-xs);
+	}
+
+	/* The confirm's label carries the count, and on one line it ran past the
+	   panel; it wraps instead, and the button grows to hold it. */
+	.bs-ds-app .bs-ds-files__confirm .components-button.bs-ds-btn {
+		height: auto;
+		min-height: 28px;
+		max-width: 100%;
+		padding-block: var(--bs-ds-space-xxs);
+		line-height: 1.4;
+		white-space: normal;
+	}
+}
+
+/* A row's outcome, in the head of its group. It names the file, and a path
+   is one long word that would run past the card on a narrow screen. */
+.bs-ds-files__rownote {
+	display: block;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-files__bardone {
+		transition: none;
+	}
+}

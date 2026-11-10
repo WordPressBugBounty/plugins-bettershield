@@ -1,0 +1,66 @@
+/**
+ * The Findings report's score strip (#1324): the grade sentence and its ⓘ
+ * over the line of what ran, in a card the height of its two lines. The
+ * gauge is the Overview's, and is not copied here.
+ */
+
+.bs-ds-fhero__text {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-md);
+}
+
+/* The strip takes focus when the alert under it is dismissed. */
+.bs-ds-app .bs-ds-fhero:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-fhero:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+.bs-ds-app .bs-ds-fhero__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-heading-medium);
+	font-weight: 500;
+	line-height: 1.25;
+	letter-spacing: -0.01em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-fhero__head {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* The ⓘ stays beside the headline's first line when it wraps, and is centered
+   on that line, as every other ⓘ beside a title is (#2473): its box is one
+   headline line high, and the 20 button sits in the middle of it. */
+.bs-ds-fhero__head .bs-ds-infotip {
+	flex: none;
+	align-items: center;
+	height: calc(var(--bs-ds-size-heading-medium) * 1.25);
+}
+
+.bs-ds-app .bs-ds-fhero__stats {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--bs-ds-size-xsmall);
+	/* It wraps on a narrow card: two lines must not touch. */
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	white-space: pre-wrap;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-app .bs-ds-fhero__stat {
+	display: inline;
+	margin: 0;
+}
+

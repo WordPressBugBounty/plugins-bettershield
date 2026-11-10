@@ -1,0 +1,147 @@
+/**
+ * "How it works": a row of Ghost sm questions, the open one's chevron turned
+ * up, and its answer in a recessed panel under the row. The panel's height is
+ * animated from the measured answer; the gap above the answer lives inside
+ * the measured box, so a closed panel takes no room.
+ */
+
+.bs-ds-topics__row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xxs);
+	margin-inline-start: calc(var(--bs-ds-space-xs) * -1);
+}
+
+.bs-ds-app .components-button.bs-ds-topics__ask {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A lone question or link under a row, outside a row of questions: drawn
+   at the same edge as the row's, which pulls its ghost padding back. */
+.bs-ds-topics__lone {
+	margin-inline-start: calc(var(--bs-ds-space-xs) * -1);
+}
+
+.bs-ds-app .components-button.bs-ds-topics__ask[aria-expanded="true"] {
+	background: var(--bs-ds-color-surface-tertiary-em);
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-topics__ask .bs-ds-icon:last-child {
+	transition: transform 0.2s ease;
+}
+
+.bs-ds-topics__ask[aria-expanded="true"] .bs-ds-icon:last-child {
+	transform: rotate(180deg);
+}
+
+.bs-ds-topics__panel {
+	overflow: hidden;
+	opacity: 0;
+	transition:
+		height 0.2s ease,
+		opacity 0.15s ease;
+}
+
+.bs-ds-topics.is-open .bs-ds-topics__panel {
+	opacity: 1;
+}
+
+.bs-ds-topics__answers {
+	padding-top: var(--bs-ds-space-xs);
+}
+
+.bs-ds-topics__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	max-width: 80ch;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-secondary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The flex above outranks the browser's own rule for `hidden`. */
+.bs-ds-topics__body[hidden] {
+	display: none;
+}
+
+.bs-ds-app .bs-ds-topics__body p {
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-topics__body .bs-ds-topics__lead {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-topics__tags,
+.bs-ds-app .bs-ds-topics__points,
+.bs-ds-app .bs-ds-topics__steps {
+	display: flex;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-topics__tags {
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-app .bs-ds-topics__points,
+.bs-ds-app .bs-ds-topics__steps {
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-app .bs-ds-topics__points li,
+.bs-ds-app .bs-ds-topics__steps li {
+	position: relative;
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-md);
+}
+
+.bs-ds-topics__points li::before {
+	content: "";
+	position: absolute;
+	top: 0.6em;
+	left: var(--bs-ds-space-xxs);
+	width: 4px;
+	height: 4px;
+	border-radius: 999px;
+	background: var(--bs-ds-color-icon-tertiary);
+}
+
+.bs-ds-topics__steps {
+	counter-reset: bs-ds-step;
+}
+
+.bs-ds-app .bs-ds-topics__steps li {
+	padding-inline-start: var(--bs-ds-space-ml);
+	counter-increment: bs-ds-step;
+}
+
+.bs-ds-topics__steps li::before {
+	content: counter(bs-ds-step) ".";
+	position: absolute;
+	left: 0;
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-topics__panel,
+	.bs-ds-topics__ask .bs-ds-icon:last-child {
+		transition: none;
+	}
+}

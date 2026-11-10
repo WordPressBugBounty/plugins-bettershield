@@ -1,0 +1,191 @@
+/**
+ * Ecosystem: each list a plain block, its name and a quiet note at the head,
+ * then the plugins as compact tiles, three across, one on a phone, with a
+ * hairline between rows and no card per tile: the name in semibold over one
+ * short line (why it is suggested here, in the accent ink, or what it does),
+ * and its switch at the end.
+ */
+.bs-ds-setup-eco {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	min-width: 0;
+}
+
+.bs-ds-setup-eco__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-setup-eco__heading {
+	margin: 0;
+	padding: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-setup-eco__note {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The last row's hairline tucks under the block's own border. */
+.bs-ds-setup-eco__list {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	margin: 0 0 -1px;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-setup-eco__item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	margin: 0;
+	padding: var(--bs-ds-space-10) var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-setup-eco__top {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-setup-eco__icon {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 32px;
+	height: 32px;
+	overflow: hidden;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-knob);
+}
+
+.bs-ds-setup-eco__icon img {
+	display: block;
+	width: 20px;
+	height: 20px;
+	object-fit: contain;
+}
+
+.bs-ds-setup-eco__icon.is-initials {
+	border-color: transparent;
+	background: var(--bs-ds-color-surface-tertiary-em);
+	box-shadow: var(--bs-ds-elevation-control);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-setup-eco__text {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-width: 0;
+	overflow-wrap: break-word;
+}
+
+.bs-ds-app .bs-ds-setup-eco__name {
+	margin: 0;
+	padding: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-setup-eco__about {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-setup-eco__item.is-recommended .bs-ds-setup-eco__about {
+	color: var(--bs-ds-color-tag-brand-text);
+}
+
+.bs-ds-setup-eco__control {
+	flex: none;
+}
+
+/* Three tiles need about 720px: below it the logo, the switch and their gaps
+   left the text a 60px column, and a long name ran under the switch. */
+@container bs-ds-setup (max-width: 720px) {
+
+	.bs-ds-setup-eco__list {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@container bs-ds-setup (max-width: 560px) {
+
+	.bs-ds-setup-eco__list {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (max-width: 600px) {
+
+	.bs-ds-setup-eco__list {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* Installing: the row's switch gives way to this until the answer comes. */
+.bs-ds-setup-eco__working {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setup-eco__spinner {
+	width: 12px;
+	height: 12px;
+	border: 2px solid var(--bs-ds-color-surface-tertiary-em);
+	border-top-color: var(--bs-ds-color-icon-secondary);
+	border-radius: 50%;
+	animation: bs-ds-setup-eco-spin 0.8s linear infinite;
+}
+
+@keyframes bs-ds-setup-eco-spin {
+
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-setup-eco__spinner {
+		animation-duration: 2.4s;
+	}
+}

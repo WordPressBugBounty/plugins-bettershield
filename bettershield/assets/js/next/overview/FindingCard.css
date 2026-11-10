@@ -1,0 +1,112 @@
+/**
+ * The design's Finding card: 16 padded inside its 1px border, 12 between its
+ * parts, radius 8; the explanation under a rule, two columns 24 apart.
+ */
+
+.bs-ds-fcard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: calc(var(--bs-ds-space-md) - 1px);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-fcard:hover {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-fcard__row {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-fcard__text {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 1px;
+}
+
+/* All of it, on as many lines as it takes: cut to one line, "2811 files:
+   365 changed, 2445 added, 1 missing" lost its last count mid-word (#2506). */
+.bs-ds-fcard__meta {
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+/* A finding's Fix panel, opened under its card (#1954). */
+.bs-ds-fcard__manage {
+	display: flex;
+}
+
+.bs-ds-fcard__confirm {
+	padding-top: var(--bs-ds-space-md);
+}
+
+.bs-ds-fcard__fix {
+	display: flex;
+	padding-top: var(--bs-ds-space-md);
+}
+
+.bs-ds-fcard__explain {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	padding-top: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-fcard__columns {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-lg);
+}
+
+.bs-ds-fcard__column {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 1px;
+}
+
+.bs-ds-app .bs-ds-fcard__body {
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-fcard__foot {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-fcard__note {
+	flex: 1 0 0;
+	min-width: 1px;
+}
+
+/*
+ * At phone width the action goes under the title, which then has the row:
+ * beside a button, a title stood in a 64px column over five lines, and the
+ * subline was cut to "993 files: …" with no way to read the rest (#2069).
+ */
+@media (max-width: 600px) {
+	.bs-ds-fcard__row {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-fcard__text {
+		flex-basis: calc(100% - 48px);
+	}
+
+	.bs-ds-fcard__text ~ * {
+		margin-left: auto;
+	}
+}

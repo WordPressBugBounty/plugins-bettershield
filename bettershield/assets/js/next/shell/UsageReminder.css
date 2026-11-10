@@ -1,0 +1,26 @@
+/**
+ * The usage question asked once more: a card at the top of the screen, its
+ * sentence and its two answers under the header.
+ */
+
+.bs-ds-usagenote__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-usagenote__text {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-usagenote__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xs);
+}

@@ -1,0 +1,603 @@
+/**
+ * Activity › Site activity: the log's card (its intro, the tab row's search
+ * and Filters, the notes and the results line over the table), a row per
+ * entry under a held day row, the foot, the filter panel and the stand-ins.
+ */
+
+/* The title and its export share the head; on a phone the export wraps. */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-log .bs-ds-card__head {
+		flex-wrap: wrap;
+		height: auto;
+	}
+}
+
+/* Asked on arriving from an alert: inside the card's edges, under its intro. */
+.bs-ds-app .bs-ds-log__alert {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-log__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- the tab row's search and Filters ---- */
+
+/* Input/Search (2:4168), as the Findings report's search is drawn. */
+.bs-ds-log__search {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	width: 240px;
+	height: 32px;
+	padding: 0 var(--bs-ds-space-xs);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+	cursor: text;
+}
+
+.bs-ds-app .bs-ds-log__search input {
+	flex: 1 0 0;
+	min-width: 1px;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	outline: 0;
+	font: inherit;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-log__search input::placeholder {
+	color: var(--bs-ds-color-text-secondary);
+	opacity: 1;
+}
+
+.bs-ds-log__search:focus-within {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 1px;
+}
+
+.bs-ds-log__filtersmenu {
+	display: inline-flex;
+}
+
+/* How many of the panel's filters are set, so a closed panel still says it
+   is narrowing the list. */
+.bs-ds-log__filtercount {
+	padding: var(--bs-ds-space-2) var(--bs-ds-space-6);
+	line-height: 1;
+}
+
+/*
+ * On a phone the search takes the controls' first line and the rest go under
+ * it, Filters at that line's end: its panel hangs left from the button's
+ * right edge, and from the line's start it would hang off the screen.
+ */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-log__search {
+		flex: 1 1 100%;
+		order: -1;
+		width: auto;
+		min-width: 0;
+	}
+
+	.bs-ds-log__filtersmenu {
+		margin-inline-start: auto;
+	}
+}
+
+/* ---- the filter panel ---- */
+
+/*
+ * Who and when, in a panel under the button: the filters reached for during
+ * an investigation rather than on every visit.
+ */
+.bs-ds-app .bs-ds-logpop .components-popover__content {
+	width: auto;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 12px;
+	background: transparent;
+	box-shadow: none;
+	outline: none;
+}
+
+.bs-ds-logfilters {
+	container: bs-ds-logfilters / inline-size;
+	display: grid;
+	gap: var(--bs-ds-space-md);
+	width: 340px;
+	max-width: calc(100vw - 32px);
+	padding: var(--bs-ds-space-md);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-alert);
+	font-family: var(--bs-ds-font);
+
+	/* When the page scrolls to show the panel, it stops short of the very
+	   bottom edge rather than leaving the panel's shadow cut off there. */
+	scroll-margin-bottom: var(--bs-ds-space-lg);
+}
+
+/*
+ * On a narrow screen the panel hangs left from the button's right edge, and
+ * the button sits in from the screen's edge by the sheet's, the page's and the
+ * card's insets. Narrowed by those so its left edge stays on the screen.
+ *
+ * A viewport query, not a container one: the panel is a popover, drawn into
+ * the popover slot outside the content container, which a container query
+ * never reaches.
+ */
+@media (max-width: 782px) {
+
+	.bs-ds-logfilters {
+		max-width: calc(100vw - 74px);
+	}
+}
+
+.bs-ds-logfilters__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-logfilters__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-logfilters__days {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--bs-ds-space-sm);
+}
+
+/* Two dates side by side leave each too narrow on a phone to show the date
+   it holds, so they stack, asked of the panel's own width. */
+@container bs-ds-logfilters (max-width: 260px) {
+
+	.bs-ds-logfilters__days {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.bs-ds-app .bs-ds-logfilters__note {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-warning);
+}
+
+/* ---- what the list is ---- */
+
+.bs-ds-log__notes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md) 0;
+}
+
+.bs-ds-app .bs-ds-log__note,
+.bs-ds-app .bs-ds-log__narrowed {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-log__sampled {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: var(--bs-ds-space-xs) 0 0;
+	padding-inline-start: var(--bs-ds-space-md);
+	font-variant-numeric: tabular-nums;
+}
+
+.bs-ds-log__results {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-sm);
+	min-height: 44px;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-ml);
+}
+
+.bs-ds-log__label {
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-log__count {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The count takes focus when the control it replaced is gone, unringed. */
+.bs-ds-log__count:focus {
+	outline: none;
+}
+
+/*
+ * A view is on its way and the rows on screen still belong to the last one.
+ * Dimmed rather than replaced: swapping the list for stand-ins on every tab
+ * reads as a page load, which is the whole thing this avoids. Nothing in the
+ * rows can be pressed while they do not match the tab that is chosen.
+ */
+.bs-ds-log__list.is-settling {
+	opacity: 0.45;
+	transition: opacity 0.15s ease;
+	pointer-events: none;
+}
+
+/* ---- the table: a day per box, a row per entry ---- */
+
+/*
+ * A day's row is held at the top while its own entries scroll past, so the
+ * date of the entry being read is always on screen; the next day's row
+ * pushes it away, because each is held only within the box around its day.
+ */
+.bs-ds-log__day > .bs-ds-tbl__whole--group {
+	position: sticky;
+	top: var(--wp-admin--admin-bar--height, 32px);
+	z-index: 1;
+}
+
+/* Below 600px wide the admin bar scrolls away with the page. */
+@media (max-width: 600px) {
+
+	.bs-ds-log__day > .bs-ds-tbl__whole--group {
+		top: 0;
+	}
+}
+
+.bs-ds-log__date {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/*
+ * What the chain says, in three tones and always in words. A day still open
+ * is not a problem, so it takes the quiet text; a day that no longer matches
+ * takes the warning text, the audit rating that finding high and not
+ * critical.
+ */
+.bs-ds-log__seal {
+	font-weight: 400;
+}
+
+.bs-ds-log__seal::before {
+	content: "·";
+	padding-inline-end: var(--bs-ds-space-xs);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+/* The clock that stands for today's open day, centered on the date. */
+.bs-ds-log__seal--mark {
+	display: inline-flex;
+	align-items: center;
+}
+
+.bs-ds-log__seal.is-intact {
+	color: var(--bs-ds-color-text-success);
+}
+
+.bs-ds-log__seal.is-open {
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-log__seal.is-broken {
+	color: var(--bs-ds-color-text-warning);
+}
+
+/* A row under the foot's own rule, and none at the card's bottom edge. */
+.bs-ds-log .bs-ds-tbl__whole--foot {
+	border-top: 0;
+}
+
+.bs-ds-log__day:last-child > :last-child {
+	border-bottom: 0;
+}
+
+/*
+ * An entry's cells hang from its first line rather than its middle: the
+ * category and the time sit level with what happened, however many lines
+ * the entry runs to.
+ */
+.bs-ds-log .bs-ds-event {
+	align-items: start;
+}
+
+.bs-ds-event__what {
+	display: flex;
+	flex: 1 1 auto;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-event__what > .bs-ds-icon {
+	margin-top: var(--bs-ds-space-2);
+}
+
+.bs-ds-event__text {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+.bs-ds-event__label {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/*
+ * Who did it, and what to, on one line under what happened. A separator
+ * between the facts on it, drawn rather than typed, so a missing one never
+ * leaves a dangling dot.
+ */
+.bs-ds-event__meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-event__meta > * + *::before {
+	content: "·";
+	padding-inline-end: var(--bs-ds-space-xs);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+/* On a phone the facts wrap, and a dot drawn before each one started the
+   next line with "·" (#2570): there the gap alone sets them apart. */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-event__meta {
+		column-gap: var(--bs-ds-space-sm);
+	}
+
+	.bs-ds-event__meta > * + *::before {
+		content: none;
+	}
+}
+
+/* What the entry was about, a step darker than who did it. A long path or a
+   raw record wraps rather than widening the table. */
+.bs-ds-event__detail {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-event__via,
+.bs-ds-event__from {
+	font-variant-numeric: tabular-nums;
+}
+
+/* The network, then the ⓘ that says why it is never an address. */
+.bs-ds-event__from {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+}
+
+/*
+ * The network's log carries one thing the site's cannot: which site the entry
+ * came from. It leads the line under the label, where the actor is.
+ */
+.bs-ds-event__site {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/*
+ * What can be done from the row, on one line under the facts. The pivots
+ * narrow the log, so they sit together and look alike; Review change opens
+ * something, so it is set apart at the line's end. The first pivot's own
+ * inset is taken back so the line starts under the facts.
+ */
+.bs-ds-event__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0 var(--bs-ds-space-xs);
+	min-width: 0;
+	margin-inline-start: calc(var(--bs-ds-space-xs) * -1);
+}
+
+.bs-ds-app .components-button.bs-ds-event__review {
+	margin-inline-start: auto;
+}
+
+/*
+ * The two pivots are always drawn, as quiet links: hidden until hover, they
+ * still held their line, and a row with a person read as 36 px of blank
+ * space under its facts (#2570).
+ */
+
+.bs-ds-log .bs-ds-event__area,
+.bs-ds-log .bs-ds-event__when {
+	padding-top: var(--bs-ds-space-2);
+}
+
+/* A category named in words can be longer than its column: it wraps inside
+   the column rather than running into the time beside it. */
+.bs-ds-log .bs-ds-event__area .bs-ds-badge {
+	max-width: 100%;
+	/* With the leading a wrapped line needs, and padding trimmed by as much,
+	   so a one-line badge stays the 20 tall pill it was. */
+	padding-block: var(--bs-ds-space-2);
+	line-height: 1.3;
+	white-space: normal;
+}
+
+.bs-ds-log .bs-ds-event__when {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A row runs into the review that opens under it. */
+.bs-ds-tbl__row:has(+ .bs-ds-event__under) {
+	border-bottom: 0;
+}
+
+.bs-ds-event__under {
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-sm) calc(var(--bs-ds-space-ml) + var(--bs-ds-space-lg) + var(--bs-ds-space-xxs));
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-log__emptytitle {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-log__footnote {
+	flex: 1 1 24em;
+	max-width: 96ch;
+	line-height: 1.4;
+}
+
+/* On a phone: the time and the category on the entry's first line, what
+   happened under them at the row's whole width. */
+@container bs-ds-content (max-width: 600px) {
+
+	/* The time keeps its width; a long category wraps in what is left. */
+	.bs-ds-log .bs-ds-event {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	}
+
+	.bs-ds-log .bs-ds-event__when {
+		order: 1;
+		padding-top: 0;
+	}
+
+	.bs-ds-log .bs-ds-event__area {
+		order: 2;
+		justify-content: flex-end;
+		padding-top: 0;
+	}
+
+	.bs-ds-log .bs-ds-event__cell {
+		grid-column: 1 / -1;
+		order: 3;
+	}
+
+	.bs-ds-event__under {
+		padding-inline-start: var(--bs-ds-space-ml);
+	}
+}
+
+/* ---- the stand-ins ---- */
+
+.bs-ds-log__boneintro {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-log__bonetabs,
+.bs-ds-log__bonefoot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	min-height: 44px;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-log__bonefoot {
+	border-bottom: 0;
+}
+
+.bs-ds-log__bonegroup {
+	display: flex;
+	align-items: center;
+	min-height: 36px;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-ml);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-log__bones {
+	display: flex;
+	flex-direction: column;
+}
+
+.bs-ds-log__bonerow {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 168px 88px;
+	align-items: start;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-log__bonetext {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-log__bonerow {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}

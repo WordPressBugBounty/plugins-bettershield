@@ -1,0 +1,102 @@
+/**
+ * What changed, check by check: the lede and the day it is compared with
+ * under the header, then the score then and now and a group per kind of
+ * change, each under a rule. Nothing here is a warning, so there is no
+ * tint; each finding's badge carries its severity in words.
+ */
+
+.bs-ds-posture__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-sm) var(--bs-ds-space-lg);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-posture__lede {
+	flex: 1 1 20em;
+	max-width: 62ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-posture__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md) var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-posture__score {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-posture__group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	padding-top: var(--bs-ds-space-sm);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-posture__list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-posture__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-sm);
+	margin: 0;
+	padding: var(--bs-ds-space-xs) 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* A row that leads with its badge keeps the badge in a column of its own, and
+   its title wraps in the column beside it. As one flowing line, a narrow
+   screen dropped each badge under the row above, where it read as that
+   row's. */
+.bs-ds-app .bs-ds-posture__row--chip {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: baseline;
+	column-gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-posture__row > a,
+.bs-ds-posture__row > :last-child {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-posture__moved {
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A finding's name links to it in the screen's own ink, underlined, as the
+   network screens' site names do, not in the browser's blue. */
+.bs-ds-app .bs-ds-posture__row a {
+	color: var(--bs-ds-color-text-primary);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.bs-ds-app .bs-ds-posture__row a:hover {
+	color: var(--bs-ds-color-text-secondary);
+}

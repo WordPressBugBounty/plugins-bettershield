@@ -1,0 +1,28 @@
+/**
+ * What a visitor's page pays: the measurement as the card's sentence, and
+ * what was counted and how behind an ⓘ beside it.
+ */
+
+.bs-ds-cost__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-cost__line {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-cost__row {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+}

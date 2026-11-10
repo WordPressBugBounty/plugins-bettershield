@@ -1,0 +1,238 @@
+/**
+ * A hardening row: the switch leading, its state beside the title and when it
+ * was applied under the line about it. Under the text, in the text's column:
+ * a blocker as a warning, what the item left behind, whether a visitor's page
+ * carried it, its fields, its actions, then the questions and the two panels
+ * that open from the row (the preview, and "Monitor first").
+ */
+
+.bs-ds-hrow__switch {
+	display: flex;
+	align-items: center;
+	min-height: 20px;
+}
+
+/* "On since Sep 23, 1:41 PM · Undo never expires". */
+.bs-ds-hrow__meta {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.bs-ds-hrow__meta > span + span::before {
+	content: "·";
+	padding: 0 var(--bs-ds-space-6);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+/* The two controls that open something under the row: their chevron turns. */
+.bs-ds-app .components-button.bs-ds-hrow__preview-toggle {
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-hrow__monitor .bs-ds-icon:last-child,
+.bs-ds-hrow__preview-toggle .bs-ds-icon:last-child {
+	transition: transform 0.2s ease;
+}
+
+.bs-ds-hrow__monitor[aria-expanded="true"] .bs-ds-icon:last-child,
+.bs-ds-hrow__preview-toggle[aria-expanded="true"] .bs-ds-icon:last-child {
+	transform: rotate(180deg);
+}
+
+/* ---- what sits under the row ---- */
+
+.bs-ds-app .bs-ds-hrow__waiting,
+.bs-ds-app .bs-ds-hrow__unavailable,
+.bs-ds-app .bs-ds-hrow__verify {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-hrow__unavailable strong {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* What a visitor's page carried: a mark, then the words, in the mark's ink. */
+.bs-ds-app .bs-ds-hrow__verify {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-hrow__verify .bs-ds-icon {
+	margin-top: var(--bs-ds-space-2);
+}
+
+.bs-ds-app .bs-ds-hrow__verify--good {
+	color: var(--bs-ds-color-text-success);
+}
+
+.bs-ds-app .bs-ds-hrow__verify--bad {
+	color: var(--bs-ds-color-text-warning);
+}
+
+/* The address or name an applied item left behind, beside its copy button. */
+.bs-ds-hrow__summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-hrow__summarytext {
+	min-width: 0;
+	padding: var(--bs-ds-space-6) var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-hrow__fields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	max-width: 420px;
+}
+
+.bs-ds-hrow__field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+.bs-ds-hrow__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* What the policy would have blocked: the directive, the origin, how often. */
+.bs-ds-hrow__reports {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-hrow__reports ul {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-hrow__reports li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: var(--bs-ds-space-xxs) 0;
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-hrow__directive {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* The origin can be long and is the part worth reading whole. */
+.bs-ds-hrow__origin {
+	flex: 1 1 0;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-hrow__times {
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+/* ---- the panels a row opens: the preview, and "Monitor first" ---- */
+
+.bs-ds-hrow__panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	max-width: 80ch;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-secondary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A panel's heading is h4, under the row's h3 title. */
+.bs-ds-app .bs-ds-hrow__panel h4 {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-hrow__panel .bs-ds-hrow__note {
+	margin: 0;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-app .bs-ds-hrow__effects {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-hrow__effects li {
+	position: relative;
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-md);
+}
+
+.bs-ds-hrow__effects li::before {
+	content: "";
+	position: absolute;
+	top: 0.6em;
+	inset-inline-start: var(--bs-ds-space-xxs);
+	width: 4px;
+	height: 4px;
+	border-radius: 999px;
+	background: var(--bs-ds-color-icon-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-hrow__monitor .bs-ds-icon:last-child,
+	.bs-ds-hrow__preview-toggle .bs-ds-icon:last-child {
+		transition: none;
+	}
+}
+
+/* The one line above the cards that every protection on them can be undone. */
+.bs-ds-app .bs-ds-hcards__note {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}

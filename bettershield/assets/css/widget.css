@@ -1,0 +1,120 @@
+/**
+ * The dashboard widget.
+ *
+ * Built into its own bundle (assets/build/widget.css) and enqueued on the
+ * dashboard alone: the app bundle never loads outside the plugin's screens.
+ * The token roles come along because .bs-widget is one of the selectors
+ * tokens.css declares them on. Outside a ThemeProvider the --wpds-* tokens
+ * are absent, so every role resolves to its literal fallback — the light
+ * palette, which is what the dashboard is in every core color scheme.
+ *
+ * Red is critical's alone. Every other severity takes its own step on the
+ * ladder, exactly as the report's chips do.
+ */
+
+.bs-widget {
+	font-size: var(--bs-text-md);
+	line-height: 1.5;
+	color: var(--bs-ink);
+}
+
+.bs-widget__head {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-space-lg);
+	margin: var(--bs-space-xs) 0 var(--bs-space-md);
+}
+
+.bs-widget__score {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	border: 3px solid var(--bs-brand);
+	background: var(--bs-brand-tint);
+	color: var(--bs-brand-ink);
+}
+
+.bs-widget__number {
+	font-size: var(--bs-text-xl);
+	font-weight: 700;
+	line-height: 1;
+}
+
+.bs-widget__grade {
+	font-size: var(--bs-text-xs);
+	font-weight: 600;
+	/* "Grade F" in sentence case fits inside the ring; uppercased it touched the edge. */
+	white-space: nowrap;
+	margin-top: var(--bs-space-2xs);
+}
+
+.bs-widget__summary {
+	min-width: 0;
+}
+
+.bs-widget__lede {
+	margin: 0 0 var(--bs-space-sm);
+	font-size: var(--bs-text-lg);
+	font-weight: 600;
+	color: var(--bs-ink);
+}
+
+.bs-widget__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-space-sm);
+	margin: 0;
+}
+
+.bs-widget__chip {
+	display: inline-block;
+	font-size: var(--bs-text-sm);
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	border-radius: 999px;
+	padding: var(--bs-space-2xs) var(--bs-space-sm);
+	border: 1px solid var(--bs-neutral-border);
+	color: var(--bs-neutral-ink);
+	background: var(--bs-neutral-bg);
+}
+
+.bs-widget__chip.is-critical {
+	color: var(--bs-critical-ink);
+	background: var(--bs-critical-bg);
+	border-color: var(--bs-critical-border);
+}
+
+.bs-widget__chip.is-high {
+	color: var(--bs-high-ink);
+	background: var(--bs-high-bg);
+	border-color: var(--bs-high-border);
+}
+
+.bs-widget__chip.is-medium {
+	color: var(--bs-medium-ink);
+	background: var(--bs-medium-bg);
+	border-color: var(--bs-medium-border);
+}
+
+.bs-widget__quiet {
+	margin: 0 0 var(--bs-space-sm);
+	color: var(--bs-ink-2);
+}
+
+.bs-widget__safe {
+	margin: 0 0 var(--bs-space-sm);
+	padding: var(--bs-space-sm) var(--bs-space-md);
+	border-radius: var(--bs-radius-control);
+	border: 1px solid var(--bs-warn-border);
+	background: var(--bs-warn-bg);
+	color: var(--bs-warn-ink);
+}
+
+.bs-widget__actions {
+	margin: 0;
+}

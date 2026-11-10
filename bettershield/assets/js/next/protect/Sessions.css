@@ -1,0 +1,84 @@
+/**
+ * Who is signed in: its heading under a rule, the accounts as table rows to
+ * the card's edges with each account's sessions listed in its row, and the
+ * site-wide sign-out under them.
+ */
+
+.bs-ds-sessions {
+	display: flex;
+	flex-direction: column;
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-sessions__head {
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-sessions__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* Focus lands on the heading once an account's sessions end, and is not drawn there. */
+.bs-ds-sessions__title:focus {
+	outline: none;
+}
+
+.bs-ds-sessions__bones {
+	display: flex;
+	flex-direction: column;
+}
+
+.bs-ds-session__who {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-session__list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-session__list li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0 var(--bs-ds-space-xs);
+	margin: 0;
+}
+
+.bs-ds-session__ip {
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-sessions__all {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* Why a line has no last activity, said once rather than on every line. */
+.bs-ds-app .bs-ds-sessions__note {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}

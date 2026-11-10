@@ -1,0 +1,73 @@
+/**
+ * Getting Started: the usage-data question under the picture, in a card no
+ * wider than its sentence reads well. The sentence ends in a "What we
+ * collect" link that opens the list under it. The two answers sit centered at
+ * the card's foot: Allow & Continue the step's one Primary, at the large size
+ * a call to action stands alone at, and Skip a quieter Ghost beside it. A site
+ * administrator on a network, who is not asked, gets Get Started alone as the
+ * Primary.
+ */
+
+.bs-ds-setup-consent {
+	width: 100%;
+	max-width: 640px;
+}
+
+.bs-ds-setup-consent__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-setup-consent__collect {
+	display: inline;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	/* A link in the brand's text ink (#2287), underlined in that same ink
+	   like every other text link, not in the green fill (#2322). */
+	color: var(--bs-ds-color-tag-brand-text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	cursor: pointer;
+}
+
+.bs-ds-app .bs-ds-setup-consent__collect:hover {
+	text-decoration-thickness: 2px;
+}
+
+.bs-ds-app .bs-ds-setup-consent__collect:focus-visible {
+	border-radius: 2px;
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+.bs-ds-app .bs-ds-setup-consent__list.bs-ds-topics__body {
+	padding: 0;
+	border: 0;
+	background: none;
+}
+
+.bs-ds-setup-consent__answers {
+	padding-top: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .components-button.bs-ds-setup-consent__start {
+	min-width: 160px;
+}
+
+@container bs-ds-setup (max-width: 600px) {
+
+	.bs-ds-setup-consent__actions {
+		flex-direction: column;
+		align-items: stretch;
+		width: 100%;
+	}
+
+	.bs-ds-app .bs-ds-setup-consent__actions .components-button.bs-ds-btn {
+		width: 100%;
+	}
+}

@@ -1,0 +1,41 @@
+<?php return array(
+    'root' => array(
+        'name' => 'bettershield/abilities-runtime',
+        'pretty_version' => 'v1.1.7',
+        'version' => '1.1.7.0',
+        'reference' => '40866c54aa7d0f95f5126903c417c4b98bc05137',
+        'type' => 'project',
+        'install_path' => __DIR__ . '/../../',
+        'aliases' => array(),
+        'dev' => false,
+    ),
+    'versions' => array(
+        'automattic/jetpack-autoloader' => array(
+            'pretty_version' => 'v5.0.23',
+            'version' => '5.0.23.0',
+            'reference' => 'd11b2d621035dcb920abce8ae09bebd5da5f9ff8',
+            'type' => 'composer-plugin',
+            'install_path' => __DIR__ . '/../automattic/jetpack-autoloader',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'bettershield/abilities-runtime' => array(
+            'pretty_version' => 'v1.1.7',
+            'version' => '1.1.7.0',
+            'reference' => '40866c54aa7d0f95f5126903c417c4b98bc05137',
+            'type' => 'project',
+            'install_path' => __DIR__ . '/../../',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'wordpress/abilities-api' => array(
+            'pretty_version' => 'v0.4.0',
+            'version' => '0.4.0.0',
+            'reference' => '0759075aed37c4247adbf273bdebec096d52e825',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../wordpress/abilities-api',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+    ),
+);

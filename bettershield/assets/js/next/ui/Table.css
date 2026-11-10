@@ -1,0 +1,285 @@
+/**
+ * The table kit's lists: the header strip 8 by 20 on the tertiary surface
+ * between two rules, rows 12 by 20 with a rule under each but the last, 12
+ * between columns. A group row is a 36-tall tertiary strip; an open row has
+ * the brand indicator at its edge, as the Findings report's do.
+ */
+
+.bs-ds-tbl {
+	display: grid;
+	grid-template-columns: var(--bs-ds-tbl-cols);
+	column-gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+/* Everything in the table takes its whole width, one under the other. */
+.bs-ds-tbl > * {
+	grid-column: 1 / -1;
+	min-width: 0;
+}
+
+.bs-ds-tbl__head,
+.bs-ds-tbl__row {
+	display: grid;
+	grid-template-columns: var(--bs-ds-tbl-cols);
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+}
+
+/*
+ * The header and the rows placed straight in the table share its tracks, so
+ * a column sized by what it holds (a width of auto) is as wide in every row
+ * as in the header. Each on a grid of its own, the header's "Actions" and a
+ * row's buttons sized the same column differently, and the columns before
+ * it no longer lined up. A row inside a group keeps a grid of its own on the
+ * same tracks, as does every row where subgrid is not supported.
+ */
+.bs-ds-tbl > .bs-ds-tbl__head,
+.bs-ds-tbl > .bs-ds-tbl__row {
+	grid-template-columns: subgrid;
+}
+
+/*
+ * A run of rows a list keeps folded until asked ("Show all", "Show older")
+ * sits in a rowgroup of its own. Bare, its rows each ran a grid of their
+ * own, so a column of width auto, sized by the buttons only some rows
+ * hold, came out narrower in them than in the header and the rows above,
+ * and every column after the first sat to the right (#2307). The group
+ * takes the table's tracks and hands them on to its rows.
+ */
+.bs-ds-tbl > .bs-ds-tbl__rows {
+	display: grid;
+	grid-template-columns: subgrid;
+}
+
+.bs-ds-tbl__rows > * {
+	grid-column: 1 / -1;
+	min-width: 0;
+}
+
+.bs-ds-tbl__rows > .bs-ds-tbl__row {
+	grid-template-columns: subgrid;
+}
+
+/* The table's last row is inside the group: no rule under it either. */
+.bs-ds-tbl > .bs-ds-tbl__rows:last-child > :last-child {
+	border-bottom: 0;
+}
+
+/*
+ * A table whose rows all sit in groups: they run on grids of their own,
+ * inside their padding, so the header does too. On the table's tracks its
+ * padding came out of the first column, and each label sat that far left
+ * of the column it names.
+ */
+.bs-ds-tbl--grouped > .bs-ds-tbl__head {
+	grid-template-columns: var(--bs-ds-tbl-cols);
+}
+
+.bs-ds-tbl__head {
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-ml);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+/* Present for assistive technology, not drawn. */
+.bs-ds-tbl__head--quiet {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.bs-ds-tbl__th {
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-tbl__row {
+	min-height: 40px;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-tbl > :last-child {
+	border-bottom: 0;
+}
+
+.bs-ds-tbl__row--hover:hover {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-tbl__row.is-selected {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-tbl__row.is-open {
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-tbl__cell {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-tbl__cell--end {
+	justify-content: flex-end;
+	text-align: end;
+}
+
+/* Title and meta: the table kit's Title+meta cell. */
+.bs-ds-tbl__tm {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-tbl__tm-text {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+.bs-ds-tbl__title {
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-tbl__meta {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- rows across the whole table ---- */
+
+.bs-ds-tbl__whole {
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-tbl__wholecell {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-tbl__wholetext {
+	display: flex;
+	flex: 1 1 auto;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-tbl__aside {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin-inline-start: auto;
+}
+
+.bs-ds-tbl__whole--group {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-tbl__whole--group .bs-ds-tbl__wholecell {
+	min-height: 36px;
+	padding-block: var(--bs-ds-space-xs);
+	font-weight: 500;
+}
+
+.bs-ds-tbl__whole--foot {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* After a row, which already draws the rule under it. */
+.bs-ds-tbl__row + .bs-ds-tbl__whole--foot,
+.bs-ds-tbl__rows + .bs-ds-tbl__whole--foot,
+.bs-ds-tbl__whole + .bs-ds-tbl__whole--foot {
+	border-top: 0;
+}
+
+/* A narrow card: each row's cells stack, the header stays for screen readers. */
+@container bs-ds-content (max-width: 600px) {
+
+	/* Rows stack, so the table is a column: its tracks, at their fixed
+	   widths, would make every row wider than the card. */
+	.bs-ds-tbl {
+		display: flex;
+		flex-direction: column;
+	}
+
+	/* A row a screen keeps on its columns this narrow takes them itself. */
+	.bs-ds-tbl > .bs-ds-tbl__head,
+	.bs-ds-tbl > .bs-ds-tbl__row,
+	.bs-ds-tbl__rows > .bs-ds-tbl__row {
+		grid-template-columns: var(--bs-ds-tbl-cols);
+	}
+
+	/* A folded run of rows stacks with the rest: the table has no tracks. */
+	.bs-ds-tbl > .bs-ds-tbl__rows {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.bs-ds-tbl__head {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.bs-ds-tbl__row {
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		gap: var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-tbl__cell--end {
+		justify-content: flex-start;
+		text-align: start;
+	}
+
+	/* A whole row's controls wrap, under its text when they must, rather
+	   than running past the card's edge; a long label wraps in its button
+	   (Button.css). */
+	.bs-ds-tbl__aside {
+		flex: 0 1 auto;
+		flex-wrap: wrap;
+		min-width: 0;
+		max-width: 100%;
+	}
+}

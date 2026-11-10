@@ -1,0 +1,23 @@
+/**
+ * "Default: 5" and Use it: a 12 secondary line under its field, the action a
+ * link in the line's own size, 4 apart, wrapping in a narrow column.
+ */
+
+.bs-ds-app .bs-ds-default {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0 var(--bs-ds-space-xxs);
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The line's own height rather than a button's: it reads as part of it. */
+.bs-ds-app .bs-ds-default .components-button.bs-ds-default__use {
+	height: auto;
+	min-height: 0;
+	font-size: var(--bs-ds-size-xsmall);
+}

@@ -1,0 +1,187 @@
+/**
+ * The redesigned dashboard's base: the font, the app's root, and the text and
+ * icon styles every component shares. The design's text styles, with their
+ * tracking, are written here once; a component names one rather than
+ * restating it.
+ */
+
+@font-face {
+	font-family: Geist;
+	src: url("../../fonts/Geist-Variable.woff2") format("woff2");
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: swap;
+}
+
+/*
+ * The page under the app is the design's background, not wp-admin's gray,
+ * and the footer's text follows it.
+ */
+body.bs-ds-body,
+body.bs-ds-body #wpcontent,
+body.bs-ds-body #wpbody-content,
+body.bs-ds-body #wpfooter {
+	background: var(--bs-ds-color-surface-secondary);
+}
+
+body.bs-ds-body #wpfooter,
+body.bs-ds-body #wpfooter a {
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-app {
+	display: flex;
+	align-items: stretch;
+	min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px));
+	margin-inline-start: calc(-1 * var(--bs-ds-admin-gutter));
+	font-family: var(--bs-ds-font);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-primary);
+	background: var(--bs-ds-color-surface-secondary);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* A narrow screen: the sidebar is a strip above the sheet, not a column beside it. */
+@media (max-width: 782px) {
+
+	.bs-ds-app {
+		flex-direction: column;
+	}
+}
+
+.bs-ds-app,
+.bs-ds-app *,
+.bs-ds-app *::before,
+.bs-ds-app *::after {
+	box-sizing: border-box;
+}
+
+.bs-ds-app :is(h1, h2, h3, h4, p) {
+	margin: 0;
+}
+
+.bs-ds-app :focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+/*
+ * A link written as plain markup, in a sentence or a description. Nothing
+ * said what one looks like here, so it took wp-admin's own blue, which keeps
+ * no scheme and reads 3.5:1 on the dark surface (#2494). The text's own color,
+ * underlined, as the timeline's links are. In :where(), so a link with a rule
+ * of its own (a timeline line, a posture row) keeps it.
+ */
+.bs-ds-app :where(a:not([class])) {
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* ---- text: the design's single-line styles, 100% line height ---- */
+
+.bs-ds-t10 {
+	font-size: var(--bs-ds-size-xxsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-t12 {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-t14 {
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+}
+
+/* Beside one of the three, for text whose length the code does not set (a
+   translated label, a finding's title): it keeps the size and takes the
+   leading wrapped text has everywhere else, so two lines never touch. */
+.bs-ds-lead {
+	line-height: 1.4;
+}
+
+.bs-ds-r {
+	font-weight: 400;
+}
+
+.bs-ds-m {
+	font-weight: 500;
+}
+
+.bs-ds-c1 {
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-c2 {
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-c3 {
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-nowrap {
+	white-space: nowrap;
+}
+
+.bs-ds-spacer {
+	flex: 1 0 0;
+	min-width: 1px;
+	height: 1px;
+}
+
+/* ---- icons: the design's icon colors ---- */
+
+/*
+ * The design's icons are outlines. The library fills any svg inside its
+ * Button with the text color, which turns an outline into a solid blob, so
+ * the fill is set back here, above that rule.
+ */
+.bs-ds-app svg.bs-ds-icon,
+.bs-ds-body svg.bs-ds-icon {
+	display: inline-flex;
+	flex: none;
+	fill: none;
+}
+
+.bs-ds-ic-brand {
+	color: var(--bs-ds-color-icon-brand);
+}
+
+.bs-ds-ic-1 {
+	color: var(--bs-ds-color-icon-primary);
+}
+
+.bs-ds-ic-2 {
+	color: var(--bs-ds-color-icon-secondary);
+}
+
+.bs-ds-ic-3 {
+	color: var(--bs-ds-color-icon-tertiary);
+}
+
+.bs-ds-ic-ok {
+	color: var(--bs-ds-color-icon-success);
+}
+
+.bs-ds-ic-warning {
+	color: var(--bs-ds-color-icon-warning);
+}
+
+.bs-ds-ic-error {
+	color: var(--bs-ds-color-icon-error);
+}
+
+.bs-ds-ic-info {
+	color: var(--bs-ds-color-icon-info);
+}
+
+.bs-ds-ic-onbrand {
+	color: var(--bs-ds-color-text-on-brand);
+}

@@ -1,0 +1,258 @@
+/**
+ * Skeletons: the shape of a screen, drawn before its data arrives.
+ *
+ * A skeleton is never a second drawing of a screen. It is the screen's own
+ * markup — the same cards, bars, rows and columns, wearing the same classes —
+ * with a bone wherever a word, a number or a control will be. The geometry
+ * therefore cannot drift from the thing it stands in for, and nothing moves
+ * when the real content takes its place.
+ *
+ * A bone standing in for words is sized in `em` and sits inside the element
+ * that will hold those words, so the line it makes is that element's own
+ * line: the same size, the same line height, the same margins.
+ */
+
+/*
+ * The whole stand-in arrives a beat late and softly. A read that answers at
+ * once never shows a skeleton at all, and one that takes a moment shows one
+ * without a flash. Held by `!important` because the element it lands on is
+ * often a card that carries an entrance of its own.
+ */
+.bs-skel {
+	pointer-events: none;
+	user-select: none;
+	animation: bs-skel-in 280ms var(--bs-ease) 120ms both !important;
+}
+
+@keyframes bs-skel-in {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+/*
+ * Nothing inside a skeleton rises, turns or pops. The cards and rows it
+ * borrows carry their own entrances, and those belong to the content: played
+ * by the stand-in as well, the screen would arrive twice. Only the sheen on
+ * the bones moves.
+ */
+.bs-skel :not(.bs-bone),
+.bs-skel ::before,
+.bs-skel ::after {
+	animation: none !important;
+	transition: none !important;
+}
+
+/* ---------- bones ---------- */
+
+/*
+ * One placeholder shape. By default a line of text: an inline block shorter
+ * than the line it sits in, so the line box is the text's own and a
+ * paragraph of these is exactly as tall as the paragraph will be.
+ */
+.bs-bone {
+	display: inline-block;
+	vertical-align: middle;
+	max-width: 100%;
+	height: 0.75em;
+	border-radius: var(--bs-radius-pill);
+	background-color: var(--bs-bone);
+}
+
+/* Fills a shape something else draws: a card's mark tile, a feature tile. */
+.bs-bone--fill {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border-radius: inherit;
+}
+
+/* A severity chip: one row of small type inside its pill. */
+.bs-bone--chip {
+	width: 64px;
+	height: 26px;
+}
+
+/* The library's button at the size these screens use it. */
+.bs-bone--button {
+	width: 120px;
+	height: 40px;
+	border-radius: var(--bs-radius-control);
+}
+
+/* The compact button, on rows that hold several. */
+.bs-bone--compact {
+	width: 96px;
+	height: 32px;
+	border-radius: var(--bs-radius-control);
+}
+
+/* A text field or a select, at the 40px these screens opt into. */
+.bs-bone--field {
+	display: block;
+	width: 100%;
+	height: 40px;
+	border-radius: var(--bs-radius-control);
+}
+
+/* A switch's track, at the library's size. */
+.bs-bone--toggle {
+	flex: none;
+	width: 32px;
+	height: 16px;
+}
+
+/* A checkbox. */
+.bs-bone--check {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	border-radius: 3px;
+}
+
+/* A status dot, a timeline mark. */
+.bs-bone--dot {
+	flex: none;
+	width: 8px;
+	height: 8px;
+}
+
+/* A block of whatever height the caller gives it: a table row, a code block. */
+.bs-bone--block {
+	display: block;
+	width: 100%;
+	border-radius: var(--bs-radius-control);
+}
+
+/*
+ * The sheen: one light crossing the whole screen, not one per bone.
+ *
+ * The gradient is fixed to the viewport, so every bone shows its own slice of
+ * the same band as it passes — a column of placeholders lights up together,
+ * the way a surface does under one lamp, rather than each flickering on its
+ * own clock. A browser that keeps fixed backgrounds to the element (a phone,
+ * or a box inside a transform) runs the same light across each bone instead,
+ * which is the whole of the fallback.
+ *
+ * Linear, for the reason the posture band's pass is: light crossing a surface
+ * moves at one speed. A third of each cycle it is off the screen, so the sheen
+ * reads as a pass and a pause rather than as something that never stops.
+ */
+@media (prefers-reduced-motion: no-preference) {
+	.bs-bone {
+		background-image: linear-gradient(
+			100deg,
+			transparent 42%,
+			var(--bs-bone-shine) 50%,
+			transparent 58%
+		);
+		background-repeat: no-repeat;
+		background-size: 300vw 100%;
+		background-attachment: fixed;
+		animation: bs-bone-sheen 1.8s linear infinite;
+	}
+}
+
+@keyframes bs-bone-sheen {
+	from {
+		background-position: -175vw 0;
+	}
+
+	to {
+		background-position: -25vw 0;
+	}
+}
+
+/* A reader who asked for stillness gets the shapes and nothing moving. */
+@media (prefers-reduced-motion: reduce) {
+	.bs-skel {
+		animation: none !important;
+	}
+}
+
+/* ---------- arrangements only a skeleton needs ---------- */
+
+/*
+ * A control and its words on one line: a switch beside its label, a checkbox
+ * beside its own. The library sets those words on a 16px line whatever the
+ * body's is, so the words here are too, and a row — or a label that wraps to
+ * two — is as tall as the library's.
+ */
+.bs-skel__control {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-space-sm);
+	line-height: 16px;
+}
+
+/* The help under a switch starts under its words, as the library's does. */
+.bs-skel__control:has(> .bs-bone--toggle) + .components-base-control__help {
+	margin-inline-start: var(--bs-space-4xl);
+}
+
+/*
+ * In a setting's control column the library's switch stands at the column's
+ * right edge with its label to the left of it, as tall as the heading tile
+ * beside it. The stand-in stands where it will.
+ */
+.bs-setting__control > .bs-skel__control {
+	flex-direction: row-reverse;
+	min-height: 28px;
+}
+
+/*
+ * A labeled field, laid out as the library's is: a block, not a grid, so the
+ * margin its help carries at the foot collapses into the next thing's the
+ * same way the real one's does. That margin is also all that separates two
+ * fields stacked in a column, so the stand-ins add none of their own.
+ */
+.bs-skel__field {
+	max-width: 360px;
+}
+
+/* The library's label: a small line of its own, and the room under it. */
+.bs-skel__label {
+	display: block;
+	margin-bottom: var(--bs-space-sm);
+	font-size: var(--bs-text-xs);
+	line-height: 1.28;
+}
+
+/*
+ * In a row of fields the real labels share a two-line box with their words at
+ * its foot, so the fields line up whatever wraps (base.css). The same box
+ * here: 2.6 of the library's 11px type is 2.38 of this label's 12px.
+ */
+.bs-fieldrow .bs-skel__label {
+	display: flex;
+	align-items: flex-end;
+	min-height: 2.38em;
+}
+
+/* Help, in the library's size, straight under the control it explains. */
+.bs-skel .components-base-control__help {
+	margin-top: 0;
+	font-size: var(--bs-text-xs);
+	line-height: 1.5;
+}
+
+/* A run of controls that sit together: a button row, a pair of chips. */
+.bs-skel__inline {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-space-sm);
+}
+
+/* A control drawn as words — a tertiary button, a link-styled one — keeps the
+   40px the library's buttons stand at on these screens. */
+.bs-skel__textbutton {
+	display: inline-flex;
+	align-items: center;
+	min-height: 40px;
+	font-size: var(--bs-text-sm);
+}

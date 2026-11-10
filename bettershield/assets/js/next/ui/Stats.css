@@ -1,0 +1,129 @@
+/**
+ * The design's Stat group: bordered, its cells 16 padded with a rule between
+ * them, the label 20 above a 24 value. Each cell draws its own rule, a 1px
+ * shadow into the 1px gap around it, so cells that wrap onto a second row on
+ * a narrow screen are still ruled off from each other. The strip itself is
+ * the cells' surface: painted the rule's color, a place the last row left
+ * empty (three cells in two columns, four in three) was a gray block the
+ * size of a cell.
+ */
+
+.bs-ds-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 1px;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+/*
+ * A cell's label, value and line under it are rows the whole strip shares, so
+ * a label that wraps moves every value in its row down together. Stacked on
+ * their own, the cell with the longest label read a line lower than the rest,
+ * and the strip stopped being one row of answers.
+ *
+ * Two rows, and a third only in a strip where some cell has a line under its
+ * value: a third row in every strip left an empty gap under each value and
+ * stood every strip without one 10px taller.
+ */
+.bs-ds-stat {
+	display: grid;
+	grid-template-rows: subgrid;
+	grid-row: span 2;
+	row-gap: var(--bs-ds-space-ml);
+	align-content: start;
+	min-width: 0;
+	padding: var(--bs-ds-space-md);
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: 0 0 0 1px var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-stats:has(.bs-ds-stat__detail) > .bs-ds-stat {
+	grid-row: span 3;
+}
+
+/*
+ * On a phone the strip is two columns, and a last cell left alone in its row
+ * takes the row: three cells in two columns left a bordered empty cell beside
+ * the third (#2572). Under 400px the cells stack.
+ */
+@media (max-width: 600px) {
+	.bs-ds-stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.bs-ds-stat:last-child:nth-child(odd) {
+		grid-column: 1 / -1;
+	}
+}
+
+@media (max-width: 400px) {
+	.bs-ds-stats {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.bs-ds-stat__label {
+	align-self: end;
+}
+
+.bs-ds-stat__label {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-6);
+	min-width: 0;
+}
+
+.bs-ds-stat__value {
+	font-size: var(--bs-ds-size-heading-xlarge);
+	font-weight: 600;
+	line-height: 1.25;
+	letter-spacing: -0.015em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* A phrase rather than a figure ("yesterday, 10:00 PM"): a step smaller, so
+   it keeps one line in a quarter of the strip. */
+.bs-ds-stat__value--text {
+	font-size: var(--bs-ds-size-heading-medium);
+	line-height: 1.5;
+}
+
+/* A state rather than a figure ("On", "Off"): a Badge at a label's size,
+   centered in the row the figures take, so a word does not outweigh the
+   numbers and the content under the strip. */
+.bs-ds-stat__value--badge {
+	display: flex;
+	align-items: center;
+	font-size: inherit;
+	line-height: inherit;
+	letter-spacing: normal;
+}
+
+.bs-ds-stat__value--success {
+	color: var(--bs-ds-color-text-success);
+}
+
+.bs-ds-stat__value--warning {
+	color: var(--bs-ds-color-text-warning);
+}
+
+.bs-ds-stat__value--error {
+	color: var(--bs-ds-color-text-error);
+}
+
+.bs-ds-stat__value--info {
+	color: var(--bs-ds-color-text-info);
+}
+
+/* The line under the value sits close to it, not a label's distance away. */
+.bs-ds-stat__detail {
+	margin-top: calc(var(--bs-ds-space-md) * -1);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}

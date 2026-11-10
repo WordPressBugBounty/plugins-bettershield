@@ -1,0 +1,38 @@
+/**
+ * The rail's two standing facts: one sentence or one plugin a row, 12 by 16
+ * under a rule, then the status line that says where to go about them.
+ */
+
+.bs-ds-app .bs-ds-signals__list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-signals__note,
+.bs-ds-neighbors__row {
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* Each plugin's name over the jobs it keeps, one plugin after another, this one last. */
+.bs-ds-neighbors__row {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-app .bs-ds-neighbors__row dt {
+	font-weight: 500;
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-app .bs-ds-neighbors__row dd {
+	margin: 0;
+	color: var(--bs-ds-color-text-secondary);
+}

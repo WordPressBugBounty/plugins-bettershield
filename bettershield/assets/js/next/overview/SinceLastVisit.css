@@ -1,0 +1,23 @@
+/**
+ * "Since you last looked": the shared Table under the card's header, each
+ * change a title with what it touched under it, then who and when. A path
+ * breaks anywhere; a name wraps as words.
+ */
+
+.bs-ds-since__subject {
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-since__subject.is-words {
+	overflow-wrap: normal;
+}
+
+/* Two things a change touched (a name and what it may do) sit apart. */
+.bs-ds-since__subject + .bs-ds-since__subject::before {
+	content: " · ";
+}
+
+.bs-ds-since__who {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}

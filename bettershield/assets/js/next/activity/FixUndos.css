@@ -1,0 +1,8 @@
+/* The line under "Fixes and Setup Changes", aligned with its heading. */
+.bs-ds-app .bs-ds-fixundos__about {
+	margin: 0;
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-xs);
+	color: var(--bs-ds-color-text-secondary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+}

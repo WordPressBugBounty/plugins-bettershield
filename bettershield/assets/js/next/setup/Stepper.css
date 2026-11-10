@@ -1,0 +1,176 @@
+/**
+ * The row of steps across the top of the panel, in the design's tab row
+ * (Table/Tab): 44 tall, each step 12 in from its neighbors, the number in the
+ * neutral count pill, the names in the secondary ink and the open one in the
+ * primary ink at 500, standing on a 2px indicator over the row's one rule.
+ *
+ * A step behind the reader carries a check in its pill when it was finished,
+ * and a dashed pill when it was skipped. Narrow, the pills spread across the
+ * row without their names, and one line under it says where the setup is:
+ * seven names at phone width would either wrap into a block taller than the
+ * step itself or run off the panel.
+ */
+
+.bs-ds-steps {
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-steps__list {
+	display: flex;
+	align-items: stretch;
+	margin: 0;
+	padding: 0 var(--bs-ds-space-md) 0 var(--bs-ds-space-xs);
+	list-style: none;
+}
+
+.bs-ds-steps__item {
+	position: relative;
+	display: flex;
+	margin: 0;
+}
+
+.bs-ds-steps__link {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	height: 44px;
+	margin: 0;
+	padding: 0 var(--bs-ds-space-sm);
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	font: inherit;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 400;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The step's number, in the tab row's count pill. */
+.bs-ds-steps__marker {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	min-width: 20px;
+	height: 20px;
+	border-radius: 999px;
+	background: var(--bs-ds-color-tag-neutral-bg);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	color: var(--bs-ds-color-tag-neutral-text);
+}
+
+/*
+ * The open step in the brand, as the primary button beside it is (#2287):
+ * its number in a pill of the button's own fill and ink, the indicator laid
+ * over the row's rule in the same fill, and its name in the brand's text
+ * ink. The fill itself is too light to read as text on white.
+ */
+.bs-ds-steps__item.is-current .bs-ds-steps__link {
+	font-weight: 500;
+	color: var(--bs-ds-color-tag-brand-text);
+}
+
+.bs-ds-steps__item.is-current .bs-ds-steps__marker {
+	background: var(--bs-ds-color-surface-brand);
+	color: var(--bs-ds-color-text-on-brand);
+}
+
+.bs-ds-steps__item.is-current::after {
+	content: "";
+	position: absolute;
+	right: 0;
+	bottom: -1px;
+	left: 0;
+	height: 2px;
+	background: var(--bs-ds-color-surface-brand);
+}
+
+/* Passed by Skip: still a step behind the reader, but with its number in an
+   open pill rather than the check a finished step carries. */
+.bs-ds-steps__item.is-skipped .bs-ds-steps__marker {
+	border: 1px dashed var(--bs-ds-color-border-primary-active);
+	background: transparent;
+}
+
+/*
+ * A step behind the reader opens that step again, so it is a step to go back
+ * to rather than a link out of the setup: pointed at, its pill lights up and
+ * its name takes the primary ink. Never underlined, and the pill is also the
+ * one part still drawn where the name is hidden.
+ */
+button.bs-ds-steps__link {
+	cursor: pointer;
+}
+
+button.bs-ds-steps__link:disabled {
+	cursor: default;
+}
+
+button.bs-ds-steps__link:not(:disabled):hover {
+	color: var(--bs-ds-color-text-primary);
+}
+
+button.bs-ds-steps__link:not(:disabled):hover .bs-ds-steps__marker {
+	background: var(--bs-ds-color-surface-disable);
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* Inside the row, where the panel's edge cannot clip it. */
+.bs-ds-app button.bs-ds-steps__link:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: -2px;
+}
+
+.bs-ds-steps__compact {
+	display: none;
+}
+
+@container bs-ds-setup (max-width: 960px) {
+
+	.bs-ds-steps__list {
+		justify-content: space-between;
+		padding: 0 var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-steps__link {
+		padding: 0 var(--bs-ds-space-xs);
+	}
+
+	/* Out of sight, still the control's name. */
+	.bs-ds-steps__label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+	}
+
+	.bs-ds-app .bs-ds-steps__compact {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--bs-ds-space-sm);
+		margin: 0;
+		padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+		border-top: 1px solid var(--bs-ds-color-border-primary);
+		font-size: var(--bs-ds-size-xsmall);
+		line-height: 1.2;
+		letter-spacing: -0.02em;
+	}
+
+	.bs-ds-steps__count {
+		color: var(--bs-ds-color-text-secondary);
+	}
+
+	.bs-ds-steps__name {
+		font-weight: 500;
+		color: var(--bs-ds-color-text-primary);
+	}
+}

@@ -1,0 +1,57 @@
+/**
+ * The tab row that keeps to one line: the screen's controls at its end, 8
+ * apart as the row's own are, and the copy of every tab it measures, laid out
+ * where it takes no room and is never seen. On a narrow card the controls take
+ * the row's second line, 16 in from the card's edge, each one an item of that
+ * line so a screen can order and stretch its own.
+ */
+
+.bs-ds-fittabs__end {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+/*
+ * The bench: laid out so the copies have widths, inside a frame that occupies
+ * nothing and clips them, because a box taken out of flow is still part of
+ * the page's scroll region.
+ */
+.bs-ds-fittabs__bench {
+	position: relative;
+	height: 0;
+	overflow: hidden;
+}
+
+.bs-ds-fittabs__copies {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	visibility: hidden;
+	white-space: nowrap;
+}
+
+/* Every copy at the chosen tab's weight, the widest a tab is drawn. */
+.bs-ds-fittabs__copies .bs-ds-tab {
+	font-weight: 500;
+}
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-fittabs .bs-ds-tabs {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-fittabs .bs-ds-tabs__actions {
+		flex: 1 1 100%;
+		flex-wrap: wrap;
+		min-width: 0;
+		padding: var(--bs-ds-space-sm) 0 var(--bs-ds-space-sm) var(--bs-ds-space-xs);
+	}
+
+	.bs-ds-fittabs__end {
+		display: contents;
+	}
+}

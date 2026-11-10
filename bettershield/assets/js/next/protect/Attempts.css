@@ -1,0 +1,65 @@
+/**
+ * Recent sign-in attempts: the total, then the networks and the names tried
+ * side by side, one above the other where the card is narrow.
+ */
+
+.bs-ds-tried {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-tried__total,
+.bs-ds-app .bs-ds-tried__none,
+.bs-ds-app .bs-ds-tried__note {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-tried__lists {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-tried__head {
+	margin: 0 0 var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-tried__list ul {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-tried__line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: var(--bs-ds-space-xs) 0;
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+}
+
+.bs-ds-tried__name {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-tried__count {
+	margin-inline-start: auto;
+	color: var(--bs-ds-color-text-secondary);
+	white-space: nowrap;
+}

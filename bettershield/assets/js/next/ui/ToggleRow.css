@@ -1,0 +1,104 @@
+/**
+ * The design's List item / Toggle: 61 tall with its divider, and the Toggle
+ * (6:10487), 36 by 20 with a 16 knob. The library's FormToggle is drawn to
+ * those sizes and colors here.
+ */
+
+.bs-ds-li {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	height: 61px;
+	padding: var(--bs-ds-space-md);
+	overflow: clip;
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-li__label {
+	flex: 1 0 0;
+	min-width: 1px;
+}
+
+.bs-ds-app .components-form-toggle.bs-ds-toggle {
+	height: 20px;
+}
+
+.bs-ds-app .bs-ds-toggle .components-form-toggle__track {
+	width: 36px;
+	height: 20px;
+	border: 0;
+	border-radius: 10px;
+	background-color: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-app .bs-ds-toggle .components-form-toggle__thumb {
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border: 0;
+	background-color: var(--bs-ds-color-knob);
+	box-shadow: var(--bs-ds-elevation-knob);
+}
+
+.bs-ds-app .components-form-toggle.bs-ds-toggle.is-checked .components-form-toggle__track {
+	border-color: transparent;
+	background-color: var(--bs-ds-color-surface-brand-hover);
+}
+
+.bs-ds-app .components-form-toggle.bs-ds-toggle.is-checked .components-form-toggle__thumb {
+	background-color: var(--bs-ds-color-knob);
+	transform: translateX(16px);
+}
+
+/* The knob slides and the track fades rather than snapping across (#2308). */
+.bs-ds-app .bs-ds-toggle .components-form-toggle__track {
+	transition: background-color 0.2s ease;
+}
+
+.bs-ds-app .bs-ds-toggle .components-form-toggle__thumb {
+	transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-app .bs-ds-toggle .components-form-toggle__track,
+	.bs-ds-app .bs-ds-toggle .components-form-toggle__thumb {
+		transition: none;
+	}
+}
+
+/* A change on its way: the switch already shows where it is going, dimmed
+   until the answer, and still holds focus. */
+.bs-ds-app .bs-ds-li.is-busy .bs-ds-toggle {
+	opacity: 0.6;
+}
+
+.bs-ds-app .bs-ds-li.is-busy .bs-ds-toggle .components-form-toggle__input {
+	cursor: default;
+}
+
+/* No ring after a click; the keyboard's ring below. Written on
+   :not(:focus-visible) so this rule can never take the keyboard's ring away,
+   as on the design's buttons. */
+.bs-ds-app .bs-ds-toggle .components-form-toggle__input:focus:not(:focus-visible) + .components-form-toggle__track {
+	box-shadow: none;
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-toggle .components-form-toggle__input:focus-visible + .components-form-toggle__track {
+	box-shadow: none;
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+/* A switch this site cannot throw yet looks it: faded, with the not-allowed
+   cursor, where it looked as pressable as any other and did nothing when
+   pressed (#2324). Its row says why. */
+.bs-ds-app .components-form-toggle.bs-ds-toggle.is-disabled {
+	opacity: 0.4;
+}
+
+.bs-ds-app .bs-ds-toggle .components-form-toggle__input:disabled {
+	cursor: not-allowed;
+}

@@ -1,0 +1,5 @@
+/* A setting a link named (`?focus=`), marked for a moment as it arrives. */
+.bs-ds-focus-target {
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}

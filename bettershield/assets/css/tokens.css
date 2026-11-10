@@ -1,0 +1,536 @@
+/**
+ * Admin styles: design tokens and components.
+ *
+ * Two layers, and only the first one is a color decision. Every --bs-* role
+ * below resolves to a WordPress design system token, with a literal fallback
+ * for WordPress 6.7 through 7.0, which registers no token layer. Components
+ * consume the roles and never a token or a literal directly, so re-theming
+ * happens in this block alone.
+ *
+ * Light and dark are not two stylesheets here. WPDS derives a ramp — light or
+ * dark — from the ThemeProvider seed colors, so the scheme follows whatever
+ * background seed the provider is given. That is why there is no
+ * prefers-color-scheme block: forcing one would fight the ramp and, on a
+ * wp-admin content area that is light in every core scheme, would leave a
+ * dark island in light chrome.
+ *
+ * There is one opt-in block at the foot of this file, for the reader who has
+ * pressed the masthead's toggle. It is driven by the seed rather than against
+ * it — the app sets a dark background seed and `data-bs-scheme` in the same
+ * render — and it carries the semantic families, which the ramp regenerates
+ * for neither scheme. Its own comment has the whole argument.
+ *
+ * The ramp covers the neutral surface, content and stroke tokens, and one
+ * interactive brand foreground. It does not cover the semantic families —
+ * error, warning, caution, success, info — which resolve to the same literal
+ * in both schemes. So a severity chip, the safe-mode bar, the error box and
+ * the diff table are light by construction wherever they appear. Two
+ * consequences: a role meant to flip has to be built on the neutral family,
+ * and a surface tinted from a semantic family takes its text color from the
+ * same family — anything else is light text on a light box in a dark scheme.
+ *
+ * Token names come from the 7.1 reference at
+ * packages/theme/docs/tokens.md in WordPress/gutenberg. Do not guess a name:
+ * an invented token silently falls back and only looks wrong in dark.
+ *
+ * The roles are declared on .bs-app, which React renders INSIDE ThemeProvider.
+ * Declaring them on the mount point instead puts them above the provider in
+ * the tree, where var(--wpds-…) cannot see the generated ramp and every role
+ * silently resolves to core's default palette.
+ *
+ * .bs-widget is the dashboard widget, rendered by PHP with no provider at
+ * all: there the roles resolve to their literal fallbacks, which is the
+ * light palette the dashboard has in every core scheme.
+ *
+ * .bs-store-account is the Sign-in security tab on a store's My Account page,
+ * drawn inside the store's theme: the same fallbacks, so the panels keep their
+ * rhythm there.
+ *
+ * .bs-profile-2fa is each two-factor and passkey panel on core's profile
+ * screen, which carries none of the wrappers above. Without it every var() in
+ * profile.css resolved to nothing there, and the panels lost their spacing.
+ *
+ * .bs-deactivate is the question BetterShield's Deactivate link asks on
+ * core's Plugins screen, a dialog with no wrapper of its own either.
+ */
+
+.bs-app,
+.bs-popover,
+.bs-widget,
+.bs-store-account,
+.bs-profile-2fa,
+.bs-deactivate {
+	/* Surfaces: -strong is the raised card, plain is the recessed page. */
+	--bs-surface: var(--wpds-color-background-surface-neutral-strong, #ffffff);
+
+	/*
+	 * The recessed surface, stepped away from the raised one.
+	 *
+	 * The ramp's own neutral surface is #fcfcfc on 7.1 — four units off white,
+	 * which is not a step a reader can see. Everything that has to read as
+	 * recessed rather than raised is drawn in this: the area bars on the
+	 * report, the foot of a card, an explanation panel, a code block. On a
+	 * white card they were all invisible, and the report's group headings in
+	 * particular did none of the separating they exist to do.
+	 *
+	 * Mixed toward the content ink rather than replaced with a literal, so it
+	 * still tracks the ramp and still turns over with the scheme. The mix is
+	 * there for the light end, where the ramp leaves almost no separation at
+	 * all; in dark the ramp already puts this well below the card and the 4%
+	 * only nudges it. Measured, the recess stays darker than the card in both
+	 * — #f3f3f3 under #ffffff, and #141a21 under #17222e.
+	 */
+	--bs-surface-subtle: color-mix(
+		in srgb,
+		var(--wpds-color-background-surface-neutral, #f8f9fa) 96%,
+		var(--wpds-color-foreground-content-neutral, #1e2327)
+	);
+	--bs-border: var(--wpds-color-stroke-surface-neutral-weak, #e2e5e9);
+	--bs-border-strong: var(--wpds-color-stroke-surface-neutral, #d0d5db);
+
+	/* The edge of a control a reader fills or ticks: a text field's border,
+	   which a form control needs at 3:1 against the card it sits on. */
+	--bs-control-stroke: var(--wpds-color-stroke-interactive-neutral, #949494);
+
+	/*
+	 * WPDS publishes two neutral content levels and the design uses three, so
+	 * the middle one is mixed from the other two rather than picked by eye —
+	 * it then tracks the ramp in both directions. The weak level alone reads
+	 * at about 4.2:1 on the admin page background, under AA; the mix is what
+	 * the header meta and secondary copy use to clear it.
+	 *
+	 * The literal is darker than the token it stands in for. Below 7.1 there is
+	 * no generated ramp, and the tone that matches it there reads at 3.4:1 on
+	 * the admin page background — so the fallback is set to the lightest value
+	 * that clears AA on the card, the recessed surface and the page alike.
+	 */
+	--bs-ink: var(--wpds-color-foreground-content-neutral, #1e2327);
+	--bs-ink-2: color-mix(
+		in srgb,
+		var(--wpds-color-foreground-content-neutral-weak, #666d74) 65%,
+		var(--wpds-color-foreground-content-neutral, #1e2327)
+	);
+	/* Slightly strengthen the weak ramp so small text also clears AA on the page. */
+	--bs-ink-muted: color-mix(
+		in srgb,
+		var(--wpds-color-foreground-content-neutral-weak, #666d74) 90%,
+		var(--wpds-color-foreground-content-neutral, #1e2327)
+	);
+
+	/*
+	 * Brand: driven by the ThemeProvider primary seed on 7.1+.
+	 *
+	 * The literals are not picked by eye. Each is the value the ramp generates
+	 * from that seed on a light background, read out of the shipped builder, so
+	 * 6.7 through 7.0 — which have no ramp and fall back — render the same brand
+	 * as 7.1 rather than a paler approximation of it. Re-read them from the
+	 * builder when the seed moves; a fallback that no longer matches its token
+	 * is a scheme that changes at the version boundary with nothing to report it.
+	 *
+	 * --bs-on-brand is the ramp's own label for that fill. It is white here, and
+	 * that is load-bearing rather than incidental: core's primary Button darkens
+	 * on hover and again on press, so a dark label would lose contrast in exactly
+	 * the states a pressed button needs it. A seed bright enough to make the ramp
+	 * choose a dark label takes the pressed button to 3.4:1. See the note on the
+	 * seed itself for why this green and not a brighter one.
+	 */
+	--bs-brand: var(--wpds-color-background-interactive-brand-strong, #008766);
+	--bs-brand-strong: var(--wpds-color-background-interactive-brand-strong-active, #007858);
+	--bs-brand-ink: var(--wpds-color-foreground-interactive-brand, #007d5d);
+	/*
+	 * The brand surface, softened toward whatever card it sits on.
+	 *
+	 * The ramp's own brand surface is a saturated mint — #cbfbe7 at the
+	 * fallback, and the generated value on 7.1 is no quieter. At full strength
+	 * it is the loudest thing on a screen whose loudest thing has to be the
+	 * score: a welcome panel, a selected tab, a sidebar card and four heading
+	 * tiles all shouting the same green.
+	 *
+	 * Mixed rather than replaced with a literal, so it still tracks the ramp
+	 * and still turns over with the scheme — in dark it softens toward the
+	 * dark card instead of toward white, which is the same relationship. The
+	 * mix also buys contrast: brand ink reads 4.52:1 on the raw tint and
+	 * 4.84:1 on this one.
+	 */
+	--bs-brand-tint: color-mix(
+		in srgb,
+		var(--wpds-color-background-surface-brand, #cbfbe7) 45%,
+		var(--bs-surface)
+	);
+	--bs-brand-tint-border: color-mix(
+		in srgb,
+		var(--wpds-color-stroke-surface-brand, #8fd1b7) 65%,
+		var(--bs-surface)
+	);
+	--bs-on-brand: var(--wpds-color-foreground-interactive-brand-strong, #ffffff);
+
+	/*
+	 * A stand-in for something still on its way: a line of text, a button, a
+	 * row.
+	 *
+	 * Mixed from the ink the way the recessed surface is, two and a half steps
+	 * further, rather than taken from the track. The ramp's own track is
+	 * #f3f3f3 on 7.1 — a placeholder in it is invisible on a white card — and
+	 * a bone has to hold on the recessed surface as well as on the card, which
+	 * one tone only does from here. The mix turns over with the scheme.
+	 *
+	 * The sheen that crosses it is lifted toward the page in light and toward
+	 * the ink in dark, so in both schemes it is a light passing over rather
+	 * than a shadow.
+	 */
+	--bs-bone: color-mix(in srgb, var(--bs-ink) 10%, var(--bs-surface));
+	--bs-bone-shine: color-mix(in srgb, var(--bs-ink) 3%, var(--bs-surface));
+
+	/* Applied / resolved. */
+	--bs-good-ink: var(--wpds-color-foreground-content-success, #1c6b3f);
+	--bs-good-bg: var(--wpds-color-background-surface-success-weak, #e7f4ec);
+	--bs-good-border: var(--wpds-color-stroke-surface-success, #c4e4d1);
+
+	/*
+	 * Severity is a ladder, so the colors are one too: red, orange, yellow,
+	 * gray. Each step is a different token family rather than a shade of the
+	 * previous one, so two levels never share a tint.
+	 *
+	 * Red belongs to critical alone, and the bar for reaching it is that
+	 * something is wrong right now — a login page served over plain HTTP on a
+	 * live site, a leftover file a stranger can download, a shipped file that
+	 * no longer matches its official copy. Very few checks clear that bar;
+	 * keep it that way when adding one, because red stops meaning anything the
+	 * moment it is common.
+	 *
+	 * The foregrounds are the saturated -weak tones rather than the near-black
+	 * ones, so the chip reads as its color and not as dark text.
+	 */
+	--bs-critical-ink: var(--wpds-color-foreground-content-error-weak, #cc1818);
+	--bs-critical-bg: var(--wpds-color-background-surface-error-weak, #fff6f5);
+	--bs-critical-border: var(--wpds-color-stroke-surface-error, #dab1aa);
+
+	--bs-high-ink: var(--wpds-color-foreground-content-warning-weak, #926300);
+	--bs-high-bg: var(--wpds-color-background-surface-warning-weak, #fff7e1);
+	--bs-high-border: var(--wpds-color-stroke-surface-warning, #e1bc7c);
+
+	--bs-medium-ink: var(--wpds-color-foreground-content-caution-weak, #826a00);
+	--bs-medium-bg: var(--wpds-color-background-surface-caution-weak, #fff9ca);
+	--bs-medium-border: var(--wpds-color-stroke-surface-caution, #cfc28d);
+
+	/*
+	 * Safe mode shares the orange step. It is a wide labeled bar rather than a
+	 * chip, so it never sits beside a high chip in a way that could be mistaken
+	 * for the same thing.
+	 */
+	--bs-warn-ink: var(--wpds-color-foreground-content-warning, #2e1900);
+	--bs-warn-bg: var(--wpds-color-background-surface-warning-weak, #fff7e1);
+	--bs-warn-border: var(--wpds-color-stroke-surface-warning, #e1bc7c);
+
+	/*
+	 * Low and info. The recessed neutral surface, not the plain one: the plain
+	 * one is within a hair of the card behind it and the chip stops reading as
+	 * a chip at all.
+	 */
+	--bs-neutral-ink: var(--wpds-color-foreground-content-neutral-weak, #5a6470);
+	--bs-neutral-bg: var(--wpds-color-background-surface-neutral-weak, #eef1f4);
+	--bs-neutral-border: var(--wpds-color-stroke-surface-neutral, #dde2e8);
+
+	/*
+	 * Refusal. A lockout, a list that admits nobody, a door that is shut on
+	 * purpose — a state somebody chose, not a finding.
+	 *
+	 * Slate rather than red, because nothing is wrong when a refusal works.
+	 * It is the neutral family one level firmer than the low/info step above:
+	 * full-strength content ink instead of the weak one, and a drawn edge. A
+	 * gray tint has no hue to tell it from the card behind it, so the surfaces
+	 * that carry this role draw their border; the hued tints do not need one.
+	 */
+	--bs-deny-ink: var(--wpds-color-foreground-content-neutral, #1e2327);
+	--bs-deny-bg: var(--wpds-color-background-surface-neutral-weak, #e6eaee);
+	--bs-deny-border: var(--wpds-color-stroke-surface-neutral-strong, #97a3ad);
+
+	/*
+	 * Something did not work: a request that failed, a password that did not
+	 * match, a value the server would not take.
+	 *
+	 * The library's error family is where this belongs, but its -weak level is
+	 * the same bright red critical already carries, so this takes the full
+	 * strength one — a deep maroon that reads as a failure rather than as an
+	 * emergency, on the family's stronger surface rather than its near-white
+	 * one. Exactly the split --bs-warn-* makes against --bs-high-*, for the
+	 * same reason: two meanings, one family, two levels.
+	 */
+	--bs-error-ink: var(--wpds-color-foreground-content-error, #470000);
+	--bs-error-bg: var(--wpds-color-background-surface-error, #f6e6e3);
+	--bs-error-border: var(--wpds-color-stroke-surface-error, #dab1aa);
+
+	/*
+	 * Rhythm: spacing and type.
+	 *
+	 * These are WordPress's own scales, read the same way the colors are. Before
+	 * this block existed the stylesheets carried 24 distinct spacing values and
+	 * 13 font sizes, invented per component — which is how a block could ship
+	 * with no top margin at all and break no rule. The scale is the rule now,
+	 * and bin/stylelint-scale.js is what enforces it: a literal px in margin,
+	 * padding, gap or font-size is a lint failure outside this file.
+	 *
+	 * The steps are WPDS's 4px grid, so the plugin lands on the same rhythm as
+	 * the admin around it and inherits any later refinement of it. The literals
+	 * are the 7.1 values, for 6.7 through 7.0 where these static tokens do not
+	 * exist — the same fallback contract the color roles have.
+	 *
+	 * --bs-space-2xs is the one step off the grid. WPDS publishes no 2px
+	 * dimension, and a handful of places need a hairline gap between two things
+	 * inside one control, where 4px reads as a separation rather than a join.
+	 * It is deliberately not a general-purpose step: if a gap is structural, it
+	 * belongs on the grid.
+	 */
+	--bs-space-2xs: 2px;
+	--bs-space-xs: var(--wpds-dimension-padding-xs, 4px);
+	--bs-space-sm: var(--wpds-dimension-padding-sm, 8px);
+	--bs-space-md: var(--wpds-dimension-padding-md, 12px);
+	--bs-space-lg: var(--wpds-dimension-padding-lg, 16px);
+	--bs-space-xl: var(--wpds-dimension-padding-xl, 20px);
+	--bs-space-2xl: var(--wpds-dimension-padding-2xl, 24px);
+	--bs-space-3xl: var(--wpds-dimension-padding-3xl, 32px);
+	--bs-space-4xl: var(--wpds-dimension-gap-3xl, 40px);
+
+	/* Type: 14px body, 13px labels, 12px metadata, 16px card headings,
+	   20px summaries and 28px page headings. The score numeral fits its ring. */
+	--bs-text-xs: var(--wpds-typography-font-size-sm, 12px);
+	--bs-text-sm: var(--wpds-typography-font-size-md, 13px);
+	--bs-text-md: 14px;
+	--bs-text-lg: 16px;
+	--bs-text-xl: var(--wpds-typography-font-size-xl, 20px);
+
+	--bs-radius-card: 12px;
+	--bs-radius-control: var(--wpds-border-radius-lg, 8px);
+	/* A control whose shape is the whole affordance: a nav tab, a status pill. */
+	--bs-radius-pill: 999px;
+
+	/*
+	 * Motion.
+	 *
+	 * Two durations and one curve, for the same reason there are two spacing
+	 * scales and one type scale: a transition invented per component is how
+	 * one card fades in 90ms while the card beside it takes 400ms, and the
+	 * screen reads as two products. `fast` is a state change on something
+	 * already on screen — a hover, a chevron turning, a tint arriving.
+	 * `base` is something entering or leaving.
+	 *
+	 * The curve decelerates hard and never overshoots. A security dashboard
+	 * that bounces is a security dashboard nobody believes, and the whole of
+	 * @media (prefers-reduced-motion) takes all of it away regardless.
+	 */
+	--bs-motion-fast: var(--wpds-motion-duration-fast, 120ms);
+	--bs-motion-base: var(--wpds-motion-duration-medium, 220ms);
+	--bs-ease: var(--wpds-motion-easing-default, cubic-bezier(0.2, 0, 0, 1));
+
+	/*
+	 * The dark ground (an add-on's own frame draws its sidebar on it): the one
+	 * surface that is dark in both schemes.
+	 *
+	 * Everything else on the screen follows the ramp. This does not, and the
+	 * departure is the point rather than an oversight — it is the product's
+	 * own ground, the way a masthead is.
+	 *
+	 * So it is written as literals, and it is the only place in this file
+	 * that is: a dark surface has no neutral token to read, because the
+	 * generated neutral IS the page behind it. The inks below are measured
+	 * against --bs-hero-bg and clear AA there in both schemes, because the
+	 * pair never moves.
+	 */
+	--bs-hero-bg: #0c1613;
+	--bs-hero-bg-2: #12211c;
+	--bs-hero-ink: #f2f7f4;
+	--bs-hero-ink-muted: #93a79e;
+	--bs-hero-accent: #4fd6a4;
+	--bs-hero-line: #24382f;
+
+	/*
+	 * WPDS publishes no elevation token, so the shadow is mixed from the
+	 * neutral stroke rather than written as a literal — it then darkens with
+	 * the ramp instead of staying a light-mode gray.
+	 */
+	--bs-shadow: 0 1px 2px color-mix(in srgb, var(--bs-border-strong) 45%, transparent);
+
+	/* For the one surface that floats over another rather than sitting beside
+	   it. At card depth an overlap reads as two cards colliding; this is what
+	   makes it read as one thing above another. */
+	--bs-shadow-overlay: 0 6px 20px color-mix(in srgb, var(--bs-border-strong) 70%, transparent);
+
+	/*
+	 * Core's own components read their accent from --wp-admin-theme-color,
+	 * which outside WordPress 7.1 is the user's admin color scheme — blue by
+	 * default. Left alone, a primary Button renders blue inside a teal surface,
+	 * which is what the plugin looks like on 6.7 through 7.0. Pointing the
+	 * variable at the brand role is exactly what ThemeProvider does for us on
+	 * 7.1, so doing it here makes every supported version agree.
+	 *
+	 * The matching --rgb variants are deliberately not set: core defines them
+	 * but no stylesheet we load consumes them, and they could only be written
+	 * as a second hard-coded color.
+	 */
+	--wp-admin-theme-color: var(--bs-brand);
+	--wp-admin-theme-color-darker-10: var(--bs-brand-strong);
+	--wp-admin-theme-color-darker-20: color-mix( in srgb, var(--bs-brand-strong) 85%, var(--bs-ink) );
+}
+
+/**
+ * Dark, when the reader has asked for it.
+ *
+ * This block is the exception the note at the top of this file describes, and
+ * it is narrower than the thing that note refuses. What it refuses is a
+ * `prefers-color-scheme` block: the operating system's preference has nothing
+ * to say about the wp-admin chrome this app sits inside, so honoring it turns
+ * the plugin into a dark island in a light page — and it fights the ramp,
+ * which decides light or dark from the ThemeProvider background seed and not
+ * from a media query.
+ *
+ * What is here instead is driven BY that seed rather than against it. The app
+ * writes `data-bs-scheme` on `.bs-app` and hands ThemeProvider a matching
+ * background seed in the same render, so on 7.1 the generated neutral ramp is
+ * already dark by the time these declarations are read, and every
+ * `var(--wpds-…)` below resolves to it. The literals are for 6.7 through 7.0,
+ * which register no ramp at all — the same fallback contract the light block
+ * has, and the reason dark is not simply the light block minus its literals.
+ *
+ * The scheme is never inferred. There are two of them and the reader picks
+ * one; the app pins a background seed for both, so the generated ramp and the
+ * painted canvas can never disagree about which scheme is in force.
+ *
+ * The semantic families are the other half of why this block exists.
+ * ThemeProvider regenerates nine neutral and brand tokens and no others, so
+ * error, warning, caution and success resolve to their light literals in a
+ * dark scheme whatever the seed is — a severity chip, the safe-mode bar and
+ * the diff table would be light boxes in a dark app by construction. They are
+ * re-toned here, one family at a time, holding the same meanings: red is
+ * still critical alone, warn is still high one level deeper, deny is still
+ * slate rather than red. Every pair below was measured on its own surface and
+ * clears AA for body-size text; the lowest is 5.60:1.
+ */
+.bs-app[data-bs-scheme="dark"],
+[data-bs-scheme="dark"] .bs-popover {
+	--bs-surface: var(--wpds-color-background-surface-neutral-strong, #1b2129);
+	--bs-surface-subtle: var(--wpds-color-background-surface-neutral, #141a21);
+	--bs-border: var(--wpds-color-stroke-surface-neutral-weak, #2b333d);
+	--bs-border-strong: var(--wpds-color-stroke-surface-neutral, #3d4855);
+	/* 3.0:1 on the card, the floor for a control's edge. */
+	--bs-control-stroke: var(--wpds-color-stroke-interactive-neutral, #5b6c81);
+
+	/* 13.65:1, 8.44:1 and 5.60:1 on the card; 6.05:1 for the muted level on
+	   the recessed page, which is the weakest pair in the scheme. */
+	--bs-ink: var(--wpds-color-foreground-content-neutral, #e8ecf1);
+	--bs-ink-2: color-mix(
+		in srgb,
+		var(--wpds-color-foreground-content-neutral-weak, #b3bcc7) 65%,
+		var(--wpds-color-foreground-content-neutral, #e8ecf1)
+	);
+	--bs-ink-muted: color-mix(
+		in srgb,
+		var(--wpds-color-foreground-content-neutral-weak, #8e99a6) 90%,
+		var(--wpds-color-foreground-content-neutral, #e8ecf1)
+	);
+
+	/*
+	 * The brand fill is the seed itself and does not move — a primary button
+	 * carries white either way, and the ramp darkens it on press in both
+	 * schemes. What has to move is the brand as INK: #007d5d is a foreground
+	 * toned for a white card and reads at about 2:1 on a dark one. The lift
+	 * is to the same hue, not to a different green.
+	 */
+	--bs-brand: var(--wpds-color-background-interactive-brand-strong, #008766);
+	--bs-brand-strong: var(--wpds-color-background-interactive-brand-strong-active, #00a37b);
+	--bs-brand-ink: var(--wpds-color-foreground-interactive-brand, #46d6a8);
+	/* Softened toward the card here too, which in this scheme means darkened. */
+	--bs-brand-tint: color-mix(
+		in srgb,
+		var(--wpds-color-background-surface-brand, #0f3a2e) 45%,
+		var(--bs-surface)
+	);
+	--bs-brand-tint-border: color-mix(
+		in srgb,
+		var(--wpds-color-stroke-surface-brand, #1d5c49) 65%,
+		var(--bs-surface)
+	);
+	--bs-on-brand: var(--wpds-color-foreground-interactive-brand-strong, #ffffff);
+
+	/* The placeholder's mix turns over by itself; its sheen lifts toward the
+	   ink here, because lifting toward a dark card would be a shadow crossing
+	   it. */
+	--bs-bone-shine: color-mix(in srgb, var(--bs-ink) 18%, var(--bs-surface));
+
+	--bs-good-ink: var(--wpds-color-foreground-content-success, #5fd39b);
+	--bs-good-bg: var(--wpds-color-background-surface-success-weak, #102c20);
+	--bs-good-border: var(--wpds-color-stroke-surface-success, #1f5a40);
+
+	/* The ladder again: red, orange, yellow, gray — lifted off a dark
+	   surface rather than dropped onto a light one, and still four families
+	   rather than four shades of one. */
+	--bs-critical-ink: var(--wpds-color-foreground-content-error-weak, #ff9b90);
+	--bs-critical-bg: var(--wpds-color-background-surface-error-weak, #2a1614);
+	--bs-critical-border: var(--wpds-color-stroke-surface-error, #5e2b26);
+
+	--bs-high-ink: var(--wpds-color-foreground-content-warning-weak, #f5bf62);
+	--bs-high-bg: var(--wpds-color-background-surface-warning-weak, #2c2211);
+	--bs-high-border: var(--wpds-color-stroke-surface-warning, #5c4620);
+
+	--bs-medium-ink: var(--wpds-color-foreground-content-caution-weak, #e8d271);
+	--bs-medium-bg: var(--wpds-color-background-surface-caution-weak, #2a2714);
+	--bs-medium-border: var(--wpds-color-stroke-surface-caution, #575023);
+
+	--bs-warn-ink: var(--wpds-color-foreground-content-warning, #f8d9a0);
+	--bs-warn-bg: var(--wpds-color-background-surface-warning-weak, #2c2211);
+	--bs-warn-border: var(--wpds-color-stroke-surface-warning, #5c4620);
+
+	--bs-neutral-ink: var(--wpds-color-foreground-content-neutral-weak, #9aa5b1);
+	--bs-neutral-bg: var(--wpds-color-background-surface-neutral-weak, #232a33);
+	--bs-neutral-border: var(--wpds-color-stroke-surface-neutral, #39424d);
+
+	--bs-deny-ink: var(--wpds-color-foreground-content-neutral, #e8ecf1);
+	--bs-deny-bg: var(--wpds-color-background-surface-neutral-weak, #252d36);
+	--bs-deny-border: var(--wpds-color-stroke-surface-neutral-strong, #5a6674);
+
+	--bs-error-ink: var(--wpds-color-foreground-content-error, #ffb3a8);
+	--bs-error-bg: var(--wpds-color-background-surface-error, #341c19);
+	--bs-error-border: var(--wpds-color-stroke-surface-error, #5e2b26);
+
+	/*
+	 * Elevation is the one role that cannot be mixed from the ramp here. A
+	 * shadow mixed from the neutral stroke is a LIGHTER gray than the surface
+	 * it falls on once the ramp turns over, which reads as a glow rather than
+	 * a lift. Black at a low alpha is what a shadow is in a dark scheme.
+	 */
+	--bs-shadow: 0 1px 2px color-mix(in srgb, #000000 45%, transparent);
+	--bs-shadow-overlay: 0 6px 20px color-mix(in srgb, #000000 60%, transparent);
+}
+
+/**
+ * The page the app sits on.
+ *
+ * `.bs-app` is 1180px of centered content inside wp-admin's own content area,
+ * and it never painted a background, so the dashboard sat on wp-admin's own
+ * #f0f0f1 — a flat mid-gray that the cards, the recessed strips and the band
+ * were never toned against. The product's own page color is the light value
+ * below; dark is the case that makes the rule load-bearing rather than
+ * cosmetic, because there the cards turn dark and their ink turns light and a
+ * section heading between two of them would be white on #f0f0f1. That is the
+ * dark island the note at the top of this file refuses, arriving from the
+ * other direction.
+ *
+ * So the canvas is painted too, on our own screens only — the stylesheet is
+ * enqueued nowhere else — and only while the attribute is on the body.
+ *
+ * These two are literals with no token behind them, which is the one thing
+ * that makes them work. WordPress 7.1 registers the --wpds-* layer at :root
+ * with its LIGHT defaults, and ThemeProvider writes the regenerated dark ramp
+ * onto its own element inside the React root. A role read out here is
+ * therefore read ABOVE the provider, where every --wpds-* name still resolves
+ * to core's light value — silently, and only visible as a light page behind
+ * dark cards.
+ */
+body[data-bs-scheme] {
+	--bs-canvas: #f8f9fa;
+	--bs-canvas-ink: #646970;
+}
+
+body[data-bs-scheme="dark"] {
+	--bs-canvas: #141a21;
+	--bs-canvas-ink: #8e99a6;
+}

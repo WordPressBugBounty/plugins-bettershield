@@ -1,0 +1,128 @@
+/**
+ * Protection › Recovery: the way back in (the rules for keeping the link, the
+ * line saying where each way stands, and the panel a secret is shown in
+ * once), the lockdown card's body, and the printed codes' own sheet.
+ */
+
+.bs-ds-app .bs-ds-wayback__facts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-md);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-wayback__facts li {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-wayback__state,
+.bs-ds-app .bs-ds-wayback__said {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/*
+ * A secret shown once: the link just generated, or a new set of codes. Set
+ * apart on a recessed panel, because it is the one thing on this tab that
+ * cannot be shown again.
+ */
+.bs-ds-wayback__reveal {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+	padding: calc(var(--bs-ds-space-sm) - 1px) calc(var(--bs-ds-space-md) - 1px);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-secondary);
+}
+
+/* The link, whole and selectable, breaking anywhere rather than running out
+   of the panel. */
+.bs-ds-app .bs-ds-wayback__secret {
+	margin: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-wayback__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+}
+
+/* ---- the lockdown ---- */
+
+.bs-ds-lockdown__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-lockdown__arm {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+/*
+ * Paper. The codes go to print from a copy of their own, a direct child of the
+ * page, rather than from the card: the card sits inside a panel that clips what
+ * overflows it, below everything the tab draws first, and hiding the rest with
+ * visibility kept all of that space, so the printout was a blank page with two
+ * codes at its foot. Everything else is taken out of the layout instead, which
+ * leaves the copy at the top of one page.
+ *
+ * Only while the copy is there. This stylesheet is in the bundle every screen
+ * of the app loads, so a rule naming the page alone emptied every printout
+ * (Overview, Findings, Activity, all of them) to one blank sheet.
+ */
+.bs-ds-recovery-print {
+	display: none;
+}
+
+@media print {
+
+	body:has(> .bs-ds-recovery-print) > :not(.bs-ds-recovery-print) {
+		display: none !important;
+	}
+
+	.bs-ds-recovery-print {
+		display: block;
+	}
+
+	.bs-ds-recovery-print__title {
+		margin: 0 0 1em;
+		font-size: 1.5em;
+	}
+
+	.bs-ds-recovery-print__codes {
+		columns: 2;
+		margin: 1.5em 0 0;
+		padding-left: 1.5em;
+		font-size: 1.25em;
+		line-height: 2;
+	}
+}

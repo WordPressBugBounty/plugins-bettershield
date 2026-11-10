@@ -1,0 +1,25 @@
+.bs-ds-network-hub {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	padding: var(--bs-ds-space-md);
+	display: grid;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-network-hub__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-network-hub > button {
+	justify-self: start;
+}
+
+.bs-ds-network-hub .bs-ds-armed {
+	justify-content: flex-start;
+}
+
+.bs-ds-app .bs-ds-network-hub h3,
+.bs-ds-app .bs-ds-network-hub h4 {
+	color: var(--bs-ds-color-text-primary);
+}

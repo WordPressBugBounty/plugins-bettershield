@@ -1,0 +1,95 @@
+/**
+ * An incident's prepared response: earlier plans, the plan's refusals, each
+ * action as a row with its choice, what applying it did, and the second look
+ * after the batch, line by line.
+ */
+
+.bs-ds-response__history {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-app .bs-ds-response__plans {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-response__refusals {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-md);
+	list-style: disc;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-response__items {
+	display: flex;
+	flex-direction: column;
+}
+
+.bs-ds-response__item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	padding: var(--bs-ds-space-sm) 0;
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-response__item:last-child {
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-response__result {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* ---- the second look ---- */
+
+.bs-ds-recheck {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding-top: var(--bs-ds-space-sm);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-recheck__title {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-recheck__group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-recheck__head {
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-recheck__group a {
+	color: var(--bs-ds-color-text-secondary);
+	text-decoration: underline;
+}

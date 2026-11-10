@@ -1,0 +1,229 @@
+/**
+ * The design's Alert. Compact: 36 tall, 8 between its parts, the title in
+ * the tone's tag color and the description on one line after it, or under
+ * it where one line has no room. Default: 12
+ * padded, the icon 12 from a title over a wrapping description, actions 12
+ * under them. Banner: 44 tall, 16 in from each side, no border.
+ */
+
+.bs-ds-alert {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-height: 36px;
+	padding: var(--bs-ds-space-xxs) var(--bs-ds-space-xxs) var(--bs-ds-space-xxs) var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-tag-border);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-success-transparent);
+	box-shadow: var(--bs-ds-elevation-alert);
+}
+
+.bs-ds-alert--warning {
+	background: var(--bs-ds-color-surface-warning-transparent);
+}
+
+.bs-ds-alert--info {
+	background: var(--bs-ds-color-surface-info-transparent);
+}
+
+.bs-ds-alert--error {
+	background: var(--bs-ds-color-surface-error-transparent);
+}
+
+.bs-ds-alert--neutral {
+	background: var(--bs-ds-color-surface-primary);
+}
+
+/*
+ * Where one line has no room the description wraps under the title, as the
+ * banner's does: cut with an ellipsis, a phone showed two or three of its
+ * characters and no way to read the rest (#1930).
+ */
+.bs-ds-app .bs-ds-alert__text {
+	display: flex;
+	flex: 1 0 0;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-2) var(--bs-ds-space-6);
+	min-width: 1px;
+	margin: 0;
+	padding: var(--bs-ds-space-2) 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	white-space: normal;
+}
+
+/*
+ * A title that is a whole sentence wraps inside the alert too: kept on one
+ * line, the Overview banner's ran under its dismiss button on a phone and
+ * was cut off (#2479).
+ */
+.bs-ds-alert__title {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow-wrap: anywhere;
+	font-weight: 500;
+	color: var(--bs-ds-color-tag-green-text);
+}
+
+.bs-ds-alert--warning .bs-ds-alert__title {
+	color: var(--bs-ds-color-tag-yellow-text);
+}
+
+.bs-ds-alert--info .bs-ds-alert__title {
+	color: var(--bs-ds-color-tag-blue-text);
+}
+
+.bs-ds-alert--error .bs-ds-alert__title {
+	color: var(--bs-ds-color-tag-red-text);
+}
+
+.bs-ds-alert--neutral .bs-ds-alert__title {
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-alert__desc {
+	min-width: 1px;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/*
+ * Beside the title on the compact alert's row, and under it where the row
+ * has no room. Only there: in the default alert the description is in a
+ * column, where this basis is a height, and every note was 144 tall.
+ */
+.bs-ds-alert__text > .bs-ds-alert__desc {
+	flex: 1 1 12em;
+}
+
+.bs-ds-alert__dismiss {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	cursor: pointer;
+}
+
+/* Within the compact alert's 36 on one line, as the fixed height held it. */
+.bs-ds-alert:not(.bs-ds-alert--default) > .bs-ds-alert__dismiss {
+	margin: -1px 0;
+}
+
+.bs-ds-alert__dismiss:hover {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+/* ---- Default: wraps, and holds actions ---- */
+
+.bs-ds-alert.bs-ds-alert--default {
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	height: auto;
+	padding: calc(var(--bs-ds-space-sm) - 1px);
+	border-radius: 12px;
+	box-shadow: none;
+}
+
+/*
+ * The icon's middle on the middle of the first line: a 14 title leads a
+ * titled note, the 12 description an untitled one, as under a setting (#2547).
+ */
+.bs-ds-alert--default .bs-ds-alert__icon {
+	margin-top: calc((1.4 * var(--bs-ds-size-xsmall) - var(--bs-ds-space-md)) / 2);
+}
+
+.bs-ds-alert--default:has(.bs-ds-alert__title) .bs-ds-alert__icon {
+	margin-top: var(--bs-ds-space-2);
+}
+
+.bs-ds-alert__body {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-2);
+	min-width: 1px;
+}
+
+.bs-ds-app .bs-ds-alert--default .bs-ds-alert__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-alert--default .bs-ds-alert__desc {
+	overflow: visible;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	text-overflow: clip;
+}
+
+.bs-ds-app .bs-ds-alert--default .bs-ds-alert__desc p {
+	margin: 0;
+	font-size: inherit;
+	line-height: inherit;
+}
+
+.bs-ds-app .bs-ds-alert--default .bs-ds-alert__desc p + p {
+	margin-top: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-alert__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin-top: var(--bs-ds-space-10);
+}
+
+.bs-ds-alert--default .bs-ds-alert__dismiss {
+	width: 20px;
+	height: 20px;
+	border-radius: 4px;
+}
+
+/* ---- Banner: a tinted line, no border ---- */
+
+.bs-ds-alert.bs-ds-alert--banner {
+	height: auto;
+	min-height: 44px;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-xs) var(--bs-ds-space-xs) var(--bs-ds-space-md);
+	border: 0;
+	border-radius: 8px;
+	box-shadow: none;
+}
+
+.bs-ds-alert--banner.bs-ds-alert--neutral {
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-app .bs-ds-alert--banner .bs-ds-alert__text {
+	flex-wrap: wrap;
+	line-height: 1.4;
+	white-space: normal;
+}
+
+.bs-ds-alert--banner .bs-ds-alert__desc {
+	overflow: visible;
+	text-overflow: clip;
+}
+
+/* An alert that reports an action takes focus once the control is gone. */
+
+.bs-ds-app .bs-ds-alert:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-alert:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}

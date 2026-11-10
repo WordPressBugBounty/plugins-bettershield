@@ -1,0 +1,207 @@
+/**
+ * The sheet: one card, a bar naming the shelf, and its members as rows.
+ */
+
+/*
+ * Sheets arrive one after another rather than all at once, so a tab opening
+ * reads top to bottom. The rise is short: this is a settings screen, and a
+ * reader who came to change one number should not wait on a choreography.
+ */
+.bs-sheet {
+	overflow: hidden;
+	margin-bottom: var(--bs-space-lg);
+	animation: bs-sheet-rise 360ms var(--bs-ease) both;
+}
+
+.bs-sheet:nth-of-type(2) {
+	animation-delay: 60ms;
+}
+
+.bs-sheet:nth-of-type(3) {
+	animation-delay: 120ms;
+}
+
+.bs-sheet:nth-of-type(n + 4) {
+	animation-delay: 180ms;
+}
+
+@keyframes bs-sheet-rise {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* The same bar the hardening groups carry, so the four tabs read as one
+   screen: small capitals on the subtle surface, the shelf's count at the end. */
+.bs-sheet__bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-space-lg);
+	margin: 0;
+	padding: var(--bs-space-sm) var(--bs-space-2xl);
+	background: var(--bs-surface-subtle);
+	border-bottom: 1px solid var(--bs-border);
+	font-size: var(--bs-text-xs);
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--bs-ink-muted);
+}
+
+.bs-sheet__note {
+	flex: none;
+	font-variant-numeric: tabular-nums;
+}
+
+/* What every row on the shelf shares, said once rather than on each. */
+.bs-sheet__intro {
+	padding: var(--bs-space-lg) var(--bs-space-2xl);
+	border-bottom: 1px solid var(--bs-border);
+	color: var(--bs-ink-muted);
+	font-size: var(--bs-text-sm);
+	line-height: 1.6;
+}
+
+.bs-sheet__intro p {
+	margin: 0;
+	max-width: 80ch;
+}
+
+.bs-sheet__intro p + p {
+	margin-top: var(--bs-space-xs);
+}
+
+/* ---------- a card drawn as a row ---------- */
+
+/*
+ * The lead column is the width of a heading tile, so every title on the sheet
+ * starts at the same x — the same column the switches make on Hardening.
+ */
+.bs-sheet__rows > .bs-card {
+	position: relative;
+	margin: 0;
+	padding: var(--bs-space-xl) var(--bs-space-2xl);
+	/* The gutter, then a column one heading tile wide (28px) and its gap. */
+	padding-left: calc(var(--bs-space-2xl) + var(--bs-space-3xl) + var(--bs-space-md));
+	border: 0;
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+	transition: background var(--bs-motion-base) var(--bs-ease);
+	animation: bs-sheet-rise 320ms var(--bs-ease) both;
+}
+
+/* The divider again for a card, whose own border reset above outranks the
+   general one. */
+.bs-sheet__rows > * + .bs-card {
+	border-top: 1px solid var(--bs-border);
+}
+
+.bs-sheet__rows > .bs-card:nth-child(2) {
+	animation-delay: 50ms;
+}
+
+.bs-sheet__rows > .bs-card:nth-child(3) {
+	animation-delay: 100ms;
+}
+
+.bs-sheet__rows > .bs-card:nth-child(n + 4) {
+	animation-delay: 150ms;
+}
+
+/* Between any two rows, whether a row is a card given up its chrome or a
+   row drawn as one from the start. */
+.bs-sheet__rows > * + * {
+	border-top: 1px solid var(--bs-border);
+}
+
+/* A row that holds focus for a moment (Passkeys takes it after a change) is
+   marked by its surface rather than by an outline around a borderless row. */
+.bs-sheet__rows > .bs-card:focus {
+	outline: none;
+	background: var(--bs-surface-subtle);
+}
+
+/* A card's title is an h3 in a sheet, a level under the bar, and is still set
+   as the card title it is rather than as the subheading the panel's own h3
+   rule is for. */
+.bs-sheet__rows .bs-sheet__title {
+	margin: 0 0 var(--bs-space-sm);
+	padding: 0;
+	font-size: var(--bs-text-lg);
+	font-weight: 600;
+	color: var(--bs-ink);
+}
+
+/* Beside its control on a head row, as a card's h2 is. */
+.bs-sheet__rows :is(.bs-panel__head, .bs-cardhead) .bs-sheet__title {
+	margin: 0;
+}
+
+/* Row titles are set at the size the hardening titles are, one step under a
+   card's own heading: the bar above is now what names the shelf. */
+.bs-sheet__rows > .bs-card h2,
+.bs-sheet__rows > .bs-card .bs-sheet__title {
+	font-size: var(--bs-text-md);
+	font-weight: 600;
+}
+
+/*
+ * The mark leaves the heading for the lead column, measured from the heading
+ * rather than from the row: a heading with a button beside it is centered on
+ * the button, and a mark pinned to the row's top would sit above its title.
+ */
+.bs-sheet__rows > .bs-card h2:has(> .bs-cardicon),
+.bs-sheet__rows > .bs-card .bs-sheet__title:has(> .bs-cardicon) {
+	position: relative;
+}
+
+.bs-sheet__rows > .bs-card h2 > .bs-cardicon,
+.bs-sheet__rows > .bs-card .bs-sheet__title > .bs-cardicon {
+	position: absolute;
+	top: 50%;
+	left: calc(-1 * (var(--bs-space-3xl) + var(--bs-space-md)));
+	transform: translateY(-50%);
+}
+
+.bs-sheet__rows > .bs-card > :last-child {
+	margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+	.bs-sheet__bar,
+	.bs-sheet__intro {
+		padding-left: var(--bs-space-lg);
+		padding-right: var(--bs-space-lg);
+	}
+
+	/* On a phone the lead column costs more than it gives back: the mark
+	   returns to the heading and the row takes the width. */
+	.bs-sheet__rows > .bs-card {
+		padding: var(--bs-space-lg);
+	}
+
+	.bs-sheet__rows > .bs-card h2 > .bs-cardicon,
+	.bs-sheet__rows > .bs-card .bs-sheet__title > .bs-cardicon {
+		position: static;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.bs-sheet,
+	.bs-sheet__rows > .bs-card {
+		animation: none;
+	}
+
+	.bs-sheet__rows > .bs-card {
+		transition: none;
+	}
+}

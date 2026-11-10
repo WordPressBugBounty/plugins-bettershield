@@ -1,0 +1,676 @@
+/**
+ * Agents › Connect: the header with its switch, the access card and its three
+ * columns, the figures, the card that adds BetterShield to an assistant (two
+ * client cards, the editor tiles, the key at its foot), the apps as a table,
+ * and the diagnostics as rows with a badge at the end.
+ */
+
+/* ---- shared ---- */
+
+.bs-ds-connect__card,
+.bs-ds-connect__can {
+	gap: 0;
+}
+
+.bs-ds-connect__title {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-connect__headend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* Focus lands on a card's name once the control that was pressed is gone. */
+.bs-ds-connect__focus:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-connect__label {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__notes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-sm);
+}
+
+/* ---- the header ---- */
+
+.bs-ds-connect__hero {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md) var(--bs-ds-space-ml);
+}
+
+.bs-ds-connect__herohead {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+}
+
+.bs-ds-connect__herotext {
+	display: flex;
+	flex: 1 1 280px;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+.bs-ds-connect__herotitlerow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* The type is the card title's (bs-ds-t14 bs-ds-m bs-ds-c1 on the element). */
+.bs-ds-app .bs-ds-connect__herotitle {
+	margin: 0;
+}
+
+.bs-ds-connect__herotitle:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-connect__heroline {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__herocontrol {
+	flex: 0 1 auto;
+	max-width: 100%;
+}
+
+.bs-ds-connect__switchbone {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-connect__stepsaid:empty {
+	display: none;
+}
+
+/* ---- what a connected assistant can do ---- */
+
+.bs-ds-connect__canhead {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-md) var(--bs-ds-space-ml);
+}
+
+.bs-ds-app .bs-ds-connect__cantitle {
+	margin: 0;
+}
+
+/* The title opens the card's body, so the button carries the title's type. */
+.bs-ds-connect__cantoggle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	color: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.bs-ds-connect__cantoggle:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 3px;
+}
+
+.bs-ds-app .bs-ds-connect__intro {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.55;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__cando {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+	gap: var(--bs-ds-space-lg);
+	padding: var(--bs-ds-space-md) var(--bs-ds-space-ml) var(--bs-ds-space-ml);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-connect__cando[hidden] {
+	display: none;
+}
+
+.bs-ds-step {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-step__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-step__mark {
+	display: flex;
+	flex: none;
+}
+
+.bs-ds-app .bs-ds-step__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-step__title:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-step__line {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__never {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-connect__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-6);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-connect__chips li {
+	margin: 0;
+}
+
+/* ---- add BetterShield to your assistant ---- */
+
+.bs-ds-connect__panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-ml);
+}
+
+.bs-ds-connect__clients {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-connect__client {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-14);
+	min-width: 0;
+	padding: var(--bs-ds-space-md);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 10px;
+}
+
+.bs-ds-connect__clienthead {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-connect__mark {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border-radius: 9px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-connect__clienttext {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-2);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-connect__clientname {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-connect__clientnote {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-connect__steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-10);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-connect__steps li {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-10);
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.5;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-connect__num {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 999px;
+	background: var(--bs-ds-color-tag-brand-bg);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 600;
+	color: var(--bs-ds-color-tag-brand-text);
+}
+
+.bs-ds-connect__others {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-10);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-14);
+	border: 1px dashed var(--bs-ds-color-border-control);
+	border-radius: 10px;
+}
+
+.bs-ds-connect__otherstext {
+	flex: 1 1 200px;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-connect__tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--bs-ds-space-6);
+	min-height: 44px;
+	padding: var(--bs-ds-space-14) var(--bs-ds-space-xs);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 10px;
+	background: var(--bs-ds-color-surface-primary);
+	font-family: inherit;
+	color: var(--bs-ds-color-text-primary);
+	cursor: pointer;
+}
+
+.bs-ds-app .bs-ds-connect__tile:hover {
+	border-color: var(--bs-ds-color-border-primary-active);
+}
+
+.bs-ds-app .bs-ds-connect__tile[aria-selected="true"] {
+	border-color: var(--bs-ds-color-border-brand);
+	background: var(--bs-ds-color-surface-success-transparent);
+	box-shadow: 0 0 0 1px var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-connect__tilename {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+}
+
+.bs-ds-connect__tilenote {
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__recipe {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+	padding: var(--bs-ds-space-md);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 10px;
+}
+
+.bs-ds-app .bs-ds-connect__needkey,
+.bs-ds-app .bs-ds-connect__closed {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-connect__closed {
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-md);
+}
+
+/*
+ * The backup address and the first prompt, closed under the setups. It ends
+ * the card, so it keeps the card's inset below it: without one, the last
+ * field touched the card's bottom edge (#2549).
+ */
+.bs-ds-connect__more {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	margin: var(--bs-ds-space-md) var(--bs-ds-space-ml);
+	padding-top: var(--bs-ds-space-sm);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-connect__extras {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	align-self: stretch;
+}
+
+.bs-ds-connect__extras[hidden] {
+	display: none;
+}
+
+/* The key, in the Editors & CLI tab under the chosen tool's setup. */
+.bs-ds-connect__credential,
+.bs-ds-connect__token {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	padding: var(--bs-ds-space-md) 0 0;
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* Tinted, so it keeps its own inset on every side, and room before the
+   notice under it (#2635); the plain row above sits on the card's padding. */
+.bs-ds-connect__token {
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin-bottom: var(--bs-ds-space-md);
+	padding: var(--bs-ds-space-md);
+	background: var(--bs-ds-color-surface-success-transparent);
+}
+
+.bs-ds-connect__token .bs-ds-connect__keyfield {
+	width: 100%;
+}
+
+.bs-ds-connect__who {
+	display: flex;
+	flex: 1 1 420px;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-connect__keytitle {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-connect__by {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-connect__hint,
+.bs-ds-app .bs-ds-connect__said {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-connect__once {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-warning);
+}
+
+.bs-ds-connect__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+/* ---- the apps ---- */
+
+.bs-ds-connect__appmeta {
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__rowacts {
+	display: inline-flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-xxs);
+}
+
+/* Five columns need the room: under it the table scrolls inside its card.
+   The room holds the name's 160 floor too; at 680 the four fixed columns
+   and the actions took it all, and the name came out 0 px wide (#2554). */
+.bs-ds-connect__tablewrap {
+	overflow-x: auto;
+}
+
+.bs-ds-connect__tablewrap .bs-ds-tbl {
+	min-width: 880px;
+}
+
+/* Once the rows stack they need no columns' room. */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-connect__tablewrap .bs-ds-tbl {
+		min-width: 0;
+	}
+}
+
+.bs-ds-connect__refused {
+	color: var(--bs-ds-color-text-warning);
+}
+
+.bs-ds-connect__access {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-6);
+}
+
+/* The tools one app may use, opened under its row (#1879). */
+.bs-ds-tbl__row:has(+ .bs-ds-connect__under) {
+	border-bottom: 0;
+}
+
+.bs-ds-connect__under {
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-connect__tools {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-connect__toolsacts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-6);
+}
+
+.bs-ds-connect__toolsnone {
+	margin: 0;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__bones {
+	display: flex;
+	flex-direction: column;
+}
+
+/* ---- the diagnostics ---- */
+
+/* Re-check: its icon turns while it reads (the shared Button does that), and
+   the rows dim until the answer is back, so the press shows. */
+.bs-ds-connect__recheckwords {
+	display: inline-grid;
+}
+
+.bs-ds-connect__recheckwords > span,
+.bs-ds-connect__recheckwords::after {
+	grid-area: 1 / 1;
+}
+
+.bs-ds-connect__recheckwords::after {
+	content: attr(data-longest);
+	visibility: hidden;
+}
+
+.bs-ds-connect__healths {
+	transition: opacity 0.15s ease;
+}
+
+.bs-ds-connect__healths.is-checking {
+	opacity: 0.55;
+}
+
+.bs-ds-connect__recheckfail {
+	margin: 0 var(--bs-ds-space-ml) var(--bs-ds-space-sm);
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-connect__healths {
+		transition: none;
+	}
+}
+
+.bs-ds-connect__healths {
+	margin: 0 var(--bs-ds-space-ml) var(--bs-ds-space-ml);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 10px;
+}
+
+.bs-ds-connect__health {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-md);
+	padding: var(--bs-ds-space-14) var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-connect__health:first-child {
+	border-top: 0;
+}
+
+.bs-ds-connect__healthtext {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-2);
+	min-width: 0;
+}
+
+.bs-ds-connect__healthlabel {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-connect__healthlink {
+	align-self: flex-start;
+}
+
+.bs-ds-connect__healthnote {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-connect__test {
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-ml);
+}

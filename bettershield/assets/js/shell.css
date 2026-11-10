@@ -1,0 +1,56 @@
+/**
+ * The app shell's top-level error surfaces: the password confirmation's own
+ * lines. The notice an action leaves is the redesign's error Alert. The frame
+ * itself — sidebar, bar and screen — is next/shell.
+ */
+
+/* ---------- error surfaces ---------- */
+
+/*
+ * The password-confirmation dialog: what came back when the password did not
+ * match, and the pair of buttons that answer it. Core's Modal supplies the
+ * frame; these are the two things it has no idiom for.
+ *
+ * The error tone rather than critical: a password typed wrong is a correction,
+ * not an emergency. All three of ink, surface and edge come from that one
+ * family, which is what keeps the box legible — the semantic families hold
+ * their light values in a dark scheme, so a tinted surface whose text color
+ * comes from anywhere else is light text on a light box the moment the scheme
+ * turns over.
+ */
+.bs-confirm__error {
+	margin: 0 0 var(--bs-space-md);
+	padding: var(--bs-space-sm) var(--bs-space-md);
+	border-radius: var(--bs-radius-control);
+	border: 1px solid var(--bs-error-border);
+	background: var(--bs-error-bg);
+	font-weight: 600;
+	color: var(--bs-error-ink);
+}
+
+.bs-confirm__actions {
+	display: flex;
+	gap: var(--bs-space-sm);
+	align-items: center;
+	margin-top: var(--bs-space-lg);
+}
+
+/* ---------- other code's notices ---------- */
+
+/*
+ * Our screens carry our notices only. The server takes every other notice off
+ * these screens before it prints (Admin\Quiet); this catches the ones it
+ * cannot reach — a notice printed outside the notice hooks, or put on the page
+ * by a script after it loaded. Anything notice-shaped above the app that is
+ * not marked as ours is not drawn — in the content area, and in the frame
+ * around it, where a notice echoed from `in_admin_header` lands.
+ *
+ * Scoped by nothing but being here: this stylesheet loads on our screens and
+ * no others, and in the head, so there is no moment in which the notice shows
+ * and then goes.
+ */
+/* stylelint-disable selector-class-pattern -- core's notice class names. */
+:is(#wpcontent, #wpbody, #wpbody-content) > :is(.notice, .error, .updated, .update-nag):not(.bs-notice) {
+	display: none !important;
+}
+/* stylelint-enable selector-class-pattern */

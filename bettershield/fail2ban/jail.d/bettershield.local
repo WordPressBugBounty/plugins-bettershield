@@ -1,0 +1,25 @@
+# Fail2Ban jail for BetterShield's host-ban line. Copy to
+# /etc/fail2ban/jail.d/bettershield.local, with the filter beside it in
+# /etc/fail2ban/filter.d/bettershield.conf.
+#
+# A ban covers the whole /24 or /64, wider than the site's own pause. Put the
+# host's own addresses and any office ranges in ignoreip: a ban at the
+# firewall is one the site's recovery link cannot lift.
+
+[bettershield]
+enabled  = true
+filter   = bettershield
+port     = http,https
+# Debian and Ubuntu write the auth facility here. RHEL-family systems send
+# auth to /var/log/messages unless rsyslog is told otherwise.
+logpath  = /var/log/auth.log
+# One line is already a decision: the plugin wrote it after its own threshold.
+maxretry = 1
+findtime = 60
+# Match the site's pause (15 minutes by default), or longer if the host prefers.
+bantime  = 900
+#ignoreip = 127.0.0.1/8 ::1 192.0.2.0/24
+
+# On a journald-only host, drop logpath and use:
+#backend      = systemd
+#journalmatch = SYSLOG_IDENTIFIER=bettershield

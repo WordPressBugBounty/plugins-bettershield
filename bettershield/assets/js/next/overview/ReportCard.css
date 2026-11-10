@@ -1,0 +1,37 @@
+/**
+ * The security report card: a line on what the page holds, the period, and
+ * its two buttons. The frame it prints from is never seen.
+ */
+
+.bs-ds-report__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-report__lede,
+.bs-ds-app .bs-ds-report__said {
+	margin: 0;
+	line-height: 1.4;
+}
+
+.bs-ds-app .bs-ds-report__said:empty {
+	display: none;
+}
+
+.bs-ds-report__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-report__frame {
+	position: absolute;
+	width: 0;
+	height: 0;
+	border: 0;
+	visibility: hidden;
+}

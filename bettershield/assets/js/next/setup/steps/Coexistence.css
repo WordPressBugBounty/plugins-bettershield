@@ -1,0 +1,80 @@
+/**
+ * Coexistence: another plugin's settings the step can bring over, and what
+ * it leaves, as a short list under the card's label.
+ */
+
+.bs-ds-setup-import__label {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-setup-import__list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	/* A bulleted list of what the import copies (#2530). */
+	padding: 0 0 0 var(--bs-ds-space-lg);
+	list-style: disc;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-setup-import__list li {
+	display: list-item;
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-setup-import__list strong {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* A plugin's button and, when core left it on, the note under it. */
+.bs-ds-setup-coex__stack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+/* What the main button's ⓘ says: one short block per plugin. */
+.bs-ds-setup-coex__tip {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-setup-coex__tip strong {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/*
+ * Narrow: the ⓘ sits beside Skip, under the main button, never alone on a
+ * row of its own.
+ */
+@container bs-ds-setup (max-width: 600px) {
+
+	.bs-ds-setup__foot-end:has(> .bs-ds-setup-coex__foot-tip) {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		align-items: center;
+	}
+
+	.bs-ds-setup__foot-end:has(> .bs-ds-setup-coex__foot-tip) > .bs-ds-setup__primary {
+		grid-row: 1;
+		grid-column: 1 / -1;
+	}
+
+	.bs-ds-setup__foot-end:has(> .bs-ds-setup-coex__foot-tip) > .bs-ds-setup__skip {
+		grid-row: 2;
+		grid-column: 1;
+	}
+
+	.bs-ds-setup__foot-end > .bs-ds-setup-coex__foot-tip {
+		grid-row: 2;
+		grid-column: 2;
+	}
+}

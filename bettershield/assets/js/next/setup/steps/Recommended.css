@@ -1,0 +1,193 @@
+/**
+ * Recommended: one card, a header naming it and what its rows are worth as a
+ * chip, then a compact row per choice with a hairline between. A row is its
+ * name over a short gray line and, at its end, its points chip and its
+ * switch; what a link in the row opens goes under it.
+ */
+
+.bs-ds-setup-rec {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	min-width: 0;
+}
+
+.bs-ds-setup-rec__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-setup-rec__heading {
+	margin: 0;
+	padding: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* The points, as a chip: mint for what is still to earn, quiet for what is
+   earned already. */
+.bs-ds-app .bs-ds-setup-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	padding: var(--bs-ds-space-2) var(--bs-ds-space-6);
+	border-radius: 6px;
+	background: var(--bs-ds-color-tag-brand-bg);
+	color: var(--bs-ds-color-tag-brand-text);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+
+.bs-ds-app .bs-ds-setup-chip.is-earned,
+.bs-ds-app .bs-ds-setup-chip.is-later {
+	background: var(--bs-ds-color-tag-neutral-bg);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setup-rec__rows {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-setup-rec__row {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	margin: 0;
+	padding: var(--bs-ds-space-10) var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-setup-rec__row:first-child {
+	border-top: 0;
+}
+
+.bs-ds-setup-rec__line {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-setup-rec__text {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 0;
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-setup-rec__title {
+	margin: 0;
+	padding: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-setup-rec__about {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setup-rec__end {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-sm);
+}
+
+/* A small link under the gray line, quieter than a button. */
+.bs-ds-setup-rec__extra {
+	margin-top: var(--bs-ds-space-xxs);
+}
+
+/* Two links side by side, wrapping on a phone. */
+.bs-ds-setup-rec__links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-setup-rec__link.components-button,
+.bs-ds-app .bs-ds-setup-rec__link {
+	height: auto;
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-tag-brand-text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	cursor: pointer;
+}
+
+.bs-ds-setup-rec__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+/* A part drawn inside a row that names it already: its words and controls
+   without a card, flush with the row's own text. */
+.bs-ds-setup-plain {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-setup-plain > .bs-ds-setup-card__row {
+	padding: 0;
+	border-top: 0;
+}
+
+/*
+ * A row whose points wait on something says so in words, which do not fit
+ * beside the title on a phone: the chip and the status move under the text,
+ * aligned left, so the title keeps its width and the links their line.
+ */
+@container bs-ds-setup (max-width: 560px) {
+	.bs-ds-setup-rec__line.is-later {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-setup-rec__line.is-later .bs-ds-setup-rec__text {
+		flex-basis: 100%;
+	}
+
+	.bs-ds-setup-rec__line.is-later .bs-ds-setup-rec__end {
+		flex: 1 1 100%;
+		justify-content: flex-start;
+	}
+
+	.bs-ds-app .bs-ds-setup-chip.is-later {
+		white-space: normal;
+	}
+}

@@ -1,0 +1,83 @@
+/**
+ * A site somewhere new: the question in a warning alert with its two answers,
+ * then, once one is chosen, what it will do and Go ahead. 16 in from the
+ * card's edges, 12 between its parts.
+ */
+
+.bs-ds-site__body,
+.bs-ds-site__plan {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-site__body {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+/* The alert takes the body's width rather than its sentence's. */
+.bs-ds-site__body > .bs-ds-alert {
+	align-self: stretch;
+}
+
+.bs-ds-app .bs-ds-site__text,
+.bs-ds-app .bs-ds-site__lead {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-site__lead {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-site__lead:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-site__steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-ml);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+	list-style: disc;
+}
+
+/* The two steps after a move are links, each a line of its own. */
+.bs-ds-app .bs-ds-site__steps--links {
+	padding-inline-start: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-site__steps li {
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-site__note {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-site__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+html[dir="rtl"] .bs-ds-app .bs-ds-site__arrow {
+	transform: scaleX(-1);
+}

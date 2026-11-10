@@ -1,0 +1,64 @@
+/**
+ * The design's menu: 220 wide, padded 4, bordered, radius 8; a tertiary
+ * heading and 28-tall choices that take the hover fill.
+ */
+
+.bs-ds-menuwrap {
+	display: inline-flex;
+}
+
+.bs-ds-app .bs-ds-popover .components-popover__content {
+	width: 220px;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	box-shadow: none;
+	outline: none;
+}
+
+.bs-ds-menu {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	padding: var(--bs-ds-space-xxs);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+	font-family: var(--bs-ds-font);
+}
+
+.bs-ds-menu__head {
+	padding: var(--bs-ds-space-6) 0 var(--bs-ds-space-6) var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-menu__item {
+	display: inline-flex;
+	align-items: center;
+	height: 28px;
+	padding: 0 var(--bs-ds-space-xs);
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	font: inherit;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	text-align: start;
+	color: var(--bs-ds-color-text-primary);
+	cursor: pointer;
+}
+
+.bs-ds-menu__item:hover,
+.bs-ds-menu__item:focus-visible {
+	background: var(--bs-ds-color-surface-tertiary-em);
+}

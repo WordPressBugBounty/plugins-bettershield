@@ -1,0 +1,144 @@
+/**
+ * Acting on many rows at once: the dock held at the foot of the window inside
+ * the card whose rows are picked, and in it the bar, the question and what
+ * happened. The question is the design's Warning alert on an opaque surface,
+ * since it sits over the rows it is about.
+ */
+
+.bs-ds-seldock {
+	position: sticky;
+	bottom: var(--bs-ds-space-xs);
+	z-index: 2;
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+}
+
+.bs-ds-selbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-alert);
+}
+
+.bs-ds-app .bs-ds-selbar__said {
+	display: flex;
+	flex: 1 1 16em;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	min-width: 0;
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-selbar__count {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-selbar__detail {
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-selbar__actions,
+.bs-ds-selask__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-selbar__why {
+	flex: 1 1 100%;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-selask {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-tag-border);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-alert);
+}
+
+.bs-ds-selask__lead {
+	display: flex;
+	flex: none;
+	padding-top: var(--bs-ds-space-2);
+}
+
+.bs-ds-selask__content {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 1px;
+}
+
+.bs-ds-app .bs-ds-selask__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-tag-yellow-text);
+}
+
+.bs-ds-app .bs-ds-selask__desc p,
+.bs-ds-app .bs-ds-selask__names,
+.bs-ds-app .bs-ds-selleft {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-selask__desc {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+}
+
+.bs-ds-app .bs-ds-selask:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-selask:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+/* What happened sits over the rows as the question does: the alert's tint on an opaque surface. */
+.bs-ds-selsaid {
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+/* A long list of what was left scrolls inside the answer, a few lines tall. */
+.bs-ds-app .bs-ds-selleft--long {
+	max-height: 9em;
+	overflow-y: auto;
+}
+
+.bs-ds-app .bs-ds-selleft--long:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}

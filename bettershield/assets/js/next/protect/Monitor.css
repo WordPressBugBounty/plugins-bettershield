@@ -1,0 +1,74 @@
+/**
+ * What "Monitor first" opens: 12 secondary lines 8 apart, the window's phase
+ * in 14 medium, its settings as a short list, and the controls under them.
+ */
+
+.bs-ds-monitor,
+.bs-ds-monitor__status,
+.bs-ds-monitor__enforce {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-monitor {
+	gap: var(--bs-ds-space-sm);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-monitor p {
+	margin: 0;
+}
+
+/* Focus lands on the status once a window starts or ends, and reads it out. */
+.bs-ds-monitor__status:focus {
+	outline: none;
+}
+
+.bs-ds-monitor__status:focus-visible {
+	border-radius: 4px;
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+}
+
+.bs-ds-app .bs-ds-monitor .bs-ds-monitor__phase {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-monitor__options {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-monitor .bs-ds-monitor__caution {
+	color: var(--bs-ds-color-text-warning);
+}
+
+.bs-ds-monitor__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* Its buttons say a sentence; in a narrow panel the words wrap inside them
+   rather than running out of it. */
+.bs-ds-app .bs-ds-monitor .components-button.bs-ds-btn {
+	min-height: 28px;
+	height: auto;
+	padding-block: var(--bs-ds-space-xxs);
+	line-height: 1.3;
+	white-space: normal;
+	text-align: start;
+}

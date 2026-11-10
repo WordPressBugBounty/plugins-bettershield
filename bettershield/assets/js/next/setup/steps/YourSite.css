@@ -1,0 +1,82 @@
+/**
+ * Your Site: the list of alert addresses. Each address the owner can change
+ * is the design's field with a Ghost remove beside it; the administration
+ * address, which always receives alerts, is the same 32 box drawn as a
+ * read-only field on the tertiary surface, with its lock and its badge.
+ */
+
+.bs-ds-setup-recipients {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	max-width: 520px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-setup-recipients__row {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+}
+
+.bs-ds-setup-recipients__row.is-locked {
+	align-items: center;
+	justify-content: space-between;
+	height: 32px;
+	padding: 0 var(--bs-ds-space-xxs) 0 calc(var(--bs-ds-space-sm) - 1px);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-setup-recipients__fixed {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-setup-recipients__email {
+	overflow: hidden;
+	font-size: var(--bs-ds-size-small);
+	letter-spacing: -0.02em;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* The 28 button beside the 32 field, centered on it. */
+.bs-ds-app .components-button.bs-ds-setup-recipients__remove {
+	margin-top: var(--bs-ds-space-2);
+}
+
+/* Who signs in and the proxy question, side by side where there is room;
+   one alone, when the other is asked up front, takes the whole width. */
+.bs-ds-setup-pair {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+	align-items: start;
+	gap: var(--bs-ds-space-md);
+}
+
+/* Where alerts go, as one line with its Change at the end. */
+.bs-ds-setup-alerts {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-setup-alerts__line {
+	flex: 1 1 14em;
+	min-width: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+	overflow-wrap: anywhere;
+}

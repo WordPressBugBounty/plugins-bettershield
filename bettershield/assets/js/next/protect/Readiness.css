@@ -1,0 +1,41 @@
+/**
+ * Recovery readiness: the card's intro, the checks as key-value rows whose
+ * name reads as the row's title, and the line saying when they last ran, all
+ * 16 in from the card's edges; the weekly switch is a row under a rule.
+ */
+
+.bs-ds-readiness__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-readiness__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The rows sit on the body's inset, not one of their own. */
+.bs-ds-kvs.bs-ds-readiness__checks {
+	padding: 0;
+}
+
+/* A check's name is what the eye scans down; its answer is the note. */
+.bs-ds-readiness__checks .bs-ds-kv__label {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-readiness__when {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}

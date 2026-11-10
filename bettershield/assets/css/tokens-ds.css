@@ -1,0 +1,229 @@
+/**
+ * The redesigned dashboard's tokens (the --bs-ds-* layer).
+ *
+ * A file of their own, apart from the role layer in tokens.css, because only
+ * two bundles read them: the dashboard and the Quick Setup. Both put
+ * `bs-ds-body` on the body before they draw anything, and the Quick Setup's
+ * page carries it from its first paint. The dashboard widget and the profile
+ * panels import tokens.css for its roles and never this file: nothing on
+ * their pages carries the class, so these declarations could never apply
+ * there.
+ *
+ * The values are the design file's own variables, Light and Dark, and they do
+ * not derive from the WordPress ramp the --bs-* roles resolve through: the
+ * design fixes every surface and ink in both schemes, and a seed-generated
+ * ramp would move them.
+ *
+ * Declared on the body rather than on the app's root so a dialog or menu that
+ * renders outside the root, at the end of the document, reads the same
+ * values. The scheme preference writes `data-bs-scheme` beside the class.
+ *
+ * This file and tokens.css are the only places a color literal is written.
+ */
+
+body.bs-ds-body {
+	/* Type */
+	--bs-ds-font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--bs-ds-size-xxsmall: 10px;
+	--bs-ds-size-xsmall: 12px;
+	--bs-ds-size-small: 14px;
+	--bs-ds-size-medium: 16px;
+	--bs-ds-size-large: 18px;
+	--bs-ds-size-heading-medium: 20px;
+	--bs-ds-size-heading-xlarge: 24px;
+	--bs-ds-size-heading-xxlarge: 36px;
+
+	/* Spacing: the design's scale. */
+	--bs-ds-space-xxs: 4px;
+	--bs-ds-space-xs: 8px;
+	--bs-ds-space-sm: 12px;
+	--bs-ds-space-md: 16px;
+	--bs-ds-space-ml: 20px;
+	--bs-ds-space-lg: 24px;
+	--bs-ds-space-xl: 28px;
+
+	/*
+	 * Steps the design's frames draw between the scale's own, kept so the
+	 * screens match the frames exactly.
+	 */
+	--bs-ds-space-2: 2px;
+	--bs-ds-space-5: 5px;
+	--bs-ds-space-6: 6px;
+	--bs-ds-space-10: 10px;
+	--bs-ds-space-14: 14px;
+
+	/* wp-admin's own gutter left of the content column, canceled so the
+	   app starts at the admin menu's edge. */
+	--bs-ds-admin-gutter: 20px;
+
+	/* Elevation */
+	--bs-ds-elevation-control: 0 2px 2px #23232308, 0 1px 1px #2323230a;
+	--bs-ds-elevation-alert: 0 2px 4px #23232308, 0 1px 2px #2323230a;
+	--bs-ds-elevation-knob: 0 1px 2px #00000040;
+
+	/* Light */
+	/* The assistants' own brand colors, on Agents › Connect. */
+	--bs-ds-logo-claude: #d97757;
+	--bs-ds-logo-chatgpt: #000;
+	--bs-ds-logo-cursor: #26251e;
+	--bs-ds-logo-vscode-1: #0065a9;
+	--bs-ds-logo-vscode-2: #007acc;
+	--bs-ds-logo-vscode-3: #1f9cf0;
+	--bs-ds-logo-codex-1: #b1a7ff;
+	--bs-ds-logo-codex-2: #7a9dff;
+	--bs-ds-logo-codex-3: #3941ff;
+	--bs-ds-color-surface-secondary: #f7f7f7;
+	--bs-ds-color-surface-primary: #fff;
+	--bs-ds-color-surface-tertiary: #f0f0f0;
+	--bs-ds-color-surface-tertiary-em: #ececec;
+	--bs-ds-color-surface-disable: #e7e7e7;
+	--bs-ds-color-surface-brand: #11deab;
+	--bs-ds-color-surface-brand-hover: #0fbe93;
+	--bs-ds-color-surface-info-transparent: #eff6ff33;
+	--bs-ds-color-surface-success-transparent: #95ffb933;
+	--bs-ds-color-surface-warning-transparent: #fffbeb33;
+	--bs-ds-color-surface-error-transparent: #fef2f233;
+
+	--bs-ds-color-text-primary: #232323;
+	--bs-ds-color-text-secondary: #666;
+	--bs-ds-color-text-tertiary: #666;
+	--bs-ds-color-text-on-brand: #111;
+	--bs-ds-color-text-error: #dc2626;
+	--bs-ds-color-text-success: #004d40;
+	--bs-ds-color-text-warning: #b45309;
+	--bs-ds-color-text-info: #2563eb;
+
+	--bs-ds-color-icon-primary: #232323;
+	--bs-ds-color-icon-secondary: #666;
+	--bs-ds-color-icon-tertiary: #7f7f7f;
+	--bs-ds-color-icon-brand: #0c9f7a;
+	--bs-ds-color-icon-success: #08a03d;
+	--bs-ds-color-icon-warning: #d97706;
+	--bs-ds-color-icon-error: #ef4444;
+	--bs-ds-color-icon-info: #3b82f6;
+	/*
+	 * A poor grade (E or F) is posture, not a severity, so it is orange, a
+	 * step past the warning tone C and D take. Red is kept for critical
+	 * findings, and the error red is the same red.
+	 */
+	--bs-ds-color-icon-grade-poor: #ea580c;
+
+	--bs-ds-color-border-primary: #ececec;
+	--bs-ds-color-border-secondary: #e7e7e7;
+	--bs-ds-color-border-control: #e7e7e7;
+	--bs-ds-color-border-primary-active: #a3a3a3;
+	--bs-ds-color-border-brand: #0c9f7a;
+
+	--bs-ds-color-tag-border: #00000014;
+	--bs-ds-color-tag-brand-text: #075f49;
+	--bs-ds-color-tag-brand-bg: #ddfaf3;
+	--bs-ds-color-tag-neutral-text: #454545;
+	--bs-ds-color-tag-neutral-bg: #f0f0f0;
+	--bs-ds-color-tag-green-text: #004d40;
+	--bs-ds-color-tag-blue-text: #1e40af;
+	--bs-ds-color-tag-blue-bg: #eff6ff;
+	--bs-ds-color-tag-yellow-text: #92400e;
+	--bs-ds-color-tag-yellow-bg: #fffbeb;
+	--bs-ds-color-tag-orange-text: #9a3412;
+	--bs-ds-color-tag-orange-bg: #fff7ed;
+	--bs-ds-color-tag-red-text: #991b1b;
+	--bs-ds-color-tag-red-bg: #fef2f2;
+
+	--bs-ds-color-severity-critical: #dc2626;
+	--bs-ds-color-severity-high: #c2410c;
+	--bs-ds-color-severity-medium: #f59e0b;
+	--bs-ds-color-severity-low: #2563eb;
+	--bs-ds-color-severity-info: #a3a3a3;
+
+	/*
+	 * A line-by-line comparison, which the design draws nowhere: conventional
+	 * red and green, and deliberately not the severity or tag roles, so a
+	 * removed line is not read as a critical finding and re-toning either
+	 * ladder does not repaint a diff. -mark is the changed characters inside
+	 * a line, which sit on -bg, and -text is their ink.
+	 */
+	--bs-ds-color-diff-removed-bg: #fff6f5;
+	--bs-ds-color-diff-removed-mark: #f6e6e3;
+	--bs-ds-color-diff-removed-text: #470000;
+	--bs-ds-color-diff-added-bg: #ebffed;
+	--bs-ds-color-diff-added-mark: #c6f7cd;
+	--bs-ds-color-diff-added-text: #002900;
+
+	/* The toggle's knob, the one fill the design leaves outside its tokens. */
+	--bs-ds-color-knob: #fff;
+}
+
+body.bs-ds-body[data-bs-scheme="dark"] {
+	--bs-ds-logo-chatgpt: #fff;
+	--bs-ds-logo-cursor: #f7f7f4;
+	--bs-ds-color-surface-secondary: #111;
+	--bs-ds-color-surface-primary: #161616;
+	--bs-ds-color-surface-tertiary: #232323;
+	--bs-ds-color-surface-tertiary-em: #2a2a2a;
+	--bs-ds-color-surface-disable: #393939;
+	--bs-ds-color-surface-brand: #11deab;
+	--bs-ds-color-surface-brand-hover: #0fbe93;
+	--bs-ds-color-surface-info-transparent: #1d2b3e33;
+	--bs-ds-color-surface-success-transparent: #1a3d2733;
+	--bs-ds-color-surface-warning-transparent: #33301a33;
+	--bs-ds-color-surface-error-transparent: #3e1d1e33;
+
+	--bs-ds-color-text-primary: #f9fbff;
+	--bs-ds-color-text-secondary: #d0d4dd;
+	--bs-ds-color-text-tertiary: #8c8c8c;
+	--bs-ds-color-text-on-brand: #111;
+	--bs-ds-color-text-error: #f97373;
+
+	/*
+	 * The design file sets these three in Light only. Dark takes each tone's
+	 * tag ink, as Text/error does (Red 300), so a status reads the same color
+	 * as its badge.
+	 */
+	--bs-ds-color-text-success: #1bda5e;
+	--bs-ds-color-text-warning: #fbbf24;
+	--bs-ds-color-text-info: #60a5fa;
+
+	--bs-ds-color-icon-primary: #d0d4dd;
+	--bs-ds-color-icon-secondary: #a4a4a4;
+	--bs-ds-color-icon-tertiary: #8c8c8c;
+	--bs-ds-color-icon-brand: #11deab;
+	--bs-ds-color-icon-success: #1bda5e;
+	--bs-ds-color-icon-warning: #fbbf24;
+	--bs-ds-color-icon-error: #f97373;
+	--bs-ds-color-icon-info: #60a5fa;
+	--bs-ds-color-icon-grade-poor: #fb923c;
+
+	--bs-ds-color-border-primary: #232323;
+	--bs-ds-color-border-secondary: #1b1d20;
+	--bs-ds-color-border-control: #393939;
+	--bs-ds-color-border-primary-active: #393939;
+	--bs-ds-color-border-brand: #11deab;
+
+	--bs-ds-color-tag-border: #ffffff14;
+	--bs-ds-color-tag-brand-text: #55e7c3;
+	--bs-ds-color-tag-brand-bg: #022018;
+	--bs-ds-color-tag-neutral-text: #a4a4a4;
+	--bs-ds-color-tag-neutral-bg: #2a2a2a;
+	--bs-ds-color-tag-green-text: #1bda5e;
+	--bs-ds-color-tag-blue-text: #60a5fa;
+	--bs-ds-color-tag-blue-bg: #1d2b3e;
+	--bs-ds-color-tag-yellow-text: #fbbf24;
+	--bs-ds-color-tag-yellow-bg: #33301a;
+	--bs-ds-color-tag-orange-text: #fb923c;
+	--bs-ds-color-tag-orange-bg: #3e291d;
+	--bs-ds-color-tag-red-text: #f97373;
+	--bs-ds-color-tag-red-bg: #3e1d1e;
+
+	--bs-ds-color-severity-critical: #ef4444;
+	--bs-ds-color-severity-high: #f97316;
+	--bs-ds-color-severity-medium: #fbbf24;
+	--bs-ds-color-severity-low: #60a5fa;
+	--bs-ds-color-severity-info: #676767;
+
+	--bs-ds-color-diff-removed-bg: #2a1614;
+	--bs-ds-color-diff-removed-mark: #43201c;
+	--bs-ds-color-diff-removed-text: #ffb3a8;
+	--bs-ds-color-diff-added-bg: #0f2a1a;
+	--bs-ds-color-diff-added-mark: #1a4429;
+	--bs-ds-color-diff-added-text: #8fe3ad;
+}

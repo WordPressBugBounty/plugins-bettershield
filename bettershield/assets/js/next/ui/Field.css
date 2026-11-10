@@ -1,0 +1,321 @@
+/**
+ * Fields: the library's controls drawn as the design's Input (2:4168). The
+ * library sizes and labels its controls its own way (40 tall, uppercase 11px
+ * labels in older releases); every rule here is scoped under the app and the
+ * field's class so it outranks that and nothing else.
+ */
+
+.bs-ds-field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-field--sm {
+	width: 120px;
+}
+
+.bs-ds-field--md {
+	width: min(100%, 320px);
+}
+
+.bs-ds-field--full {
+	width: 100%;
+}
+
+/* ---- label and help ---- */
+
+/* A select's label is the library's own, styled by a class written three
+   times and added after this stylesheet: named twice here to stay ahead. */
+.bs-ds-app .bs-ds-field .components-base-control__label,
+.bs-ds-app .bs-ds-field .components-input-control__label.components-input-control__label,
+.bs-ds-app .bs-ds-field .components-radio-control legend,
+.bs-ds-app .bs-ds-field .bs-ds-field__legend {
+	display: block;
+	margin: 0 0 var(--bs-ds-space-xs);
+	padding: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	text-transform: none;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* A select's label sits in a column that already puts 8 between it and the
+   box, so its own margin would make that 16 and drop the box below a text
+   field's beside it. */
+.bs-ds-app .bs-ds-field .components-input-control__label.components-input-control__label {
+	margin-bottom: 0;
+}
+
+.bs-ds-app .bs-ds-field .components-base-control__help,
+.bs-ds-app .bs-ds-field .components-checkbox-control__help,
+.bs-ds-app .bs-ds-field .bs-ds-field__help {
+	margin: var(--bs-ds-space-xs) 0 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-style: normal;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-field .bs-ds-field__error {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-error);
+}
+
+/* ---- the input itself ---- */
+
+.bs-ds-app .bs-ds-field .components-text-control__input,
+.bs-ds-app .bs-ds-field .components-textarea-control__input {
+	width: 100%;
+	height: 32px;
+	min-height: 32px;
+	margin: 0;
+	padding: 0 var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+	font-family: inherit;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-field .components-textarea-control__input {
+	height: auto;
+	min-height: 80px;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	line-height: 1.4;
+}
+
+.bs-ds-app .bs-ds-field .components-text-control__input::placeholder,
+.bs-ds-app .bs-ds-field .components-textarea-control__input::placeholder {
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-app .bs-ds-field .components-text-control__input:focus,
+.bs-ds-app .bs-ds-field .components-textarea-control__input:focus {
+	border-color: var(--bs-ds-color-border-brand);
+	outline: none;
+	box-shadow: 0 0 0 1px var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-app .bs-ds-field.is-invalid .components-text-control__input {
+	border-color: var(--bs-ds-color-text-error);
+}
+
+.bs-ds-app .bs-ds-field .components-text-control__input:disabled,
+.bs-ds-app .bs-ds-field .components-textarea-control__input:disabled {
+	background: var(--bs-ds-color-surface-tertiary);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+/*
+ * A select: the library draws its border on a backdrop behind the input. Its
+ * own rules on both are a class written three times, added to the page after
+ * this stylesheet, so these name the class twice to stay ahead of them.
+ */
+.bs-ds-app .bs-ds-field .components-input-control__container {
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+}
+
+.bs-ds-app .bs-ds-field .components-select-control__input.components-select-control__input {
+	height: 32px;
+	min-height: 32px;
+	padding-block: 0;
+	padding-inline: var(--bs-ds-space-sm) var(--bs-ds-space-xl);
+	font-family: inherit;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-field .components-input-control__backdrop.components-input-control__backdrop {
+	border-color: var(--bs-ds-color-border-control);
+	border-radius: 8px;
+}
+
+.bs-ds-app .bs-ds-field .components-select-control__input:focus ~ .components-input-control__backdrop.components-input-control__backdrop,
+.bs-ds-app .bs-ds-field .components-input-control__container:focus-within .components-input-control__backdrop.components-input-control__backdrop {
+	border-color: var(--bs-ds-color-border-brand);
+	box-shadow: 0 0 0 1px var(--bs-ds-color-border-brand);
+}
+
+/*
+ * A disabled select grays as a disabled text field does (#1939). Core fades
+ * it to 0.7 and the library leaves it on the card behind it, so beside a
+ * grayed field it read as one that could still be changed.
+ */
+.bs-ds-app .bs-ds-field .components-select-control__input.components-select-control__input:disabled {
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary);
+	color: var(--bs-ds-color-text-tertiary);
+	opacity: 1;
+}
+
+/* ---- checkboxes and radios: a 16 box, brand when chosen ---- */
+
+.bs-ds-app .bs-ds-field .components-checkbox-control__input[type="checkbox"],
+.bs-ds-app .bs-ds-field .components-radio-control__input[type="radio"] {
+	width: 16px;
+	min-width: 16px;
+	height: 16px;
+	margin: 0;
+	border: 1px solid var(--bs-ds-color-icon-tertiary);
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: none;
+}
+
+.bs-ds-app .bs-ds-field .components-checkbox-control__input[type="checkbox"] {
+	border-radius: 4px;
+}
+
+/*
+ * Locked looks locked: a disabled box drew exactly as a live one, and pressing
+ * it did nothing with nothing to say why (#1965).
+ */
+.bs-ds-app .bs-ds-field .components-checkbox-control__input[type="checkbox"]:disabled,
+.bs-ds-app .bs-ds-field .components-radio-control__input[type="radio"]:disabled {
+	border-color: var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-tertiary);
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.bs-ds-app .bs-ds-field .components-checkbox-control__input-container:has(:disabled) + label,
+.bs-ds-app .bs-ds-field .components-radio-control__option:has(:disabled) label {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.bs-ds-app .bs-ds-field .components-radio-control__input[type="radio"] {
+	border-radius: 999px;
+}
+
+.bs-ds-app .bs-ds-field .components-checkbox-control__input[type="checkbox"]:checked,
+.bs-ds-app .bs-ds-field .components-radio-control__input[type="radio"]:checked {
+	border-color: var(--bs-ds-color-border-brand);
+	background: var(--bs-ds-color-surface-brand);
+}
+
+.bs-ds-app .bs-ds-field .components-radio-control__input[type="radio"]:checked::before {
+	width: 6px;
+	height: 6px;
+	border: 0;
+	background: var(--bs-ds-color-text-on-brand);
+}
+
+.bs-ds-app .bs-ds-field .components-checkbox-control__input[type="checkbox"]:focus-visible,
+.bs-ds-app .bs-ds-field .components-radio-control__input[type="radio"]:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 2px;
+	box-shadow: none;
+}
+
+.bs-ds-app .bs-ds-field .components-checkbox-control__input-container {
+	width: 16px;
+	height: 16px;
+	margin: 0;
+}
+
+.bs-ds-app .bs-ds-field svg.components-checkbox-control__checked {
+	fill: var(--bs-ds-color-text-on-brand);
+}
+
+.bs-ds-app .bs-ds-field .components-checkbox-control__label,
+.bs-ds-app .bs-ds-field .components-radio-control__label,
+.bs-ds-app .bs-ds-field .components-radio-control__option label {
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-field .components-checkbox-control > .components-base-control__field,
+.bs-ds-app .bs-ds-field .components-checkbox-control .components-h-stack,
+.bs-ds-app .bs-ds-field .components-radio-control__option {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-field .components-radio-control__group-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+/* A list of choices (roles, forms): a compact grid of boxes. */
+.bs-ds-field__set {
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+/*
+ * Tracks wide enough for a choice such as "The lost-password form" on one
+ * line, and never wider than the field on a narrow screen.
+ */
+.bs-ds-field__options {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr));
+	gap: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+}
+
+/*
+ * A choice whose label still wraps keeps its box on the first line: the
+ * library centers the box on the whole label, which drew it 8.5px below
+ * the first line of a two-line one (Ultra #602). A choice with a help line
+ * draws its box and label in a row of their own inside the field.
+ */
+.bs-ds-app .bs-ds-field__options .components-base-control__field,
+.bs-ds-app .bs-ds-field__options .components-base-control__field > .components-h-stack {
+	align-items: flex-start;
+}
+
+/* ---- fields side by side ---- */
+
+.bs-ds-fieldrow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--bs-ds-space-sm);
+}
+
+/* A 28 button beside the 32 box sits centered on it, as in the start row
+   below, not flush with its bottom and 4 lower at the top. */
+.bs-ds-app .bs-ds-fieldrow > .components-button.bs-ds-btn--sm {
+	margin-bottom: calc(var(--bs-ds-space-xxs) / 2);
+}
+
+.bs-ds-fieldrow > .bs-ds-field--full {
+	flex: 1 1 240px;
+	width: auto;
+}
+
+/* Fields with a line under them (help, a default) line up along the top. */
+.bs-ds-fieldrow--start {
+	align-items: flex-start;
+}
+
+/* A button among them sits level with the fields' boxes: past a label's one
+   line and its gap, centered on the 32 box. */
+.bs-ds-app .bs-ds-fieldrow--start > .components-button.bs-ds-btn {
+	margin-top: calc(var(--bs-ds-size-xsmall) * 1.2 + var(--bs-ds-space-xs));
+}
+
+.bs-ds-app .bs-ds-fieldrow--start > .components-button.bs-ds-btn--sm {
+	margin-top: calc(var(--bs-ds-size-xsmall) * 1.2 + var(--bs-ds-space-xs) + var(--bs-ds-space-xxs) / 2);
+}

@@ -1,0 +1,21 @@
+/* How to fix: where the fix is made, and the numbered steps. */
+.bs-ds-fix__where {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-fix__steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding-inline-start: var(--bs-ds-space-lg);
+	overflow-wrap: anywhere;
+}
+
+/* Whose step it is, or where it is made: a mark, never a full-width bar. */
+.bs-ds-fix__mark {
+	align-self: flex-start;
+}

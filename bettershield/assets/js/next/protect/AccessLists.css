@@ -1,0 +1,55 @@
+/**
+ * A list of entries as a row of its card: the entries in a bordered table
+ * inside the row, then the form that adds one, its problem and its hint.
+ */
+
+.bs-ds-listedit__table {
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+}
+
+/* The table's own border is its top edge. */
+.bs-ds-listedit__table .bs-ds-tbl__head {
+	border-top: 0;
+}
+
+/* An entry's parts: the address, the name, the user agent. */
+.bs-ds-listedit__what {
+	display: inline-flex;
+	flex-wrap: wrap;
+}
+
+.bs-ds-listedit__what > span + span::before {
+	content: "·";
+	padding: 0 var(--bs-ds-space-6);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-listedit__added {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-listedit__form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-listedit__problem,
+.bs-ds-app .bs-ds-listedit__hint {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-listedit__problem {
+	color: var(--bs-ds-color-text-error);
+}

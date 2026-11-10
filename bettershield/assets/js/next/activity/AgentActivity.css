@@ -1,0 +1,264 @@
+/**
+ * Activity › Agent activity: the record's card (its intro, the two pickers at
+ * the tab row's end, the notes over the table), a row per call, the foot and
+ * the stand-ins.
+ */
+
+/* Focus lands on the card's name after Clear filters, and is not drawn there. */
+.bs-ds-agentlog__title:focus {
+	outline: none;
+}
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-agentlog .bs-ds-card__head {
+		flex-wrap: wrap;
+		height: auto;
+	}
+}
+
+.bs-ds-app .bs-ds-agentlog__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The namespace and the door: small selects, as Select/Filter is drawn. */
+.bs-ds-agentlog .bs-ds-agentlog__pick {
+	width: 160px;
+}
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-agentlog .bs-ds-agentlog__pick {
+		flex: 1 1 140px;
+		width: auto;
+	}
+}
+
+.bs-ds-agentlog__notes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-agentlog__narrowed {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The list takes focus when the control it replaced is gone, unringed. */
+.bs-ds-agentlog__list:focus {
+	outline: none;
+}
+
+/*
+ * Another filter's page is on its way and the rows on screen still answer the
+ * last one. Dimmed rather than replaced, the way the site log does it.
+ */
+.bs-ds-agentlog__list.is-settling {
+	opacity: 0.45;
+	transition: opacity 0.15s ease;
+	pointer-events: none;
+}
+
+/* A row under the foot's own rule, and none at the card's bottom edge. */
+.bs-ds-agentlog .bs-ds-tbl__whole--foot {
+	border-top: 0;
+}
+
+/* ---- a call ---- */
+
+.bs-ds-agentlog .bs-ds-call {
+	align-items: start;
+}
+
+.bs-ds-call__what {
+	display: flex;
+	flex: 1 1 auto;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+}
+
+.bs-ds-call__what > .bs-ds-icon {
+	margin-top: var(--bs-ds-space-2);
+}
+
+.bs-ds-call__text {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+/* A long namespaced name wraps rather than widening the table. */
+.bs-ds-call__ability {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-call__detail {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-call__detail > * + *::before {
+	content: "·";
+	padding-inline-end: var(--bs-ds-space-xs);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-call__took {
+	font-variant-numeric: tabular-nums;
+}
+
+/* The pivot's own inset is taken back so it starts under the facts. */
+.bs-ds-call__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	margin-inline-start: calc(var(--bs-ds-space-xs) * -1);
+}
+
+.bs-ds-agentlog .bs-ds-call__outcome {
+	align-items: flex-start;
+	padding-top: var(--bs-ds-space-2);
+}
+
+/* Why one of this plugin's abilities turned the call away, in words, beside
+   its badge; and the code another plugin's ability returned, as it chose it. */
+.bs-ds-call__reason,
+.bs-ds-call__code {
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-agentlog .bs-ds-call__when {
+	padding-top: var(--bs-ds-space-2);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	font-variant-numeric: tabular-nums;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-agentlog__emptytitle {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-agentlog__footnote {
+	line-height: 1.4;
+}
+
+/* On a phone: the time and how it ended on the call's first line, the call
+   under them at the row's whole width. The time keeps its own width and
+   one line, and the reason a call ended goes under its badge: given the
+   rest of the line, a long reason took it all and the time wrapped a word
+   to a line. */
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-agentlog .bs-ds-call {
+		display: grid;
+		grid-template-columns: max-content minmax(0, 1fr);
+		gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	}
+
+	.bs-ds-agentlog .bs-ds-call__when {
+		order: 1;
+		padding-top: 0;
+		white-space: nowrap;
+	}
+
+	.bs-ds-agentlog .bs-ds-call__outcome {
+		order: 2;
+		justify-content: flex-end;
+		padding-top: 0;
+	}
+
+	.bs-ds-agentlog .bs-ds-call__outcome .bs-ds-call__reason,
+	.bs-ds-agentlog .bs-ds-call__outcome .bs-ds-call__code {
+		flex-basis: 100%;
+		text-align: end;
+	}
+
+	.bs-ds-agentlog .bs-ds-call__cell {
+		grid-column: 1 / -1;
+		order: 3;
+	}
+}
+
+/* ---- the stand-ins ---- */
+
+.bs-ds-agentlog__boneintro {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+.bs-ds-agentlog__bonetabs,
+.bs-ds-agentlog__bonefoot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	min-height: 44px;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-agentlog__bonefoot {
+	border-bottom: 0;
+}
+
+.bs-ds-agentlog__bones {
+	display: flex;
+	flex-direction: column;
+}
+
+.bs-ds-agentlog__bonerow {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 200px 136px;
+	align-items: start;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-agentlog__bonetext {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-agentlog__bonerow {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}

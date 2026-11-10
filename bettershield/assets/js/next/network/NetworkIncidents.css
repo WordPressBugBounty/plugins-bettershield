@@ -1,0 +1,64 @@
+/**
+ * Network › Incidents: the card's intro and notes, each site's group row with
+ * its name as a link, the stand-in sites, and the foot that reads the next ten.
+ */
+
+.bs-ds-app .bs-ds-netinc__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-netinc__notes {
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+/* The site's name heads its run of rows, at the group row's own size. */
+.bs-ds-app .bs-ds-netinc__name {
+	margin: 0;
+	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-netinc__name a {
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* The last site's last row draws no rule above the foot or the card's edge. */
+.bs-ds-netinc__site:last-child > :last-child {
+	border-bottom: 0;
+}
+
+.bs-ds-netinc__bones {
+	display: flex;
+	flex-direction: column;
+}
+
+.bs-ds-netinc__bonegroup {
+	display: flex;
+	align-items: center;
+	min-height: 36px;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-ml);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-netinc__foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}

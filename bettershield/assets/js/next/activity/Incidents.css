@@ -1,0 +1,194 @@
+/**
+ * Activity › Incidents: the strip and the card held together as the region
+ * focus returns to, the card's intro, notes and foot, each incident's row,
+ * the panel an open incident lays its parts out on, and the evidence table
+ * and related-activity links inside it.
+ */
+
+.bs-ds-incidents {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	min-width: 0;
+}
+
+/* Focus returns here after an incident changes state, and is not drawn. */
+.bs-ds-incidents:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-incidents__intro {
+	max-width: 80ch;
+	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-incidents__notes {
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-incidents__bones {
+	display: flex;
+	flex-direction: column;
+}
+
+/*
+ * The view on screen is being read again after an action on it. Dimmed
+ * rather than replaced: the rows staying where they are reads as updating,
+ * and nothing on them can be acted on until the fresh copy has landed.
+ */
+.bs-ds-incidents__list.is-settling {
+	opacity: 0.45;
+	pointer-events: none;
+	transition: opacity 120ms ease-out;
+}
+
+/* When the correlation last ran, at the foot of the list it explains. */
+.bs-ds-app .bs-ds-incidents__note {
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-ml);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- one incident ---- */
+
+.bs-ds-incident__titlerow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-incident__title {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-incident__facts {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.bs-ds-incident__facts > span + span::before {
+	content: "·";
+	padding: 0 var(--bs-ds-space-6);
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+/* The last incident of the list draws no rule under it. */
+.bs-ds-incident:last-child > :last-child {
+	border-bottom: 0;
+}
+
+/* An open incident runs on into its panel: no rule between them. */
+.bs-ds-tbl__row:has(+ .bs-ds-incident__under) {
+	border-bottom: 0;
+}
+
+.bs-ds-incident__under {
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-incident__under--open {
+	background: var(--bs-ds-color-surface-tertiary);
+	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
+}
+
+.bs-ds-incident__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 0;
+	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-md);
+}
+
+/* ---- the evidence ---- */
+
+/* The table runs to the card's edges, under the lines that introduce it. */
+.bs-ds-timeline__table {
+	margin: 0 calc(var(--bs-ds-space-md) * -1) calc(var(--bs-ds-space-md) * -1);
+}
+
+.bs-ds-timeline__when {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	font-size: var(--bs-ds-size-xsmall);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-timeline__label {
+	font-weight: 500;
+}
+
+.bs-ds-timeline__line {
+	display: block;
+}
+
+/* The takeover sequence, put to the reader as the question it is. */
+.bs-ds-timeline__question {
+	display: block;
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-timeline__network {
+	font-variant-numeric: tabular-nums;
+}
+
+.bs-ds-timeline__path {
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-timeline__line a {
+	color: var(--bs-ds-color-text-primary);
+	text-decoration: underline;
+}
+
+.bs-ds-app .bs-ds-timeline__files {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: var(--bs-ds-space-xxs) 0 0;
+	padding-inline-start: var(--bs-ds-space-md);
+	list-style: disc;
+}
+
+/* ---- the activity around it ---- */
+
+.bs-ds-app .bs-ds-related__links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0 var(--bs-ds-space-md);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* ---- narrow ---- */
+
+@container bs-ds-content (max-width: 600px) {
+
+	.bs-ds-incident__body {
+		padding-inline: var(--bs-ds-space-sm);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-incidents__list.is-settling {
+		transition: none;
+	}
+}

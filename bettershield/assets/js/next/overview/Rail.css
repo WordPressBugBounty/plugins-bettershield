@@ -1,0 +1,61 @@
+/**
+ * The rail's own parts (design frames 27:53378 and 27:53397): Recovery's
+ * facts over its two buttons. The agent rows and the facts
+ * themselves are the shared ActionRow and KeyValue.
+ */
+
+/* The facts and the buttons a row's distance apart: a fixed 263 height
+   spread them 45px apart (#2572). */
+.bs-ds-recovery {
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-recovery__top {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-recovery__actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--bs-ds-space-xs);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+}
+
+/* Each label on one line: where both do not fit side by side, the buttons
+   stack rather than "Get Recovery Codes" wrapping onto two (#2572). */
+.bs-ds-app .bs-ds-recovery__actions .components-button.bs-ds-btn {
+	flex: 1 0 auto;
+	white-space: nowrap;
+}
+
+/* Where the protections counted above are kept, under the six switches. */
+.bs-ds-app .bs-ds-protection__where {
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md) var(--bs-ds-space-md);
+	/* It wraps to two lines, which the type step's line height of 1 set
+	   touching, into the links' underlines (#2119). */
+	line-height: 1.4;
+}
+
+.bs-ds-app .bs-ds-protection__where a {
+	color: var(--bs-ds-color-text-primary);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* A source's counts are a sentence under its name, never squeezed
+   right-aligned beside it, where one word wrapped alone (#2518). */
+.bs-ds-app .bs-ds-filescard__sources .bs-ds-kv__row {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0;
+}
+
+.bs-ds-app .bs-ds-filescard__sources .bs-ds-kv__value {
+	max-width: none;
+	text-align: start;
+}

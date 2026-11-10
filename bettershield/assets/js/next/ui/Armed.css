@@ -1,0 +1,28 @@
+/**
+ * An armed control: the consequence as a 12 line, the two buttons after it,
+ * wrapping under it when the row is narrow.
+ */
+
+.bs-ds-armed {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	max-width: 100%;
+}
+
+.bs-ds-armed__note {
+	max-width: 48ch;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-armed__actions {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}

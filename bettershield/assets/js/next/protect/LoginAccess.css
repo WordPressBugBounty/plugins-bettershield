@@ -1,0 +1,102 @@
+/**
+ * Protection › Login & access: the number fields a limit counts with, the notes
+ * under a switch, the replay of edited numbers, the save bar that holds the
+ * draft, and the line at the tab's foot.
+ */
+
+/* A number and its default, one above the other, as wide as its label. */
+.bs-ds-number {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	width: 160px;
+	max-width: 100%;
+}
+
+/* A number at a row's end, where a switch would be read. */
+.bs-ds-number--end {
+	align-items: flex-end;
+}
+
+.bs-ds-app .bs-ds-access__note,
+.bs-ds-app .bs-ds-formgate__replay {
+	max-width: 80ch;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* What the public forms' count covers on a network, under the card's intro. */
+.bs-ds-access__scope {
+	display: block;
+	margin-top: var(--bs-ds-space-xxs);
+}
+
+/* Focus lands on the Sessions card's name after a save, and is not drawn there. */
+.bs-ds-access__focus:focus {
+	outline: none;
+}
+
+/*
+ * The draft's bar: held at the foot of the window while there is something
+ * to save, so the one control that now matters stays in reach.
+ */
+.bs-ds-savebar {
+	position: sticky;
+	bottom: var(--bs-ds-space-xs);
+	z-index: 2;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-alert);
+}
+
+.bs-ds-savebar__label {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-savebar__actions {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* The paid tier's one line, at the tab's foot. */
+.bs-ds-app .bs-ds-access__tier {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-sm);
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-app .bs-ds-access__tierlink {
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The sample auth-log line: one line of a log, so it breaks anywhere rather
+   than pushing the card wider than a phone. */
+.bs-ds-hostban__sample {
+	display: block;
+	margin-top: var(--bs-ds-space-xs);
+	overflow-wrap: anywhere;
+	font-size: var(--bs-ds-size-xsmall);
+}
