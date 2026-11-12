@@ -306,9 +306,11 @@ const WP_HIDE = 'wp-hide-security-enhancer/wp-hide.php';
  * @param {Object} plugin  The plugin, with its name and jobs.
  * @param {Object} choices Job => choice, as on screen.
  * @param {Array}  moves   What each two-factor plugin brings over.
+ * @param {Object} opts    `twoFactor: false` leaves out the two-factor
+ *                         line, for a card that already says it.
  * @return {string} The sentences, or ''.
  */
-function alsoStops( plugin, choices, moves ) {
+function alsoStops( plugin, choices, moves, { twoFactor = true } = {} ) {
 	const left = otherJobs( plugin, choices );
 	const parts = left.length
 		? [
@@ -321,7 +323,9 @@ function alsoStops( plugin, choices, moves ) {
 		  ]
 		: [];
 
-	parts.push( twoFactorMove( plugin, moves ) );
+	if ( twoFactor ) {
+		parts.push( twoFactorMove( plugin, moves ) );
+	}
 
 	// Its path rewrites, headers, captcha and two-factor stop with it (#2748).
 	if ( WP_HIDE === plugin.file ) {
@@ -697,6 +701,36 @@ export default function Coexistence() {
 					) )
 			: [];
 
+	/*
+	 * What else stops with each plugin the main button switches off, said
+	 * once, on the first card that names it. The two-factor card's account
+	 * lines already say what its accounts get.
+	 */
+	const stopsFor = {};
+
+	switchingOff.forEach( ( plugin ) => {
+		const row = choiceRows.find( ( one ) => ( one.deactivate || [] ).some( ( entry ) => entry.file === plugin.file ) ) || choiceRows[ 0 ];
+
+		if ( row ) {
+			stopsFor[ row.job ] = [ ...( stopsFor[ row.job ] || [] ), plugin ];
+		}
+	} );
+
+	const stopLines = ( row ) =>
+		( stopsFor[ row.job ] || [] )
+			.map( ( plugin ) => {
+				const twoFactor = 'two_factor' !== row.job;
+				const codes = twoFactor ? backupCodesLine( moves.find( ( entry ) => entry.file === plugin.file ) ) : '';
+
+				return { plugin, line: `${ alsoStops( plugin, choices, moves, { twoFactor } ) }${ codes }`.trim() };
+			} )
+			.filter( ( { line } ) => line )
+			.map( ( { plugin, line } ) => (
+				<span key={ `stops:${ plugin.file }` }>
+					<strong>{ plugin.name }:</strong> { line }
+				</span>
+			) );
+
 	const useTip = ( row ) => {
 		const sources = tipFor[ row.job ] || [];
 
@@ -706,6 +740,7 @@ export default function Coexistence() {
 					<span className="bs-ds-setup-coex__tip">
 						<span>{ doesHere( row ) }</span>
 						{ accountLines( row ) }
+						{ stopLines( row ) }
 					</span>
 				</InfoTip>
 			);
@@ -734,6 +769,7 @@ export default function Coexistence() {
 							brand()
 						) }
 					</span>
+					{ stopLines( row ) }
 				</span>
 			</InfoTip>
 		);
@@ -769,37 +805,7 @@ export default function Coexistence() {
 						onClick: save,
 						busy: 'coexistence' === busy,
 					} }
-				>
-					{ switchingOff.length ? (
-						<span className="bs-ds-setup-coex__foot-tip">
-							<InfoTip label={ sprintf( /* translators: %s: the main button's label. */ __( 'What %s does', 'bettershield' ), primaryLabel() ) }>
-								<span className="bs-ds-setup-coex__tip">
-									<span>
-										{ sprintf(
-											/* translators: 1: the main button's label, 2: one or more plugin names. */
-											_n(
-												'%1$s deactivates %2$s. Its settings stay saved, and you can turn it back on.',
-												'%1$s deactivates %2$s. Their settings stay saved, and you can turn them back on.',
-												switchingOff.length,
-												'bettershield'
-											),
-											primaryLabel(),
-											listOf( switchingOff.map( ( plugin ) => plugin.name ) )
-										) }
-									</span>
-									{ switchingOff
-										.filter( ( plugin ) => alsoStops( plugin, choices, moves ) )
-										.map( ( plugin ) => (
-											<span key={ `stops:${ plugin.file }` }>
-												<strong>{ plugin.name }:</strong> { alsoStops( plugin, choices, moves ) }
-												{ backupCodesLine( moves.find( ( entry ) => entry.file === plugin.file ) ) }
-											</span>
-										) ) }
-								</span>
-							</InfoTip>
-						</span>
-					) : null }
-				</Footer>
+				/>
 			}
 		>
 			{ offCards }

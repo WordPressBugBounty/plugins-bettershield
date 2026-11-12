@@ -77,6 +77,9 @@ export function evidenceLabel( key, check = '' ) {
 		plugin: __( 'Plugin', 'bettershield' ),
 		plugins: __( 'Plugins', 'bettershield' ),
 		themes: __( 'Themes', 'bettershield' ),
+		scripts: __( 'Scripts', 'bettershield' ),
+		// The directory does not say when a theme left it, only that it did.
+		gone_since: __( 'Noticed missing on', 'bettershield' ),
 		days: __( 'Days', 'bettershield' ),
 		days_left: __( 'Days left', 'bettershield' ),
 		age_days: __( 'Age in days', 'bettershield' ),

@@ -155,7 +155,7 @@ final class Tier {
 		return array(
 			'name'    => 'BetterShield Ultra',
 			'url'     => self::OFFER_URL,
-			'summary' => __( 'BetterShield Ultra is for people who look after sites for others. BetterShield works in full without it.', 'bettershield' ),
+			'summary' => __( 'BetterShield Ultra adds more to BetterShield, whether you run one site or look after many. BetterShield works in full without it.', 'bettershield' ),
 			// What a customer can use in the released BetterShield Ultra, the
 			// same facts as the readme's Ultra section: nothing that cannot run yet.
 			'adds'    => array(

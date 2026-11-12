@@ -803,6 +803,9 @@ export function StoreProvider( { children } ) {
 				act( { path: '/bettershield/v1/findings/admin_username_exists/rename', key: 'admin-rename', data: { username }, then, refused } ),
 			undoAdminRename: ( undo, then, refused ) => act( { path: '/bettershield/v1/findings/admin_username_exists/rename/undo', key: 'admin-rename', data: { undo }, then, refused } ),
 			revokeStalePasswords: ( passwords, then ) => act( { path: '/bettershield/v1/findings/application_passwords_stale/revoke', key: 'stale-passwords', data: { passwords }, then } ),
+			// Accepting a flagged store script, and taking that back (#2844).
+			acceptStoreScript: ( script, then ) => act( { path: '/bettershield/v1/findings/store_script_reads_cards/accept', key: 'store-scripts', data: { script }, then } ),
+			unacceptStoreScript: ( script, then ) => act( { path: '/bettershield/v1/findings/store_script_reads_cards/accept', key: 'store-scripts', data: { script }, method: 'DELETE', then } ),
 			suspendDormant: ( accounts, then ) => act( { path: '/bettershield/v1/findings/privileged_account_dormant/suspend', key: 'dormant-accounts', data: { accounts }, then } ),
 			// Also from the list of suspensions, which names the route.
 			letBackIn: ( undo, then, path = '/bettershield/v1/findings/privileged_account_dormant/suspend/undo' ) =>
@@ -1095,7 +1098,7 @@ export function StoreProvider( { children } ) {
 				} ),
 
 			testMcpConnection: ( onSuccess ) =>
-				act( { path: '/bettershield/v1/mcp/self-test', key: 'mcp-self-test', then: onSuccess } ),
+				act( { path: '/bettershield/v1/mcp/self-test', key: 'mcp-self-test', hold: SEND_HOLD, then: onSuccess } ),
 
 			/*
 			 * The optional hub. Connecting turns on the switches it needs and
@@ -1504,6 +1507,9 @@ export function StoreProvider( { children } ) {
 			 */
 			startMaintenance: ( minutes ) => act( { path: '/bettershield/v1/alerts/maintenance', key: 'maintenance', data: { minutes } } ),
 			endMaintenance: () => act( { path: '/bettershield/v1/alerts/maintenance/end', key: 'maintenance' } ),
+			// A window booked to open by itself later, and taken back (#107).
+			bookMaintenance: ( starts, minutes ) => act( { path: '/bettershield/v1/alerts/maintenance/booking', key: 'maintenance', data: { starts, minutes } } ),
+			cancelMaintenanceBooking: () => act( { path: '/bettershield/v1/alerts/maintenance/booking', key: 'maintenance', method: 'DELETE' } ),
 
 			// The key names the control that saved, so "Saved." is said beside
 			// that one and not beside every control on the screen.
@@ -1555,6 +1561,16 @@ export function StoreProvider( { children } ) {
 					key: 'two-factor-store-tab',
 					data: { store_tab: on },
 					then: settingsMoved( () => load( 'twoFactorPolicy', { force: true } ) ),
+				} ),
+
+			// Where the sign-in page offers a passkey, not who must use one:
+			// saved the moment it is pressed, as a switch is.
+			savePasskeyAutofill: ( on ) =>
+				act( {
+					path: '/bettershield/v1/passkeys/policy',
+					key: 'passkey-autofill',
+					data: { autofill: on },
+					then: settingsMoved( () => load( 'passkeyPolicy', { force: true } ) ),
 				} ),
 
 			saveAccountPage: ( page ) =>

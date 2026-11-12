@@ -99,9 +99,30 @@
 	margin-inline-start: auto;
 }
 
+/* The way to reach us, as quiet as a link can be and still be found. */
+.bs-ds-setup__help {
+	padding: 0 var(--bs-ds-space-xs);
+	color: var(--bs-ds-color-text-secondary);
+	font-size: var(--bs-ds-size-small);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.bs-ds-setup__help:hover,
+.bs-ds-setup__help:focus {
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* On a step with no footer bar, the link sits at the panel's foot. */
+.bs-ds-setup__help-line {
+	display: flex;
+	justify-content: center;
+	padding: 0 var(--bs-ds-space-lg) var(--bs-ds-space-md);
+}
+
 /*
  * Narrow: the way forward goes first and full width, where a thumb reaches
- * it; Skip under it, and Back last.
+ * it; Skip under it, then Back, and Need help? last.
  */
 @container bs-ds-setup (max-width: 600px) {
 
@@ -128,6 +149,12 @@
 
 	.bs-ds-setup__foot-start:empty {
 		display: none;
+	}
+
+	/* Need help? goes last, under Back, and centered like the rest. */
+	.bs-ds-setup__help {
+		order: -1;
+		align-self: center;
 	}
 
 	.bs-ds-app .bs-ds-setup__foot .components-button.bs-ds-btn {

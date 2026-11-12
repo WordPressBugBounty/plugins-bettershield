@@ -21,6 +21,16 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Maintenance {
 	public const OPTION = 'bettershield_maintenance_window';
 	public const TASK = 'bettershield_maintenance_close';
+	/** A window booked ahead: when it opens, for how long, and who booked it. */
+	public const BOOKING = 'bettershield_maintenance_booking';
+	/** The scheduled opening of a booked window. */
+	public const OPEN_TASK = 'bettershield_maintenance_open';
+	/** The lengths a window may run for, booked or opened now. */
+	public const LENGTHS = array( 30, 60, 120, 240 );
+	/** How far ahead a window may be booked. */
+	private const BOOK_AHEAD = 30 * DAY_IN_SECONDS;
+	/** How soon a booked window may open, so a booking is never already late. */
+	private const BOOK_LEAD = 5 * MINUTE_IN_SECONDS;
 	public const CLOSED = 'maintenance_window_closed';
 	private const LOCK = 'maintenance_window_write';
 	// Deliberately excludes policy weakening, credentials, canaries, lockdown,
@@ -33,6 +43,7 @@ final class Maintenance {
 	public static function register(): void {
 		add_action( 'bettershield_events_flushed', array( self::class, 'observe' ), 5, 2 );
 		add_action( self::TASK, array( self::class, 'tick' ) );
+		add_action( self::OPEN_TASK, array( self::class, 'tick' ) );
 		Runner::instance()->register_task( 'bettershield_maintenance_retry', 'hourly', array( self::class, 'tick' ), false );
 	}
 
@@ -49,14 +60,149 @@ final class Maintenance {
 	}
 
 	public static function report(): array {
-		$state = self::state();
+		$state   = self::state();
+		$booking = self::booking();
+		$by      = null !== $booking ? get_userdata( (int) $booking['by'] ) : false;
 		return array(
 			'active' => 'active' === ( $state['phase'] ?? '' ) && (int) ( $state['until'] ?? 0 ) > time(),
 			'until' => isset( $state['until'] ) ? gmdate( 'c', (int) $state['until'] ) : null,
 			'held' => (int) ( $state['held'] ?? 0 ),
 			'total' => (int) ( $state['total'] ?? 0 ),
 			'summary_pending' => array() !== $state && 'closed' !== ( $state['phase'] ?? '' ),
+			// A window booked ahead, said with who booked it.
+			'booked' => null === $booking ? null : array(
+				'at'      => gmdate( 'c', (int) $booking['at'] ),
+				'until'   => gmdate( 'c', (int) $booking['at'] + (int) $booking['minutes'] * MINUTE_IN_SECONDS ),
+				'minutes' => (int) $booking['minutes'],
+				'by'      => $by instanceof \WP_User ? $by->display_name : '',
+				// What the form shows, on the site's clock.
+				'local'   => wp_date( 'Y-m-d\TH:i', (int) $booking['at'] ),
+			),
 		);
+	}
+
+	/**
+	 * The window booked ahead, or null.
+	 *
+	 * @return array{id: string, at: int, minutes: int, by: int, booked_at: int}|null
+	 */
+	public static function booking(): ?array {
+		wp_cache_delete( self::BOOKING, 'options' );
+		$value = get_option( self::BOOKING, array() );
+		return is_array( $value ) && isset( $value['at'], $value['minutes'] ) ? $value : null;
+	}
+
+	/** Whether a window is open now, or its summary is still owed. */
+	private static function open_or_pending(): bool {
+		$state = self::fresh();
+		return array() !== $state && 'closed' !== ( $state['phase'] ?? '' );
+	}
+
+	/**
+	 * Book a window to open by itself later, or change the one booked. One
+	 * window at a time, booked or open. Recorded at once and never held, with
+	 * who booked it, when it opens and how long it runs.
+	 *
+	 * @param string $local When it opens, as `Y-m-d\TH:i` on the site's clock.
+	 * @return true|\WP_Error
+	 */
+	public static function book( string $local, int $minutes ) {
+		if ( ! in_array( $minutes, self::LENGTHS, true ) ) {
+			return new \WP_Error( 'bettershield_maintenance_duration', __( 'Choose 30 minutes, 1 hour, 2 hours or 4 hours.', 'bettershield' ), array( 'status' => 400 ) );
+		}
+		$at = \DateTimeImmutable::createFromFormat( '!Y-m-d\TH:i', $local, wp_timezone() );
+		if ( false === $at ) {
+			return new \WP_Error( 'bettershield_maintenance_when', __( 'Enter the date and time the window should start.', 'bettershield' ), array( 'status' => 400 ) );
+		}
+		$at = $at->getTimestamp();
+		if ( $at < time() + self::BOOK_LEAD || $at > time() + self::BOOK_AHEAD ) {
+			return new \WP_Error( 'bettershield_maintenance_when', __( 'Book a start at least 5 minutes from now and no more than 30 days ahead.', 'bettershield' ), array( 'status' => 400 ) );
+		}
+		self::tick();
+		if ( ! Claim::claim( self::LOCK, 10 ) ) { return self::busy(); }
+		try {
+			if ( self::open_or_pending() ) {
+				return new \WP_Error( 'bettershield_maintenance_active', __( 'A maintenance window is open or its summary is pending. End it first.', 'bettershield' ), array( 'status' => 409 ) );
+			}
+			$before = self::booking();
+			// Booking the same start and length again changes nothing, so it
+			// records nothing and emails nobody.
+			if ( null !== $before && $at === (int) $before['at'] && $minutes === (int) $before['minutes'] ) {
+				return true;
+			}
+			$booking = array( 'id' => wp_generate_uuid4(), 'at' => $at, 'minutes' => $minutes, 'by' => get_current_user_id(), 'booked_at' => time() );
+			if ( ! update_option( self::BOOKING, $booking, false ) ) { return self::busy(); }
+			wp_clear_scheduled_hook( self::OPEN_TASK );
+			wp_schedule_single_event( $at, self::OPEN_TASK );
+			// Who booked it is the row's own actor. High, and never held: an
+			// alert path that will go quiet is told the moment it is set up.
+			Writer::instance()->record(
+				'maintenance_window_booked',
+				Writer::SEVERITY_HIGH,
+				array(
+					'object_type' => 'maintenance',
+					'object_id'   => $booking['id'],
+					'context'     => array(
+						'starts'  => gmdate( 'c', $at ),
+						'until'   => gmdate( 'c', $at + $minutes * MINUTE_IN_SECONDS ),
+						'minutes' => $minutes,
+						'change'  => null === $before ? 'booked' : 'changed',
+					),
+				)
+			);
+			return true;
+		} finally { Claim::release( self::LOCK ); }
+	}
+
+	/** @return true|\WP_Error */
+	public static function cancel_booking() {
+		if ( ! Claim::claim( self::LOCK, 10 ) ) { return self::busy(); }
+		try {
+			$booking = self::booking();
+			if ( null === $booking ) {
+				return new \WP_Error( 'bettershield_maintenance_not_booked', __( 'No maintenance window is booked.', 'bettershield' ), array( 'status' => 404 ) );
+			}
+			if ( ! delete_option( self::BOOKING ) ) { return self::busy(); }
+			wp_clear_scheduled_hook( self::OPEN_TASK );
+			Writer::instance()->record(
+				'maintenance_booking_canceled',
+				Writer::SEVERITY_MEDIUM,
+				array(
+					'object_type' => 'maintenance',
+					'object_id'   => (string) $booking['id'],
+					'context'     => array( 'starts' => gmdate( 'c', (int) $booking['at'] ) ),
+				)
+			);
+			return true;
+		} finally { Claim::release( self::LOCK ); }
+	}
+
+	/**
+	 * Open a booked window that is due. It closes at the booked end however
+	 * late it opens; one whose whole window has passed opens nothing and is
+	 * recorded as missed.
+	 */
+	private static function open_booked(): void {
+		$booking = self::booking();
+		if ( null === $booking || (int) $booking['at'] > time() || ! Claim::claim( self::LOCK, 10 ) ) { return; }
+		try {
+			$booking = self::booking();
+			if ( null === $booking || (int) $booking['at'] > time() ) { return; }
+			$until = (int) $booking['at'] + (int) $booking['minutes'] * MINUTE_IN_SECONDS;
+			if ( ! delete_option( self::BOOKING ) ) { return; }
+			if ( $until <= time() || self::open_or_pending() ) {
+				Writer::instance()->record( 'maintenance_booking_missed', Writer::SEVERITY_INFO, array( 'actor_type' => 'system', 'object_type' => 'maintenance', 'object_id' => (string) $booking['id'], 'context' => array( 'starts' => gmdate( 'c', (int) $booking['at'] ) ) ) );
+				return;
+			}
+			self::open(
+				$until,
+				array(
+					'booked_by' => (int) $booking['by'],
+					'booked_at' => gmdate( 'c', (int) $booking['booked_at'] ),
+				),
+				(string) $booking['id']
+			);
+		} finally { Claim::release( self::LOCK ); }
 	}
 
 	/** @return true|\WP_Error */
@@ -67,18 +213,32 @@ final class Maintenance {
 		self::tick();
 		if ( ! Claim::claim( self::LOCK, 10 ) ) { return self::busy(); }
 		try {
-			$old = self::fresh();
-			if ( array() !== $old && 'closed' !== ( $old['phase'] ?? '' ) ) {
+			if ( self::open_or_pending() ) {
 				return new \WP_Error( 'bettershield_maintenance_active', __( 'The last maintenance window is still open or its summary is pending. End it first.', 'bettershield' ), array( 'status' => 409 ) );
 			}
-			$state = array( 'id' => wp_generate_uuid4(), 'phase' => 'active', 'started' => Time::stamp(), 'until' => time() + $minutes * MINUTE_IN_SECONDS, 'counts' => array(), 'total' => 0, 'held' => 0 );
-			if ( ! update_option( self::OPTION, $state, false ) ) { return self::busy(); }
-			Writer::instance()->record( 'maintenance_window_started', Writer::SEVERITY_HIGH, array( 'object_type' => 'maintenance', 'object_id' => $state['id'], 'context' => array( 'until' => gmdate( 'c', $state['until'] ) ) ) );
-			// A missing cron does not extend the quiet period: holds() expires
-			// by the clock and the independent hourly task retries the summary.
-			wp_schedule_single_event( $state['until'], self::TASK );
-			return true;
+			// One window at a time, booked or open.
+			if ( null !== self::booking() ) {
+				return new \WP_Error( 'bettershield_maintenance_booked', __( 'A maintenance window is booked. Cancel the booking first, or change its time.', 'bettershield' ), array( 'status' => 409 ) );
+			}
+			return self::open( time() + $minutes * MINUTE_IN_SECONDS ) ? true : self::busy();
 		} finally { Claim::release( self::LOCK ); }
+	}
+
+	/**
+	 * Open a window that closes at `$until`, under the claim the caller holds.
+	 *
+	 * @param array<string, mixed> $booked Who booked it and when, for one booked ahead.
+	 */
+	private static function open( int $until, array $booked = array(), string $id = '' ): bool {
+		$state = array( 'id' => '' !== $id ? $id : wp_generate_uuid4(), 'phase' => 'active', 'started' => Time::stamp(), 'until' => $until, 'counts' => array(), 'total' => 0, 'held' => 0 );
+		if ( ! update_option( self::OPTION, $state, false ) ) { return false; }
+		// A booked window opens by itself, so the row is the site's, and it
+		// names who booked it and when.
+		Writer::instance()->record( 'maintenance_window_started', Writer::SEVERITY_HIGH, array( 'object_type' => 'maintenance', 'object_id' => $state['id'], 'context' => array( 'until' => gmdate( 'c', $state['until'] ) ) + $booked ) + ( array() !== $booked ? array( 'actor_type' => 'system' ) : array() ) );
+		// A missing cron does not extend the quiet period: holds() expires
+		// by the clock and the independent hourly task retries the summary.
+		wp_schedule_single_event( $state['until'], self::TASK );
+		return true;
 	}
 
 	/** Capture only the batch the writer actually persisted. */
@@ -129,6 +289,9 @@ final class Maintenance {
 	public static function tick(): void {
 		$state = self::state();
 		if ( array() !== $state && 'closed' !== ( $state['phase'] ?? '' ) && (int) $state['until'] <= time() ) { self::end(); }
+		// A booked window that is due opens here too, so an opening the
+		// scheduler missed is made by the hourly task, late but never long.
+		self::open_booked();
 	}
 
 	/** @return true|\WP_Error */

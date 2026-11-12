@@ -422,6 +422,25 @@ final class Store {
 	}
 
 	/**
+	 * The credential ids one account can sign in with here, for the browser's
+	 * passkey store to keep. One removed, or one of an older generation, is
+	 * left out, so the store can stop offering it.
+	 *
+	 * @return string[]
+	 */
+	public static function usable_credential_ids_for_user( int $user_id ): array {
+		$out = array();
+
+		foreach ( self::rows_for_user( $user_id ) as $row ) {
+			if ( self::is_usable( (int) $row->site_id, (string) $row->rp_id ) ) {
+				$out[] = (string) $row->credential_id;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
 	 * The credential ids one account already has, so the browser can decline
 	 * to enroll the same device twice.
 	 *
@@ -836,6 +855,29 @@ final class Store {
 			// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			return 1 === $deleted ? true : self::verification_unavailable();
 		} finally { self::mutation_claim( $user_id, true ); }
+	}
+
+	/**
+	 * Remove one passkey from an account on somebody else's say, as an
+	 * administrator does: no proof from the holder, and none of the
+	 * holder's own limits, which protect a person removing their own.
+	 * Only from the account that owns it.
+	 */
+	public static function remove_for_account( int $user_id, int $id ): bool {
+		global $wpdb;
+
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- account_where() is a literal or a site predicate of integers assembled by Schema::site_where(); nothing from a request reaches the string.
+		$deleted = $wpdb->query(
+			$wpdb->prepare(
+				'DELETE FROM %i WHERE ' . self::account_where() . ' AND id = %d AND user_id = %d',
+				Schema::table( 'passkeys' ),
+				$id,
+				$user_id
+			)
+		);
+		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+
+		return 1 === $deleted;
 	}
 
 	/**

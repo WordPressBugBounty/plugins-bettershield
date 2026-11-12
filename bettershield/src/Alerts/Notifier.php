@@ -174,6 +174,8 @@ final class Notifier {
 			// Each open file change has its own row, which decides the email.
 			// This would count the one change twice, and adds nothing to it.
 			if ( 'finding_opened' === (string) $event['event_type'] && 'files_altered' === (string) ( $event['object_id'] ?? '' ) ) { continue; }
+			// Likewise each flagged store script has its own row, told once.
+			if ( 'finding_opened' === (string) $event['event_type'] && \BetterShield\Audit\StoreScripts::CHECK === (string) ( $event['object_id'] ?? '' ) ) { continue; }
 
 			// The row that opened it is in the instant email, which names it.
 			// Alone, this was a second email minutes later about the same event.
@@ -952,7 +954,10 @@ final class Notifier {
 		$type = (string) ( $event['type'] ?? '' );
 
 		if ( Settings::always_emails( $type ) ) {
-			return true;
+			// A booking is emailed at once so nobody is surprised when alerts
+			// go quiet, not because something needs doing: the owner who booked
+			// it reads "if you expected this", not "Action needed".
+			return 'maintenance_window_booked' !== $type;
 		}
 
 		return 'file_changed' === $type
@@ -1199,6 +1204,8 @@ final class Notifier {
 				$kinds['ended'] = true;
 			} elseif ( 'maintenance_window_started' === (string) ( $event['type'] ?? '' ) ) {
 				$kinds['started'] = true;
+			} elseif ( 'maintenance_window_booked' === (string) ( $event['type'] ?? '' ) ) {
+				$kinds['booked'] = true;
 			} else {
 				$kinds['rated'] = true;
 			}
@@ -1206,6 +1213,10 @@ final class Notifier {
 
 		if ( array( 'started' ) === array_keys( $kinds ) ) {
 			return __( 'You got this email right away because planned maintenance started on your site. Change this in BetterShield › Settings › Email Alerts.', 'bettershield' );
+		}
+
+		if ( array( 'booked' ) === array_keys( $kinds ) ) {
+			return __( 'You got this email right away because planned maintenance was booked on your site. Change this in BetterShield › Settings › Email Alerts.', 'bettershield' );
 		}
 
 		if ( array( 'ended' ) === array_keys( $kinds ) ) {

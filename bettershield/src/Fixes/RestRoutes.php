@@ -137,18 +137,43 @@ final class RestRoutes {
 		return true;
 	}
 
+	/** Why this route can't be watched or closed now, or null. A plan asks the same question the step does. */
+	public static function refusal( string $route, string $action ): ?\WP_Error {
+		$entry = self::picked()[ $route ] ?? null;
+
+		if ( 'close' === $action ) {
+			if ( null === $entry || 'watching' !== $entry['state'] ) {
+				return new \WP_Error( 'bettershield_route_not_watched', __( 'That address is not being watched, so it cannot be closed yet.', 'bettershield' ), array( 'status' => 409 ) );
+			}
+
+			if ( time() < $entry['since'] + self::WATCH_FOR ) {
+				return new \WP_Error( 'bettershield_route_watching', __( 'That address is watched for a week before it can be closed, so you can see who reads it first.', 'bettershield' ), array( 'status' => 409 ) );
+			}
+
+			return null;
+		}
+
+		if ( null !== $entry ) {
+			return new \WP_Error( 'bettershield_route_picked', __( 'That address is already being watched or closed.', 'bettershield' ), array( 'status' => 409 ) );
+		}
+
+		if ( ! self::offerable( $route ) || ! RestSurface::answers_anyone( $route ) ) {
+			return new \WP_Error( 'bettershield_route_not_offered', __( 'That address does not answer anyone who asks, or is one BetterShield leaves open, so nothing was changed.', 'bettershield' ), array( 'status' => 409 ) );
+		}
+
+		return null;
+	}
+
 	/**
 	 * Start watching a route, its undo record first.
 	 *
 	 * @return array{route: string, undo: string}|\WP_Error
 	 */
 	public static function watch( string $route ) {
-		if ( isset( self::picked()[ $route ] ) ) {
-			return new \WP_Error( 'bettershield_route_picked', __( 'That address is already being watched or closed.', 'bettershield' ), array( 'status' => 409 ) );
-		}
+		$refused = self::refusal( $route, 'watch' );
 
-		if ( ! self::offerable( $route ) || ! RestSurface::answers_anyone( $route ) ) {
-			return new \WP_Error( 'bettershield_route_not_offered', __( 'That address does not answer anyone who asks, or is one BetterShield leaves open, so nothing was changed.', 'bettershield' ), array( 'status' => 409 ) );
+		if ( null !== $refused ) {
+			return $refused;
 		}
 
 		$token = Ledger::open( self::ACTION, array( 'route' => $route, 'state' => 'open' ), array( 'route' => $route ) );
@@ -182,15 +207,13 @@ final class RestRoutes {
 	 * @return array{route: string}|\WP_Error
 	 */
 	public static function close( string $route ) {
-		$entry = self::picked()[ $route ] ?? null;
+		$refused = self::refusal( $route, 'close' );
 
-		if ( null === $entry || 'watching' !== $entry['state'] ) {
-			return new \WP_Error( 'bettershield_route_not_watched', __( 'That address is not being watched, so it cannot be closed yet.', 'bettershield' ), array( 'status' => 409 ) );
+		if ( null !== $refused ) {
+			return $refused;
 		}
 
-		if ( time() < $entry['since'] + self::WATCH_FOR ) {
-			return new \WP_Error( 'bettershield_route_watching', __( 'That address is watched for a week before it can be closed, so you can see who reads it first.', 'bettershield' ), array( 'status' => 409 ) );
-		}
+		$entry = self::picked()[ $route ];
 
 		self::put( $route, array( 'state' => 'closed' ) + $entry );
 		self::record( 'rest_route_closed', $route );

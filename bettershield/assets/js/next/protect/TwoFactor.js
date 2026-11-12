@@ -1047,6 +1047,48 @@ function PasskeyPolicy() {
 }
 
 /**
+ * Whether the sign-in page offers a saved passkey in the username field's own
+ * list, beside saved passwords. Saved the moment it is pressed, as a switch
+ * is. The button below Log In stays either way.
+ */
+export function PasskeyAutofill() {
+	const { resource } = useResource( 'passkeyPolicy' );
+	const { savePasskeyAutofill, busy } = useStore();
+	const saving = isWorking( busy, 'passkey-autofill' );
+
+	if ( ! resource.data ) {
+		return null;
+	}
+
+	return (
+		<SettingRow
+			title={ __( 'Offer passkeys in the username field', 'bettershield' ) }
+			about={ __( 'On the sign-in page, a saved passkey shows in the username field’s list, beside saved passwords.', 'bettershield' ) }
+			control={ <Saved forKey="passkey-autofill" /> }
+			toggle={ {
+				checked: false !== resource.data.policy.autofill,
+				onChange: ( on ) => {
+					if ( ! saving ) {
+						savePasskeyAutofill( on );
+					}
+				},
+			} }
+			topics={ [
+				{
+					key: 'how',
+					label: __( 'How it works', 'bettershield' ),
+					lead: __( 'Picking a passkey from the list signs in, the same as Log In With a Passkey.', 'bettershield' ),
+					points: [
+						__( 'Only in browsers that support it. The button below Log In stays for the rest.', 'bettershield' ),
+						__( 'The password field works as before.', 'bettershield' ),
+					],
+				},
+			] }
+		/>
+	);
+}
+
+/**
  * The tab at a glance: this account's own second factor, then what the site
  * asks of every account. Three answers a person opening this tab usually came
  * for, readable before any card below is.
@@ -1205,6 +1247,7 @@ export default function TwoFactor() {
 			<SettingsCard icon="users" title={ __( 'What the site requires', 'bettershield' ) }>
 				<RolePolicy />
 				<PasskeyPolicy />
+				<PasskeyAutofill />
 				<StoreTab />
 				<AccountPagePicker />
 			</SettingsCard>

@@ -57,6 +57,21 @@ final class ProtectionRepair {
 		return array( 'items' => $items );
 	}
 
+	/** Why this protection can't be applied again now, or null. A plan asks the same question the fix does. */
+	public static function refusal( string $item ): ?\WP_Error {
+		// Only a protection the finding names: anything else is applied, or
+		// taken off, on Protection, where its own settings are.
+		if ( ! isset( Checks::protections_failing()[ $item ] ) ) {
+			return new \WP_Error( 'bettershield_not_failing', __( 'That protection is not one the finding names, so it was left as it is.', 'bettershield' ), array( 'status' => 409 ) );
+		}
+
+		if ( ! Manager::instance()->is_active( $item ) ) {
+			return new \WP_Error( 'bettershield_not_active', __( 'That protection is off, so there is nothing to apply again. Switch it on under Protection.', 'bettershield' ), array( 'status' => 409 ) );
+		}
+
+		return null;
+	}
+
 	/**
 	 * Apply one named protection again, and check again.
 	 *
@@ -65,20 +80,13 @@ final class ProtectionRepair {
 	 * @return array{item: string, working: bool, state: array<string, mixed>}|\WP_Error
 	 */
 	public static function reapply( string $item, bool $override ) {
-		$failing = Checks::protections_failing();
+		$refused = self::refusal( $item );
 
-		// Only a protection the finding names: anything else is applied, or
-		// taken off, on Protection, where its own settings are.
-		if ( ! isset( $failing[ $item ] ) ) {
-			return new \WP_Error( 'bettershield_not_failing', __( 'That protection is not one the finding names, so it was left as it is.', 'bettershield' ), array( 'status' => 409 ) );
+		if ( null !== $refused ) {
+			return $refused;
 		}
 
 		$manager = Manager::instance();
-
-		if ( ! $manager->is_active( $item ) ) {
-			return new \WP_Error( 'bettershield_not_active', __( 'That protection is off, so there is nothing to apply again. Switch it on under Protection.', 'bettershield' ), array( 'status' => 409 ) );
-		}
-
 		$failure = Permissions::needs_way_back( $item ) ? Preflight::failure() : null;
 
 		if ( null !== $failure && ! $override ) {

@@ -568,6 +568,9 @@ final class Report {
 				'why_not'     => $availability['reason'],
 				// Said on the row, in the Overview's words (#1968).
 				'can_run'     => 'added' === (string) $row->change_type && Packages::is_code( (string) $row->path ),
+				// Which named signs of compromise an added file showed, by test
+				// and line, never the bytes. Worth a look, not a verdict.
+				'signals'     => \BetterShield\Audit\CompromiseSigns::parse( (string) ( $row->signals ?? '' ) ),
 			);
 
 			/*

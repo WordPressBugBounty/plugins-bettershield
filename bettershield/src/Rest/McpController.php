@@ -24,7 +24,9 @@ namespace BetterShield\Rest;
 
 use BetterShield\Abilities\Registrar;
 use BetterShield\Events\Writer;
+use BetterShield\Hub\Link\Link;
 use BetterShield\Mcp\AppTools;
+use BetterShield\Mcp\Hub;
 use BetterShield\Mcp\Manager;
 use BetterShield\Mcp\OAuth;
 use BetterShield\Mcp\Pairing;
@@ -474,6 +476,9 @@ final class McpController {
 					Tools::catalog( (string) $app['scope'] )
 				),
 				'tools_denied'   => AppTools::denied( (string) $app['id'] ),
+				// So the tools panel can say what unticking the hub's reads costs.
+				'is_hub'         => Hub::is_hub_client( (string) $app['id'] ),
+				'hub_link_on'    => Link::is_on(),
 			);
 		}
 

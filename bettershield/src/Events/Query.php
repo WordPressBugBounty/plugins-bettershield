@@ -1476,6 +1476,20 @@ final class Query {
 		 * the id, which its summary is found by.
 		 */
 		if ( 'maintenance' === $type ) {
+			// A booked window by when it starts: "until" alone did not say
+			// when alerts would go quiet.
+			$starts = is_array( $context ) ? strtotime( (string) ( $context['starts'] ?? '' ) ) : false;
+
+			if ( false !== $starts && $starts > 0 ) {
+				$ends = strtotime( (string) ( $context['until'] ?? '' ) );
+
+				return false !== $ends && $ends > 0
+					/* translators: 1: date and time a booked maintenance window starts, 2: when it ends. */
+					? sprintf( __( 'from %1$s until %2$s', 'bettershield' ), \BetterShield\Support\Time::said( $starts ), \BetterShield\Support\Time::said( $ends ) )
+					/* translators: %s: date and time a booked maintenance window was to start. */
+					: sprintf( __( 'booked for %s', 'bettershield' ), \BetterShield\Support\Time::said( $starts ) );
+			}
+
 			$closed = \BetterShield\Alerts\Maintenance::CLOSED === $event;
 			$at     = is_array( $context ) ? strtotime( (string) ( $closed ? ( $context['ended'] ?? '' ) : ( $context['until'] ?? '' ) ) ) : false;
 

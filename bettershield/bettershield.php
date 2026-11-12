@@ -3,7 +3,7 @@
  * Plugin Name:       BetterShield
  * Plugin URI:        https://bettershield.ai
  * Description:       Security audit in plain language, 30 hardening fixes you can undo, two-factor authentication (2FA), passkeys, login protection and an activity log.
- * Version:           1.1.7
+ * Version:           1.1.8
  * Requires at least: 6.7
  * Requires PHP:      8.0
  * Author:            WPDeveloper
@@ -58,7 +58,7 @@ if ( version_compare( PHP_VERSION, '8.0', '<' ) ) {
 	return;
 }
 
-define( 'BETTERSHIELD_VERSION', '1.1.7' );
+define( 'BETTERSHIELD_VERSION', '1.1.8' );
 define( 'BETTERSHIELD_FILE', __FILE__ );
 define( 'BETTERSHIELD_PATH', __DIR__ );
 

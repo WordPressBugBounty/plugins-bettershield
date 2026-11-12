@@ -178,8 +178,8 @@ function Mute( { data } ) {
 }
 
 /**
- * Planned maintenance: routine alerts held for a window the owner opens,
- * which closes on its own. While one is open, or its closing summary is
+ * Planned maintenance: routine alerts held for a window the owner opens now
+ * or books ahead to open by itself (#107), which closes on its own. While one is open, or its closing summary is
  * still owed, the row says so and offers the way to end it.
  *
  * Exported so it can be mounted on its own with the window's state.
@@ -187,11 +187,18 @@ function Mute( { data } ) {
  * @param {Object}  props
  * @param {Object}  props.state The maintenance window as the alerts document carries it.
  * @param {boolean} props.muted Whether every alert is muted.
+ * @param {boolean} props.off   Whether email alerts are off.
  */
 export function Maintenance( { state = {}, muted = false, off = false } ) {
-	const { startMaintenance, endMaintenance, busy } = useStore();
+	const { startMaintenance, endMaintenance, bookMaintenance, cancelMaintenanceBooking, busy } = useStore();
 	const working = busy === 'maintenance';
-	const [ minutes, setMinutes ] = useState( '120' );
+	// The document can carry no window at all.
+	const current = state || {};
+	const booked = current.booked || null;
+	const [ minutes, setMinutes ] = useState( booked ? String( booked.minutes ) : '120' );
+	// Now, or booked for later (#107).
+	const [ when, setWhen ] = useState( booked ? 'later' : 'now' );
+	const [ starts, setStarts ] = useState( booked ? booked.local : '' );
 	const [ now, setNow ] = useState( Date.now() );
 
 	useEffect( () => {
@@ -200,13 +207,20 @@ export function Maintenance( { state = {}, muted = false, off = false } ) {
 		return () => clearInterval( timer );
 	}, [] );
 
-	// The document can carry no window at all.
-	const current = state || {};
+	// A booking made or changed elsewhere fills the form again.
+	useEffect( () => {
+		if ( booked ) {
+			setWhen( 'later' );
+			setStarts( booked.local );
+			setMinutes( String( booked.minutes ) );
+		}
+	}, [ booked && booked.local, booked && booked.minutes ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
 	const active = current.active && Date.parse( current.until ) > now;
 	const pending = ! active && current.summary_pending;
 	// Muted or switched off, nothing is being sent, so a window has nothing
 	// to hold. One already open keeps its status and its end.
-	const held = ( muted || off ) && ! active && ! pending;
+	const held = ( muted || off ) && ! active && ! pending && ! booked;
 	let status = __( 'Ordinary alerts are active.', 'bettershield' );
 
 	if ( active ) {
@@ -217,6 +231,21 @@ export function Maintenance( { state = {}, muted = false, off = false } ) {
 		);
 	} else if ( pending ) {
 		status = __( 'Ordinary alerts have resumed. The closing summary is pending.', 'bettershield' );
+	} else if ( booked ) {
+		status = booked.by
+			? sprintf(
+					/* translators: 1: when the window starts, 2: when it ends, 3: who booked it. */
+					__( 'Booked from %1$s to %2$s by %3$s. It starts by itself.', 'bettershield' ),
+					whenPhrase( booked.at ),
+					whenPhrase( booked.until ),
+					booked.by
+			  )
+			: sprintf(
+					/* translators: 1: when the window starts, 2: when it ends. */
+					__( 'Booked from %1$s to %2$s. It starts by itself.', 'bettershield' ),
+					whenPhrase( booked.at ),
+					whenPhrase( booked.until )
+			  );
 	} else if ( held ) {
 		status = muted
 			? __( 'Alerts are muted, so maintenance mode isn’t needed.', 'bettershield' )
@@ -229,7 +258,21 @@ export function Maintenance( { state = {}, muted = false, off = false } ) {
 		action = __( 'End Maintenance', 'bettershield' );
 	} else if ( pending ) {
 		action = __( 'Send the Closing Summary', 'bettershield' );
+	} else if ( booked ) {
+		action = __( 'Change Booking', 'bettershield' );
+	} else if ( 'later' === when ) {
+		action = __( 'Book Maintenance', 'bettershield' );
 	}
+
+	const press = () => {
+		if ( active || pending ) {
+			endMaintenance();
+		} else if ( 'later' === when ) {
+			bookMaintenance( starts, Number( minutes ) );
+		} else {
+			startMaintenance( Number( minutes ) );
+		}
+	};
 
 	return (
 		<SettingRow
@@ -247,6 +290,15 @@ export function Maintenance( { state = {}, muted = false, off = false } ) {
 						__( 'Still sent right away: critical events, visits to the decoy page, lockdowns, passkey-only sign-in being turned on, and protections being changed.', 'bettershield' ),
 						__( 'Protections stay on.', 'bettershield' ),
 						__( 'The window ends on its own, even if tasks run late.', 'bettershield' ),
+					],
+				},
+				{
+					key: 'book',
+					label: __( 'Booking ahead', 'bettershield' ),
+					text: __( 'A booked window starts by itself at the time you set, on the site’s clock, and ends when booked even if it starts late.', 'bettershield' ),
+					points: [
+						__( 'Booking emails your alert recipients at once, naming who booked it and when it runs.', 'bettershield' ),
+						__( 'One window at a time, booked or open.', 'bettershield' ),
 					],
 				},
 				{
@@ -273,6 +325,32 @@ export function Maintenance( { state = {}, muted = false, off = false } ) {
 					</p>
 				) : null }
 				<FieldRow>
+					{ ! active && ! pending && ! booked ? (
+						<div className="bs-ds-maint__duration">
+							<Field
+								kind="select"
+								label={ __( 'Start', 'bettershield' ) }
+								value={ when }
+								onChange={ setWhen }
+								disabled={ working || held }
+								options={ [
+									{ value: 'now', label: __( 'Now', 'bettershield' ) },
+									{ value: 'later', label: __( 'Later, at a time I book', 'bettershield' ) },
+								] }
+							/>
+						</div>
+					) : null }
+					{ ! active && ! pending && 'later' === when ? (
+						<div className="bs-ds-maint__duration">
+							<Field
+								type="datetime-local"
+								label={ __( 'Starts at (site time)', 'bettershield' ) }
+								value={ starts }
+								onChange={ setStarts }
+								disabled={ working || held }
+							/>
+						</div>
+					) : null }
 					{ ! active && ! pending ? (
 						<div className="bs-ds-maint__duration">
 							<Field
@@ -290,18 +368,24 @@ export function Maintenance( { state = {}, muted = false, off = false } ) {
 							/>
 						</div>
 					) : null }
-					{ /* The card's one primary: opening a window. Ending one,
-					     or finishing its summary, puts things back as they were.
-					     As tall as the select beside it. */ }
+					{ /* The card's one primary: opening or booking a window.
+					     Ending one, finishing its summary or canceling a
+					     booking puts things back as they were. As tall as the
+					     selects beside it. */ }
 					<Button
-						type={ active || pending ? 'secondary' : 'primary' }
+						type={ active || pending || booked ? 'secondary' : 'primary' }
 						size="md"
-						disabled={ working || held }
+						disabled={ working || held || ( 'later' === when && ! active && ! pending && ! starts ) }
 						isBusy={ working }
-						onClick={ () => ( active || pending ? endMaintenance() : startMaintenance( Number( minutes ) ) ) }
+						onClick={ press }
 					>
 						{ action }
 					</Button>
+					{ booked && ! active && ! pending ? (
+						<Button type="secondary" size="md" disabled={ working } onClick={ () => cancelMaintenanceBooking() }>
+							{ __( 'Cancel Booking', 'bettershield' ) }
+						</Button>
+					) : null }
 				</FieldRow>
 			</div>
 		</SettingRow>

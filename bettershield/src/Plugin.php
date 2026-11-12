@@ -707,8 +707,8 @@ final class Plugin {
 		Abilities\Baseline::register();
 		$runner->register_task( Abilities\Baseline::TASK, 'daily', array( Abilities\Baseline::class, 'review' ), false );
 		add_action( 'upgrader_process_complete', array( Vulnerabilities\Scanner::class, 'after_upgrade' ), 10, 2 );
-		add_action( 'deleted_plugin', array( Vulnerabilities\Scanner::class, 'schedule' ) );
-		add_action( 'deleted_theme', array( Vulnerabilities\Scanner::class, 'schedule' ) );
+		add_action( 'deleted_plugin', array( Vulnerabilities\Scanner::class, 'on_deleted' ) );
+		add_action( 'deleted_theme', array( Vulnerabilities\Scanner::class, 'on_deleted' ) );
 		add_action( 'bettershield_inventory_recheck', array( Vulnerabilities\Scanner::class, 'recheck' ) );
 
 		// The vulnerability check: runs only when a feed is bound and the
@@ -965,13 +965,27 @@ final class Plugin {
 			add_action( 'init', array( Database\NetworkMigration::class, 'unschedule_here' ) );
 		}
 
-		// Asks the plugin directory over HTTP: cron and loopback only.
+		// Asks the plugin and theme directories over HTTP: cron and
+		// loopback only.
 		$runner->register_task(
 			'bettershield_directory_status',
 			'daily',
 			static function (): void {
-				Vulnerabilities\Directory::refresh( Vulnerabilities\Inventory::collect() );
+				$items = Vulnerabilities\Inventory::collect();
+
+				Vulnerabilities\Directory::refresh( $items );
+				Vulnerabilities\ThemeDirectory::refresh( $items );
 			},
+			false
+		);
+
+		// Reads the store's posts, options and snippets for scripts that may
+		// be reading card details: resumable chunks under a budget, cron and
+		// loopback only.
+		$runner->register_task(
+			Audit\StoreScripts::TASK,
+			'hourly',
+			array( Audit\StoreScripts::class, 'run' ),
 			false
 		);
 

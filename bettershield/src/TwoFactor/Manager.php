@@ -594,6 +594,20 @@ final class Manager {
 	}
 
 	/**
+	 * Take an account's second factor off from the server's command line, for
+	 * the person who lost their phone and their codes. Recorded high whatever
+	 * the account, since it came off by a way that asks for no factor, and
+	 * the account is told it came off from the terminal.
+	 *
+	 * @return array{enabled: false}
+	 */
+	public function reset_from_terminal( int $user_id ): array {
+		$this->wipe( $user_id, 'cli', true );
+
+		return array( 'enabled' => false );
+	}
+
+	/**
 	 * @param bool $loud High whatever the account: the factor came off by a way that asks for no factor.
 	 */
 	private function wipe( int $user_id, string $reason, bool $loud = false ): void {

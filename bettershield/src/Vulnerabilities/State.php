@@ -47,6 +47,10 @@ final class State implements Source {
 			// that moved mid-check), which the screen words apart (#2136).
 			'error_kind'   => 'inventory' === ( $stored['error_kind'] ?? '' ) ? 'inventory' : 'feed',
 			'revision'     => (int) ( $stored['revision'] ?? 0 ),
+			// Whose data the stored result is. One stored before the Hub
+			// answered from more than one provider is Wordfence's, the only
+			// one it had.
+			'provider'     => isset( $stored['provider'] ) ? (string) $stored['provider'] : ( 'hub-wordfence' === ( $stored['feed'] ?? '' ) ? 'wordfence' : '' ),
 			'attribution'  => (array) ( $stored['attribution'] ?? array() ),
 		);
 	}
@@ -66,6 +70,9 @@ final class State implements Source {
 				'affected'     => $affected,
 				'error'        => '',
 				'revision'     => (int) ( $metadata['revision'] ?? 0 ),
+				// Read the same way as an older record: the Hub's supply with
+				// no provider named is Wordfence's.
+				'provider'     => (string) ( $metadata['provider'] ?? ( 'hub-wordfence' === $feed->id() ? 'wordfence' : '' ) ),
 				'attribution'  => (array) ( $metadata['attribution'] ?? array() ),
 			),
 			false
@@ -214,7 +221,13 @@ final class State implements Source {
 				'cve_ids'           => array_values( array_unique( $cves ) ),
 				'patch_available'   => (bool) $item['patch_available'],
 				'disclosed_at'      => (string) ( $item['advisories'][0]['disclosed_at'] ?? '' ),
+				// Who an attacker needs to be, as the advisories' titles say,
+				// and whether anybody here is, read now (Reach), so an
+				// assistant ranks the list as the screen does.
+				'privilege'         => Reach::privilege_of( $item['advisories'] ),
 			);
+
+			$row['reach'] = 'affected' === $row['match_status'] ? Reach::reach( true === $row['exploited'] ? true : null, $row['privilege'] ) : null;
 
 			if ( null !== $item['fixed_in'] ) {
 				$row['fixed_in'] = (string) $item['fixed_in'];

@@ -579,6 +579,10 @@ final class PasskeyController {
 			'intro'     => \BetterShield\Passkeys\ProfilePanel::instance()->intro_for( wp_get_current_user() ),
 			'passkeys'  => Store::for_user( (int) wp_get_current_user()->ID ),
 			'max'       => Store::MAX_PER_USER,
+			// For the browser's passkey store: which of this account's
+			// passkeys this site still accepts, so a removed one stops being
+			// offered at sign-in.
+			'signal'    => Manager::signal_for( wp_get_current_user() ),
 			// Changing passkeys asks this account for a current code, so the
 			// screen asks with the press rather than after a refusal (#2147).
 			// Not in safe mode, the way back in, where nothing is asked.

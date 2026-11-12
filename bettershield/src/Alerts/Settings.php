@@ -377,7 +377,9 @@ final class Settings {
 		 *
 		 * @param string[] $types Event types.
 		 */
-		$types = apply_filters( 'bettershield_always_email_types', array( 'canary_used' ) );
+		// A maintenance window booked to open later: alerts will go quiet,
+		// and the owner hears so the moment it is set up, never held.
+		$types = apply_filters( 'bettershield_always_email_types', array( 'canary_used', 'maintenance_window_booked' ) );
 
 		return in_array( $type, is_array( $types ) ? $types : array(), true );
 	}

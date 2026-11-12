@@ -78,7 +78,13 @@ final class AccountNotices {
 
 			$user = get_userdata( (int) ( $event['object_id'] ?? 0 ) );
 
-			if ( ! $user instanceof \WP_User || ! self::wanted_for( $user ) ) {
+			// A factor taken off from the server's command line is told to
+			// the account whatever the owner chose: nobody signed in did it,
+			// and the person is the one who can say it wasn't asked for.
+			$context  = is_array( $event['context'] ?? null ) ? $event['context'] : (array) json_decode( (string) ( $event['context'] ?? '' ), true );
+			$terminal = 'cli' === ( $context['by'] ?? '' );
+
+			if ( ! $user instanceof \WP_User || ! ( $terminal ? self::reachable( $user ) : self::wanted_for( $user ) ) ) {
 				continue;
 			}
 
@@ -86,9 +92,14 @@ final class AccountNotices {
 		}
 	}
 
+	/** Whether this account can be told at all: an address, and not a staging copy. */
+	private static function reachable( \WP_User $user ): bool {
+		return is_email( $user->user_email ) && ! \BetterShield\Onboarding\SiteIdentity::is_staging();
+	}
+
 	/** Whether this account is to be told, as the owner chose. */
 	public static function wanted_for( \WP_User $user ): bool {
-		if ( ! is_email( $user->user_email ) || \BetterShield\Onboarding\SiteIdentity::is_staging() ) {
+		if ( ! self::reachable( $user ) ) {
 			return false;
 		}
 
@@ -116,6 +127,7 @@ final class AccountNotices {
 				'browser' => '' === $agent ? '' : Sessions::device_label( $agent ),
 				'name'    => \BetterShield\Support\Text::clip( (string) ( $context['label'] ?? $context['name'] ?? '' ), 100 ),
 				'codes'   => (int) ( $context['codes'] ?? 0 ),
+				'by'      => 'cli' === ( $context['by'] ?? '' ) ? 'cli' : '',
 			);
 		}
 
@@ -141,8 +153,18 @@ final class AccountNotices {
 
 		delete_user_meta( $user->ID, self::META );
 
-		if ( ! is_array( $queue ) || array() === $queue || ! self::wanted_for( $user ) ) {
+		if ( ! is_array( $queue ) || array() === $queue ) {
 			return false;
+		}
+
+		// Where the owner keeps these notices off, a change made from the
+		// server's command line is still told, and only that change.
+		if ( ! self::wanted_for( $user ) ) {
+			$queue = self::reachable( $user ) ? array_values( array_filter( $queue, static fn( $item ): bool => is_array( $item ) && 'cli' === ( $item['by'] ?? '' ) ) ) : array();
+
+			if ( array() === $queue ) {
+				return false;
+			}
 		}
 
 		$switched = switch_to_user_locale( (int) $user->ID );
@@ -219,20 +241,24 @@ final class AccountNotices {
 		);
 
 		foreach ( $queue as $item ) {
-			$lines[] = '- ' . self::what( (string) ( $item['type'] ?? '' ), (string) ( $item['name'] ?? '' ), (int) ( $item['codes'] ?? 0 ) );
+			$lines[] = '- ' . ( 'cli' === ( $item['by'] ?? '' ) ? self::from_terminal( (string) ( $item['type'] ?? '' ) ) : self::what( (string) ( $item['type'] ?? '' ), (string) ( $item['name'] ?? '' ), (int) ( $item['codes'] ?? 0 ) ) );
+
+			// A change from the server's command line has no visitor's address
+			// or browser to name: the line above already says where it came from.
+			$terminal = 'cli' === ( $item['by'] ?? '' );
 
 			$where = array_filter(
 				array(
 					// The same way every other email says a moment (#2486).
 					\BetterShield\Support\Time::said( (int) ( $item['at'] ?? time() ) ),
-					'' !== (string) ( $item['network'] ?? '' ) ? sprintf(
+					! $terminal && '' !== (string) ( $item['network'] ?? '' ) ? sprintf(
 						/* translators: %s: an internet address with its last part hidden, e.g. 203.0.113.x. */
 						__( 'from internet address %s', 'bettershield' ),
 						// Kept as the network label; said as an address a reader
 						// can recognize, never in range notation (#2404).
 						Ip::address_label( Ip::from_label( (string) $item['network'] ) ) ?? $item['network']
 					) : '',
-					(string) ( $item['browser'] ?? '' ),
+					$terminal ? '' : (string) ( $item['browser'] ?? '' ),
 				)
 			);
 
@@ -244,6 +270,13 @@ final class AccountNotices {
 		$lines[] = \BetterShield\Login\AccountPage::front_end_url( $user ) ?? admin_url( 'profile.php' );
 
 		return implode( "\n", $lines ) . "\n";
+	}
+
+	/** One change made from the server's command line, as the account holder reads it. */
+	private static function from_terminal( string $type ): string {
+		return 'passkey_removed' === $type
+			? __( 'A passkey was removed from your account from the server’s command line. It can’t be put back: add a new one on your profile.', 'bettershield' )
+			: __( 'Two-factor sign-in was turned off for your account from the server’s command line. It can’t be put back: set it up again on your profile.', 'bettershield' );
 	}
 
 	/** One change, as the account holder reads it. */

@@ -17,6 +17,7 @@ import { whenPhrase } from './ui/when';
 import { copyToClipboard } from './ui/copy';
 import { download } from './ui/download';
 import { PROMPT_HINT_AFTER_MS, PROMPT_TIMEOUT_MS, promptClosedWords, promptHint, promptStoppedWords, promptWait } from './ui/passkey-prompt';
+import { signalAccepted } from './ui/passkey-signal';
 import '../css/tokens.css';
 import './profile.css';
 
@@ -1113,6 +1114,10 @@ function drawChangedPasskeys( state, said ) {
 /** @param {Object} state The passkeys, as the server answers. */
 function fillPasskeys( state ) {
 	clear( passkeyHolder );
+
+	// Each list read, after an add or a removal too, tells the browser's
+	// passkey store which of these this site still accepts.
+	signalAccepted( state.signal );
 
 	if ( ! state.available ) {
 		passkeyHolder.append( el( 'p', 'description', state.reason ) );

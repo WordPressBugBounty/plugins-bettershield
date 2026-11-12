@@ -51,6 +51,11 @@ final class Writer {
 	public const SECURITY_TYPES = array(
 		'maintenance_window_started',
 		'maintenance_window_closed',
+		// A window booked to open by itself later, changed or canceled: the
+		// record of who set alerts to go quiet, and for when.
+		'maintenance_window_booked',
+		'maintenance_booking_canceled',
+		'maintenance_booking_missed',
 		// A consent answer about data leaving the site is history that must
 		// not thin: it is the record of what the owner agreed to, and when.
 		'usage_tracking_enabled',
@@ -163,6 +168,13 @@ final class Writer {
 		// What an update of a plugin nobody publishes brought: the one record
 		// of code that arrived with no published copy to compare it to.
 		'update_code_changed',
+		// A script on a store that may be reading card details, a decision
+		// to let one be, and the hosts store pages load scripts from: the
+		// record of code nothing else on the site can see.
+		'store_script_flagged',
+		'store_script_accepted',
+		'store_script_unaccepted',
+		'store_script_host_added',
 		'observed_change_response',
 		'dormant_privileged_login',
 		// A ruling that reaches every site of a network is history no site

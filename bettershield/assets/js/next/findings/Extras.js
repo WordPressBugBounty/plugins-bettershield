@@ -20,7 +20,7 @@ import Icon, { NOTE_ICON } from '../ui/Icon';
 import { KeyValue, KeyValues } from '../ui/KeyValue';
 import Table, { Cell, Row, TitleMeta } from '../ui/Table';
 import { severityName } from '../data/severity';
-import { unreachedText, unreachedWithoutResults } from '../data/vulnerabilities';
+import { providerCredit, unreachedText, unreachedWithoutResults } from '../data/vulnerabilities';
 
 /** A finding's severity, with its word. */
 function Severity( { severity } ) {
@@ -187,6 +187,62 @@ export function Explanation( { finding } ) {
 }
 
 /**
+ * The account a flaw needs, as a person names it.
+ *
+ * @param {string} privilege subscriber, contributor, author, editor or admin.
+ * @return {string} The role's name.
+ */
+function roleName( privilege ) {
+	return (
+		{
+			subscriber: __( 'Subscriber', 'bettershield' ),
+			contributor: __( 'Contributor', 'bettershield' ),
+			author: __( 'Author', 'bettershield' ),
+			editor: __( 'Editor', 'bettershield' ),
+			admin: __( 'Administrator', 'bettershield' ),
+		}[ privilege ] || privilege
+	);
+}
+
+/**
+ * How a row stands on this site: whether it is being exploited, and whether
+ * the account it needs exists here. It orders the list and never calls a row
+ * safe; the lowest line says "lower priority here" and the update stays.
+ *
+ * @param {Object} item One installed thing, with `reach` and `privilege`.
+ * @return {?string} The line, or null where no advisory said enough.
+ */
+export function reachLine( item ) {
+	switch ( item.reach ) {
+		case 'exploited':
+			// With no fixed version there is nothing to update to yet.
+			return item.fixed_in
+				? __( 'Being exploited on other sites. Update this first.', 'bettershield' )
+				: __( 'Being exploited on other sites, and no fix is out yet. Deal with this first.', 'bettershield' );
+		case 'no_account':
+			return __( 'Reachable here: it needs no account.', 'bettershield' );
+		case 'open_registration':
+			return __( 'Reachable here: anyone can register an account that can use it.', 'bettershield' );
+		case 'held':
+			return sprintf(
+				/* translators: %s: a role name, e.g. Contributor. */
+				__( 'Reachable here: it needs %s or higher, which some accounts here have.', 'bettershield' ),
+				roleName( item.privilege )
+			);
+		case 'not_held':
+			return sprintf(
+				/* translators: %s: a role name, e.g. Contributor. */
+				__( 'Lower priority here: it needs %s or higher, and only administrators here have that.', 'bettershield' ),
+				roleName( item.privilege )
+			);
+		case 'admin_only':
+			return __( 'Lower priority here: it needs an administrator’s account.', 'bettershield' );
+		default:
+			return null;
+	}
+}
+
+/**
  * The vulnerability finding's evidence is a list of things installed, each
  * with the version held, the version that fixes it, and its identifiers: a
  * table, not a JSON blob.
@@ -211,7 +267,12 @@ export function AffectedTable( { items, label } ) {
 				{ items.map( ( item ) => (
 					<Row key={ `${ item.type }:${ item.slug }` }>
 						<Cell>
-							<TitleMeta title={ item.name } meta={ item.active ? null : __( '(inactive)', 'bettershield' ) } />
+							<TitleMeta
+								title={ item.name }
+								meta={
+									[ item.active ? null : __( '(inactive)', 'bettershield' ), reachLine( item ) ].filter( Boolean ).join( ' ' ) || null
+								}
+							/>
 						</Cell>
 						<Cell>{ item.installed_version }</Cell>
 						<Cell>{ item.fixed_in ? item.fixed_in : __( 'no fix yet', 'bettershield' ) }</Cell>
@@ -446,6 +507,9 @@ export function VulnerabilityNote( { feed } ) {
 		);
 		if ( feed.stale ) {
 			text += ' ' + __( 'That is old enough that newer security issues may be listed.', 'bettershield' );
+		}
+		if ( providerCredit( feed ) ) {
+			text += ' ' + providerCredit( feed );
 		}
 	}
 

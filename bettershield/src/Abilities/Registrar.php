@@ -134,7 +134,7 @@ final class Registrar {
 		 * watching this filter for an intrusion and its handling was seeing
 		 * only the first half of the story.
 		 */
-		'file_change'      => array( 'file_changed', 'file_restored', 'file_restore_undone', 'file_change_suppressed', 'file_change_unsuppressed', 'file_expected', 'file_expected_undone', 'file_changes_expected', 'file_changes_unexpected', 'file_selection_expected', 'file_package_rechecked', 'file_quarantined', 'leftover_tool_quarantined', 'exposed_file_quarantined', 'quarantine_downloaded', 'quarantine_deleted', 'quarantine_sealed', 'quarantine_seal_undone', 'content_links_rewritten', 'content_links_restored', 'folder_mode_tightened', 'folder_mode_restored', 'config_mode_tightened', 'config_mode_restored', 'vulnerability_found', 'vulnerability_resolved', 'core_updated', 'incident_code_modified' ),
+		'file_change'      => array( 'file_changed', 'file_restored', 'file_restore_undone', 'file_change_suppressed', 'file_change_unsuppressed', 'file_expected', 'file_expected_undone', 'file_changes_expected', 'file_changes_unexpected', 'file_selection_expected', 'file_package_rechecked', 'file_quarantined', 'leftover_tool_quarantined', 'exposed_file_quarantined', 'quarantine_downloaded', 'quarantine_deleted', 'quarantine_sealed', 'quarantine_seal_undone', 'content_links_rewritten', 'content_links_restored', 'folder_mode_tightened', 'folder_mode_restored', 'config_mode_tightened', 'config_mode_restored', 'vulnerability_found', 'vulnerability_resolved', 'core_updated', 'incident_code_modified', 'store_script_flagged', 'store_script_accepted', 'store_script_unaccepted', 'store_script_host_added' ),
 		'two_factor'       => array( 'two_factor_enabled', 'two_factor_disabled', 'two_factor_failed', 'two_factor_skipped', 'two_factor_backup_used', 'two_factor_backup_reissued', 'two_factor_imported', 'two_factor_import_failed', 'two_factor_import_undone', 'two_factor_moved', 'two_factor_not_moved', 'passkey_registered', 'passkey_removed', 'passkey_refused', 'passkey_policy_changed', 'password_refused_passkey_only', 'password_refused_repeated' ),
 		'protection'       => array( 'hardening_applied', 'hardening_reverted', 'hardening_failed', 'hardening_revert_failed', 'hardening_verified', 'finding_opened', 'finding_resolved', 'finding_suppressed', 'finding_unsuppressed', 'finding_snoozed', 'finding_woken', 'site_marked_staging', 'site_marked_moved', 'site_identity_undone', 'safe_mode_entered', 'safe_mode_exited', 'network_safe_mode_entered', 'network_safe_mode_exited', 'network_2fa_policy_changed', 'network_passkey_policy_changed', 'recovery_link_generated', 'recovery_link_failed', 'recovery_preflight_overridden', 'recovery_receipt_confirmed', 'recovery_receipt_withdrawn', 'csp_enforced', 'csp_report_only_restored', 'lockdown_entered', 'lockdown_left', 'incident_response_applied', 'incident_cron_unscheduled', 'observed_change_response', 'cloudflare_action_taken', 'cloudflare_action_undone', 'cloudflare_block_refused', 'cloudflare_block_failed', 'log_resealed', 'log_reseal_refused', 'csp_source_allowed', 'csp_source_removed', 'csp_reports_cleared', 'csp_reports_restored', 'outbound_refused', 'outbound_internal' ),
 		/*
@@ -148,7 +148,7 @@ final class Registrar {
 		 */
 		'agent_invocation' => array( 'ability_used', 'ability_added', 'ability_widened', 'ability_changes_accepted', 'ability_changes_accept_undone', 'agent_new_network', 'agent_check_requested', 'agent_triage_requested', 'agent_permission_denied', 'agent_refusals_repeated', 'agent_capture_removed', 'agent_capture_truncated', 'agent_proposal_made', 'write_confirmation_minted', 'write_confirmation_withdrawn', 'agent_proposal_declined', 'agent_write_applied', 'agent_write_applied_direct', 'agent_write_reverted', 'agent_write_refused', 'mcp_connected', 'mcp_rotated', 'mcp_disconnected', 'mcp_app_granted', 'mcp_app_revoked', 'mcp_auth_refused', 'mcp_locked_out', 'mcp_refresh_reused' ),
 		'operations'      => array( 'activity_unusual', 'first_run_completed', 'quick_setup_completed', 'quick_setup_skipped', 'scan_completed', 'integrity_scan_completed', 'unpublished_watch_ran', 'task_run_requested', 'task_run_finished', 'task_run_failed', 'vulnerability_check_failed', 'breach_check_unavailable', 'security_txt_published', 'security_txt_withdrawn', 'buffer_overflow', 'events_sampled', 'log_migrated', 'schema_repaired', 'schema_repair_failed' ),
-		'alerts'          => array( 'maintenance_window_started', 'maintenance_window_closed', 'alert_sent', 'account_notice_sent', 'alert_delivery_failed', 'alert_feedback' ),
+		'alerts'          => array( 'maintenance_window_started', 'maintenance_window_closed', 'maintenance_window_booked', 'maintenance_booking_canceled', 'maintenance_booking_missed', 'alert_sent', 'account_notice_sent', 'alert_delivery_failed', 'alert_feedback' ),
 		'ai'              => array( 'ai_explanation_generated' ),
 	);
 
@@ -991,6 +991,10 @@ final class Registrar {
 									'fixed_in'          => array( 'type' => 'string' ),
 									'patch_available'   => array( 'type' => 'boolean' ),
 									'disclosed_at'      => array( 'type' => 'string' ),
+									// none, subscriber, contributor, author, editor or admin; null where no advisory says.
+									'privilege'         => array( 'type' => array( 'string', 'null' ) ),
+									// exploited, no_account, open_registration, held, not_held or admin_only; null where unknown.
+									'reach'             => array( 'type' => array( 'string', 'null' ) ),
 								),
 								'required'   => array( 'slug', 'vulnerable' ),
 							),
@@ -1472,6 +1476,7 @@ final class Registrar {
 		$definitions += WriteTriage::definitions( array( $this, 'run_triage' ), $plan_meta, $act_meta, $plan_fields, $plan_required );
 		$definitions += WriteAccess::definitions( array( $this, 'run_access' ), $plan_meta, $act_meta, $plan_fields, $plan_required );
 		$definitions += WriteFixes::definitions( array( $this, 'run_fix' ) );
+		$definitions += WriteFixes::plan_definition( $plan_meta, $plan_fields, $plan_required, array( $this, 'propose_finding_fix' ) );
 		$definitions += WriteExtensions::definitions( array( $this, 'run_extension' ), $plan_meta, $act_meta, $plan_fields, $plan_required );
 
 		if ( ! self::deactivation_enabled() ) {
@@ -1592,13 +1597,67 @@ final class Registrar {
 		$input   = is_array( $raw ) ? $raw : array();
 		$refused = self::write_gate() ?? WriteFixes::gate() ?? ( WriteFixes::shared_code( $short ) ? WriteFixes::code_gate() : null ) ?? WriteFixes::validate( $short, $input ) ?? self::rate_limit( $short );
 		if ( null !== $refused ) { return self::refuse_early( $ability, 'finding_fix', $short, $refused ); }
+		$expected = (string) ( $input['state_digest'] ?? '' );
+		$proposal = null;
+		if ( isset( $input['confirmation'] ) ) {
+			$proposal = Proposals::spend( (string) $input['confirmation'], $ability );
+			if ( is_wp_error( $proposal ) ) { return self::refuse_early( $ability, 'finding_fix', $short, $proposal ); }
+			if ( (int) $proposal->id !== (int) $input['proposal_id'] || ( '' !== $expected && ! hash_equals( (string) $proposal->state_digest, $expected ) ) ) { return self::refuse( $proposal, WriteTriage::moved() ); }
+			// The target comes from the plan alone, and is judged again: the site may have moved since.
+			$input    = is_array( $proposal->plan['input'] ?? null ) ? $proposal->plan['input'] : array();
+			$expected = (string) $proposal->state_digest;
+			$refused  = WriteFixes::validate_target( $short, $input );
+			if ( null !== $refused ) { return self::refuse( $proposal, $refused ); }
+		}
+		if ( '' !== $expected ) {
+			$live = WriteFixes::snapshot( $short, $input );
+			if ( is_wp_error( $live ) || ! hash_equals( $expected, $live['digest'] ) ) { return null === $proposal ? self::refuse_early( $ability, 'finding_fix', $short, WriteTriage::moved() ) : self::refuse( $proposal, WriteTriage::moved() ); }
+		}
 		$intent = WriteTriage::intent( $ability );
-		if ( null !== $intent ) { return self::refuse_early( $ability, 'finding_fix', $short, $intent ); }
+		if ( null !== $intent ) { return null === $proposal ? self::refuse_early( $ability, 'finding_fix', $short, $intent ) : self::refuse( $proposal, $intent ); }
 		$result = WriteFixes::apply( $short, $input );
-		if ( is_wp_error( $result ) ) { return self::refuse_early( $ability, 'finding_fix', $short, $result ); }
+		if ( is_wp_error( $result ) ) { return null === $proposal ? self::refuse_early( $ability, 'finding_fix', $short, $result ) : self::refuse( $proposal, $result ); }
+		if ( null !== $proposal ) {
+			Proposals::record_outcome( (int) $proposal->id, 'applied', $result['undo_token'] ?? ( $result['changed'][0]['undo_token'] ?? null ) );
+			Writer::instance()->record( 'agent_write_applied', Writer::SEVERITY_MEDIUM, array( 'object_type' => 'finding_fix', 'object_id' => $short, 'context' => self::without_nulls( array( 'ability' => $ability, 'proposal_id' => (int) $proposal->id, 'correlation' => Capture::instance()->current_correlation() ) ) ) );
+			return $result;
+		}
 		// Nobody was in the loop, so it is the loud row.
 		Writer::instance()->record( 'agent_write_applied_direct', Writer::SEVERITY_HIGH, array( 'object_type' => 'finding_fix', 'object_id' => $short, 'context' => self::without_nulls( array( 'ability' => $ability, 'correlation' => Capture::instance()->current_correlation() ) ) ) );
 		return $result;
+	}
+
+	/** The plan for a direct fix: it changes nothing, and is recorded against that fix's own ability. */
+	public function propose_finding_fix( $raw ) {
+		$this->self_audit( 'bettershield/propose-finding-fix', $raw );
+		$input   = is_array( $raw ) ? $raw : array();
+		$fix     = (string) ( $input['fix'] ?? '' );
+		$target  = is_array( $input['input'] ?? null ) ? $input['input'] : array();
+		$refused = self::write_gate();
+		if ( null === $refused && ( array() !== array_diff( array_keys( $input ), array( 'fix', 'input' ) ) || ! in_array( $fix, WriteFixes::DIRECT, true ) ) ) { $refused = WriteTriage::error( 'bettershield_fix_input', __( 'Name one of the direct fixes and the input it takes.', 'bettershield' ), 400 ); }
+		$refused = $refused ?? WriteFixes::gate() ?? ( WriteFixes::shared_code( $fix ) ? WriteFixes::code_gate() : null ) ?? WriteFixes::validate_target( $fix, $target ) ?? self::propose_rate_limit( 'propose-finding-fix' );
+		if ( null !== $refused ) { return self::refuse_early( 'bettershield/propose-finding-fix', 'finding_fix', $fix, $refused ); }
+		$live = WriteFixes::snapshot( $fix, $target );
+		if ( is_wp_error( $live ) ) { return self::refuse_early( 'bettershield/propose-finding-fix', 'finding_fix', $fix, $live ); }
+		return self::record_proposal(
+			'bettershield/' . $fix,
+			$live['object_id'],
+			'finding_fix',
+			array(
+				'fix'                   => $fix,
+				'input'                 => $target,
+				'target_type'           => 'finding_fix',
+				'action'                => 'apply',
+				'effect'                => $live['effect'],
+				'changes_signing_in'    => false,
+				'recovery_ready'        => self::recovery_ready(),
+				'reversible'            => true,
+				'state_digest'          => $live['digest'],
+				'expires_at'            => gmdate( 'c', time() + Proposals::WINDOW_SECONDS ),
+				'confirmation_required' => true,
+			),
+			$live['digest']
+		);
 	}
 
 	/** Irreversible access actions have no direct path and use the site's single-use confirmation. */

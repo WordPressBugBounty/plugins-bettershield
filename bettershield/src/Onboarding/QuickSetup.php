@@ -106,7 +106,7 @@ final class QuickSetup {
 	/**
 	 * The stored progress, with every key present.
 	 *
-	 * @return array{status: string, step: string, skipped_steps: string[], score_before: int, started_at: int, completed_at: int, skipped: bool, offer: string, opened: bool, team: string, proxy: string, coexistence: array<string, string>, coexistence_saved: bool, coexistence_limiters: string[]|null, recovery_received: int, reopened_at: int, hub_until: int, installed: string[], imported: array<int, array{name: string, count: int}>, deactivated: array<int, array{file: string, name: string}>}
+	 * @return array{status: string, step: string, skipped_steps: string[], score_before: int, started_at: int, completed_at: int, skipped: bool, offer: string, opened: bool, visit_owed: bool, team: string, proxy: string, coexistence: array<string, string>, coexistence_saved: bool, coexistence_limiters: string[]|null, recovery_received: int, reopened_at: int, hub_until: int, hub_again: bool, installed: string[], imported: array<int, array{name: string, count: int}>, deactivated: array<int, array{file: string, name: string}>}
 	 */
 	public static function state(): array {
 		$stored = get_option( self::OPTION, array() );
@@ -137,6 +137,10 @@ final class QuickSetup {
 			'skipped'              => ! empty( $stored['skipped'] ),
 			'offer'                => 'dismissed' === ( $stored['offer'] ?? '' ) ? 'dismissed' : '',
 			'opened'               => ! empty( $stored['opened'] ),
+			// Set when the plugin was activated with the setup owed. A site
+			// from before this was recorded is never sent to the setup on
+			// its first visit after an update; the Overview offers it.
+			'visit_owed'           => ! empty( $stored['visit_owed'] ),
 			'team'                 => in_array( $stored['team'] ?? '', array( 'solo', 'team' ), true ) ? (string) $stored['team'] : '',
 			// The proxy answer as the owner gave it; '' when never answered.
 			'proxy'                => in_array( $stored['proxy'] ?? '', self::PROXY_ANSWERS, true ) ? (string) $stored['proxy'] : '',
@@ -151,6 +155,8 @@ final class QuickSetup {
 			// Until when the setup waits for the owner to come back from
 			// connecting to the hub; 0 when it does not.
 			'hub_until'            => (int) ( $stored['hub_until'] ?? 0 ),
+			// Whether the site was already connected when Connect was pressed.
+			'hub_again'            => ! empty( $stored['hub_again'] ),
 			// Until when a setup just finished stays on its last two steps;
 			// 0 when it does not.
 			'finishing_until'      => (int) ( $stored['finishing_until'] ?? 0 ),
@@ -329,11 +335,14 @@ final class QuickSetup {
 	/**
 	 * The owner pressed Connect on the setup's hub step: keep the page open
 	 * for the way back, on that step.
+	 *
+	 * @param bool $already Whether the site was connected when Connect was pressed.
 	 */
-	public static function await_hub(): void {
+	public static function await_hub( bool $already = false ): void {
 		self::save(
 			array(
 				'hub_until' => time() + self::HUB_RETURN_FOR,
+				'hub_again' => $already,
 				'step'      => 'hub',
 			)
 		);
@@ -425,14 +434,29 @@ final class QuickSetup {
 	}
 
 	/**
-	 * Whether a network's site should be taken to the setup the first time
-	 * its administrator opens this plugin — which is how each site of a
-	 * network gets its own, with nobody redirected on activation.
+	 * Whether the site should be taken to the setup the first time its
+	 * administrator opens this plugin: each site of a network, which nobody
+	 * is redirected to on activation, and a single site activated in bulk or
+	 * from the terminal, which is not either. A single site counts only once
+	 * an activation has owed it the setup, so an update never sends an older
+	 * install there. A setup left part way stays on the Overview, whose card
+	 * offers to resume it.
 	 */
 	public static function opens_on_first_visit(): bool {
 		$state = self::state();
 
-		return is_multisite() && 'pending' === $state['status'] && ! $state['opened'] && '' === $state['offer'];
+		return ( is_multisite() || $state['visit_owed'] )
+			&& 'pending' === $state['status']
+			&& ! $state['opened']
+			&& '' === $state['offer']
+			&& in_array( $state['step'], array( '', 'welcome' ), true );
+	}
+
+	/** An activation owes the setup: the first visit to the plugin opens it. */
+	public static function owe_visit(): void {
+		if ( ! self::state()['visit_owed'] ) {
+			self::save( array( 'visit_owed' => true ) );
+		}
 	}
 
 	public static function mark_opened(): void {
@@ -1404,6 +1428,8 @@ final class QuickSetup {
 				'blocked'   => self::hub_blocked(),
 				'url'       => \BetterShield\Mcp\Hub::url(),
 				'returning' => $returning,
+				// Back from the hub with a site that was connected before.
+				'again'     => $returning && $state['hub_again'],
 			),
 		);
 

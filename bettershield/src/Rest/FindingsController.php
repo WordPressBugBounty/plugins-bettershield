@@ -1096,6 +1096,47 @@ final class FindingsController {
 
 		register_rest_route(
 			'bettershield/v1',
+			'/findings/store_script_reads_cards/scripts',
+			array(
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => static fn(): \WP_REST_Response => rest_ensure_response( \BetterShield\Audit\StoreScripts::state() ),
+				'permission_callback' => $read,
+			)
+		);
+
+		// Accepting a flagged store script is the owner's judgment, and so
+		// is taking it back: both behind the same guard.
+		$script = array(
+			'script' => array(
+				'type'              => 'string',
+				'required'          => true,
+				'pattern'           => '^[a-f0-9]{64}$',
+				'validate_callback' => 'rest_validate_request_arg',
+				'sanitize_callback' => static fn( $value ): string => strtolower( trim( (string) $value ) ),
+			),
+		);
+
+		register_rest_route(
+			'bettershield/v1',
+			'/findings/store_script_reads_cards/accept',
+			array(
+				array(
+					'methods'             => \WP_REST_Server::CREATABLE,
+					'callback'            => static fn( \WP_REST_Request $request ) => $answer( \BetterShield\Audit\StoreScripts::accept( (string) $request['script'] ) ),
+					'permission_callback' => array( Permissions::class, 'interactive_manage' ),
+					'args'                => $script,
+				),
+				array(
+					'methods'             => \WP_REST_Server::DELETABLE,
+					'callback'            => static fn( \WP_REST_Request $request ) => $answer( \BetterShield\Audit\StoreScripts::unaccept( (string) $request['script'] ) ),
+					'permission_callback' => array( Permissions::class, 'interactive_manage' ),
+					'args'                => $script,
+				),
+			)
+		);
+
+		register_rest_route(
+			'bettershield/v1',
 			'/findings/privileged_account_dormant/accounts',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,

@@ -69,6 +69,21 @@ final class Scanner {
 		}
 	}
 
+	/**
+	 * A plugin or theme was deleted: check the inventory again soon. Nothing
+	 * to do when the plugin deleted is this one, or its files are already
+	 * gone: the schedule would load classes whose files no longer exist.
+	 *
+	 * @param mixed $item The plugin file or theme folder WordPress deleted.
+	 */
+	public static function on_deleted( $item = '' ): void {
+		if ( plugin_basename( BETTERSHIELD_FILE ) === (string) $item || ! file_exists( BETTERSHIELD_FILE ) ) {
+			return;
+		}
+
+		self::schedule();
+	}
+
 	/** Schedule after inventory changes, honoring a service retry deadline. */
 	public static function schedule( $delay = 10 ): void {
 		if ( ! self::consented() ) {
@@ -210,9 +225,23 @@ final class Scanner {
 			return $ids;
 		};
 
+		$switched = self::provider_switched( $before, $after );
+
 		foreach ( $now as $k => $item ) {
 			if ( 'unknown' === ( $item['match_status'] ?? '' ) ) { continue; }
 			$previous = $was[ $k ] ?? null;
+
+			/*
+			 * The data moved to another provider: every advisory id changed
+			 * (wordfence:… to patchstack:…), so every item already listed
+			 * would read as a different advisory and alert again. On that
+			 * read an item already listed is news only if it is rated higher
+			 * or newly exploited; one only the new provider lists is still
+			 * news. The read after compares as usual.
+			 */
+			if ( $switched && null !== $previous && ! self::worse_on_switch( $previous, $item ) ) {
+				continue;
+			}
 
 			// New, or worse than it was, or a different advisory: worth a
 			// line. The same item saying the same thing day after day is not.
@@ -263,6 +292,68 @@ final class Scanner {
 	}
 
 	/**
+	 * Whether this read's data comes from another provider than the last
+	 * read's: their advisory ids share no provider. Only where every id names
+	 * one (`provider:id`) and both reads list something, so a first read, a
+	 * feed with unprefixed ids and a read with nothing affected compare as
+	 * they always did.
+	 *
+	 * @param array<int, array<string, mixed>> $before
+	 * @param array<int, array<string, mixed>> $after
+	 */
+	private static function provider_switched( array $before, array $after ): bool {
+		$providers = static function ( array $items ): array {
+			$found = array();
+
+			foreach ( $items as $item ) {
+				foreach ( (array) ( $item['advisories'] ?? array() ) as $advisory ) {
+					$id = (string) ( $advisory['id'] ?? '' );
+					$at = strpos( $id, ':' );
+
+					$found[ false === $at || 0 === $at ? '' : substr( $id, 0, $at ) ] = true;
+				}
+			}
+
+			return $found;
+		};
+
+		$was = $providers( $before );
+		$now = $providers( $after );
+
+		if ( array() === $was || array() === $now || isset( $was[''] ) || isset( $now[''] ) ) {
+			return false;
+		}
+
+		return array() === array_intersect_key( $was, $now );
+	}
+
+	/**
+	 * Whether an item already listed got worse on a provider switch: rated
+	 * higher, exploited where it was not, or confirmed where it could not be
+	 * told before. A severity nobody gave counts at medium, the level the
+	 * audit grades it at.
+	 *
+	 * @param array<string, mixed> $previous
+	 * @param array<string, mixed> $item
+	 */
+	private static function worse_on_switch( array $previous, array $item ): bool {
+		$rank = static function ( array $row ): int {
+			$severity = false === ( $row['severity_known'] ?? true ) ? 'medium' : (string) ( $row['severity'] ?? 'medium' );
+			$at       = array_search( $severity, Matcher::SEVERITIES, true );
+
+			return false === $at ? (int) array_search( 'medium', Matcher::SEVERITIES, true ) : (int) $at;
+		};
+
+		$exploited = static fn( array $row ): bool => in_array( true, array_column( (array) ( $row['advisories'] ?? array() ), 'exploited' ), true );
+
+		// Listed before as "can't tell" and now confirmed is news, as it is
+		// on any other read.
+		$confirmed = 'affected' === ( $item['match_status'] ?? 'affected' ) && 'affected' !== ( $previous['match_status'] ?? 'affected' );
+
+		return $confirmed || $rank( $item ) < $rank( $previous ) || ( $exploited( $item ) && ! $exploited( $previous ) );
+	}
+
+	/**
 	 * What every surface may say about the check, in one shape.
 	 *
 	 * @return array<string, mixed>
@@ -290,6 +381,8 @@ final class Scanner {
 			'affected'     => count( $state['affected'] ),
 			'unknown'      => count( array_filter( $state['affected'], static fn( array $item ): bool => 'unknown' === ( $item['match_status'] ?? '' ) ) ),
 			'attribution'  => $state['attribution'],
+			// Whose data the result is, so the screens can credit it.
+			'provider'     => $state['provider'],
 			'error'        => $state['error'],
 			'error_kind'   => $state['error_kind'],
 		);

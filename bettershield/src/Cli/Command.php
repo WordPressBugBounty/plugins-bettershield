@@ -86,12 +86,17 @@ final class Command {
 	 * : Exit non-zero when an open finding is at this severity or worse.
 	 *   One of critical, high, medium, low.
 	 *
+	 * [--strict]
+	 * : Also exit non-zero when any check could not be evaluated. A build that
+	 *   goes green because a check could not run is what this stops.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp bettershield audit
 	 *     wp bettershield audit --format=json
 	 *     wp bettershield audit --fail-under=80
 	 *     wp bettershield audit --fail-on=high
+	 *     wp bettershield audit --fail-on=critical --strict
 	 *
 	 * @param string[]              $args
 	 * @param array<string, string> $assoc_args
@@ -115,10 +120,11 @@ final class Command {
 		if ( 'json' === ( $assoc_args['format'] ?? 'summary' ) ) {
 			// A gate asked for is in the document, so a pipeline that parses
 			// it reads why the step failed, not only an exit code (#2237).
-			if ( isset( $assoc_args['fail-under'] ) || isset( $assoc_args['fail-on'] ) ) {
+			if ( isset( $assoc_args['fail-under'] ) || isset( $assoc_args['fail-on'] ) || isset( $assoc_args['strict'] ) ) {
 				$overview['gate'] = array(
 					'fail_on'    => isset( $assoc_args['fail-on'] ) ? strtolower( (string) $assoc_args['fail-on'] ) : null,
 					'fail_under' => isset( $assoc_args['fail-under'] ) ? (int) $assoc_args['fail-under'] : null,
+					'strict'     => isset( $assoc_args['strict'] ),
 					'tripped'    => null !== $failure,
 					'reasons'    => $reasons,
 				);
@@ -260,13 +266,41 @@ final class Command {
 			}
 		}
 
+		// The same third state the integrity and advisory gates have: a check
+		// that could not answer is not a pass.
+		if ( isset( $assoc_args['strict'] ) ) {
+			$unknown = count( (array) ( $overview['checks_unknown'] ?? array() ) );
+
+			if ( $unknown > 0 ) {
+				$reasons[] = sprintf( '%d check(s) could not be evaluated, and --strict treats that as a failure.', $unknown );
+			}
+		}
+
 		return $reasons;
 	}
 
 	/**
-	 * Lists findings from the last audit.
+	 * Lists findings from the last audit, or settles one of them.
 	 *
 	 * ## OPTIONS
+	 *
+	 * [<action>]
+	 * : Settle one finding instead of listing them, as its row on the
+	 * Findings screen does. Needs --user=<login> naming an account that can
+	 * manage BetterShield.
+	 * ---
+	 * options:
+	 *   - not-applicable
+	 *   - reopen
+	 *   - snooze
+	 *   - wake
+	 * ---
+	 *
+	 * [<finding>]
+	 * : With an action, the finding's id, as the list prints it.
+	 *
+	 * [--days=<days>]
+	 * : With snooze, how long to set it aside: 7 or 30.
 	 *
 	 * [--status=<status>]
 	 * : Which findings to list.
@@ -281,7 +315,8 @@ final class Command {
 	 * ---
 	 *
 	 * [--format=<format>]
-	 * : Output format.
+	 * : Output format. With an action, json prints the finding as it now
+	 * stands and the score, and table prints a line.
 	 * ---
 	 * default: table
 	 * options:
@@ -296,11 +331,24 @@ final class Command {
 	 *     wp bettershield findings
 	 *     wp bettershield findings --status=snoozed
 	 *     wp bettershield findings --status=all --format=json
+	 *     wp bettershield findings not-applicable backup_plugin_not_visible --user=admin
+	 *     wp bettershield findings reopen backup_plugin_not_visible --user=admin
+	 *     wp bettershield findings snooze admin_username_exists --days=30 --user=admin --format=json
+	 *     wp bettershield findings wake admin_username_exists --user=admin
 	 *
 	 * @param string[]              $args
 	 * @param array<string, string> $assoc_args
 	 */
 	public function findings( array $args, array $assoc_args ): void {
+		if ( array() !== $args ) {
+			$this->settle_finding( $args, $assoc_args );
+			return;
+		}
+
+		if ( isset( $assoc_args['days'] ) ) {
+			\WP_CLI::error( '--days goes with snooze: `wp bettershield findings snooze <finding> --days=7' . self::as_someone() . '`. Nothing was changed.' );
+		}
+
 		self::format_from( $assoc_args, array( 'table', 'json', 'csv', 'count' ) );
 
 		$status = (string) ( $assoc_args['status'] ?? 'open' );
@@ -336,6 +384,118 @@ final class Command {
 		}
 
 		\WP_CLI\Utils\format_items( $format, $rows, $fields );
+	}
+
+	/**
+	 * Settle one finding as its row on the Findings screen does: through the
+	 * same services, so the same activity row is written, stamped as having
+	 * come through WP-CLI.
+	 *
+	 * @param string[]              $args       The action, then the finding.
+	 * @param array<string, string> $assoc_args
+	 */
+	private function settle_finding( array $args, array $assoc_args ): void {
+		$action = (string) $args[0];
+		$key    = (string) ( $args[1] ?? '' );
+
+		if ( ! in_array( $action, array( 'not-applicable', 'reopen', 'snooze', 'wake' ), true ) ) {
+			\WP_CLI::error( sprintf( 'Use one of: not-applicable, reopen, snooze, wake, not "%s". Nothing was changed.', $action ) );
+		}
+
+		if ( '' === $key || count( $args ) > 2 ) {
+			\WP_CLI::error( sprintf( 'Name one finding, as the list prints it: `wp bettershield findings %s <finding>%s`. Nothing was changed.', $action, self::as_someone() ) );
+		}
+
+		// WP-CLI fills in the list's default, open, on every line, so only
+		// a status someone chose is refused.
+		if ( 'open' !== (string) ( $assoc_args['status'] ?? 'open' ) ) {
+			\WP_CLI::error( '--status chooses what the list shows, and settling a finding lists nothing. Nothing was changed.' );
+		}
+
+		$format = (string) ( $assoc_args['format'] ?? 'table' );
+
+		if ( ! in_array( $format, array( 'table', 'json' ), true ) ) {
+			\WP_CLI::error( sprintf( '--format takes table or json when settling a finding, not "%s". Nothing was changed.', $format ) );
+		}
+
+		$days = 0;
+
+		if ( 'snooze' === $action ) {
+			$given = (string) ( $assoc_args['days'] ?? '' );
+
+			if ( ! ctype_digit( $given ) || ! in_array( (int) $given, \BetterShield\Audit\Snooze::DAYS, true ) ) {
+				\WP_CLI::error( sprintf( 'Say how long with --days: %s. Nothing was changed.', implode( ' or ', \BetterShield\Audit\Snooze::DAYS ) ) );
+			}
+
+			$days = (int) $given;
+		} elseif ( isset( $assoc_args['days'] ) ) {
+			\WP_CLI::error( sprintf( '--days goes with snooze, not %s. Nothing was changed.', $action ) );
+		}
+
+		$this->require_manage();
+
+		switch ( $action ) {
+			case 'not-applicable':
+				$result = Auditor::suppress( $key );
+				break;
+			case 'reopen':
+				$result = Auditor::unsuppress( $key );
+				break;
+			case 'snooze':
+				$result = \BetterShield\Audit\Snooze::snooze( $key, $days );
+				break;
+			default:
+				$result = \BetterShield\Audit\Snooze::wake( $key );
+		}
+
+		if ( is_wp_error( $result ) ) {
+			\WP_CLI::error( $result->get_error_message() . ' Nothing was changed.' );
+		}
+
+		$finding = null;
+
+		foreach ( Auditor::findings() as $row ) {
+			if ( $key === $row['id'] ) {
+				$finding = $row;
+				break;
+			}
+		}
+
+		$title = (string) ( $finding['title'] ?? $key );
+		$until = \BetterShield\Audit\Snooze::until_iso( $key );
+
+		if ( 'json' === $format ) {
+			\WP_CLI::line(
+				(string) wp_json_encode(
+					array(
+						'id'            => $key,
+						'action'        => $action,
+						'status'        => null !== $until ? 'snoozed' : (string) ( $finding['status'] ?? '' ),
+						'snoozed_until' => $until,
+						'title'         => $title,
+						'score'         => (int) Auditor::overview()['score'],
+					),
+					JSON_UNESCAPED_SLASHES
+				)
+			);
+			return;
+		}
+
+		switch ( $action ) {
+			case 'not-applicable':
+				$line = sprintf( 'Marked not applicable: %1$s. It no longer counts in the score. Put it back with `wp bettershield findings reopen %2$s%3$s`.', $title, $key, self::as_someone() );
+				break;
+			case 'reopen':
+				$line = sprintf( 'Back in the report: %s. The checks ran again, so it shows as it stands now.', $title );
+				break;
+			case 'snooze':
+				$line = sprintf( 'Snoozed until %1$s: %2$s. It still counts in the score. Bring it back sooner with `wp bettershield findings wake %3$s%4$s`.', substr( (string) $until, 0, 10 ), $title, $key, self::as_someone() );
+				break;
+			default:
+				$line = sprintf( 'Back with the open findings: %s.', $title );
+		}
+
+		\WP_CLI::success( $line );
 	}
 
 	/**
@@ -1678,6 +1838,340 @@ final class Command {
 		}
 
 		return $names;
+	}
+
+	/**
+	 * Shows one account's sign-in methods and sessions, or changes them.
+	 *
+	 * Through the same services and guards as the dashboard: the account must
+	 * be one the --user account may edit, your own is changed on your own
+	 * profile, and each change lands in the activity log as having come
+	 * through WP-CLI. Taking off a second factor or a passkey needs --yes,
+	 * is recorded high, and emails the account, because it can't be put
+	 * back: the person sets it up again. A new-password requirement can be
+	 * lifted with --lift.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <args>...
+	 * : An account (login, email or id) to show it, or one of:
+	 *   `two-factor reset <account>`, `passkey remove <account> <passkey id|all>`,
+	 *   `sessions end <account>`, `require-new-password <account>`.
+	 *
+	 * [--yes]
+	 * : Confirm taking off a second factor or a passkey.
+	 *
+	 * [--lift]
+	 * : With require-new-password, lift the requirement instead.
+	 *
+	 * [--format=<format>]
+	 * : Output format for showing an account.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp bettershield account jane
+	 *     wp bettershield account jane --format=json
+	 *     wp bettershield account two-factor reset jane --yes --user=admin
+	 *     wp bettershield account passkey remove jane 12 --yes --user=admin
+	 *     wp bettershield account passkey remove jane all --yes --user=admin
+	 *     wp bettershield account sessions end jane --user=admin
+	 *     wp bettershield account require-new-password jane --user=admin
+	 *     wp bettershield account require-new-password jane --lift --user=admin
+	 *
+	 * @param string[]              $args
+	 * @param array<string, string> $assoc_args
+	 */
+	public function account( array $args, array $assoc_args ): void {
+		$action = (string) ( $args[0] ?? '' );
+
+		if ( ! in_array( $action, array( 'two-factor', 'passkey', 'sessions', 'require-new-password' ), true ) ) {
+			if ( count( $args ) > 1 ) {
+				\WP_CLI::error( sprintf( 'Unknown change "%s". Use two-factor reset, passkey remove, sessions end or require-new-password.', implode( ' ', $args ) ) );
+			}
+
+			$this->show_account( self::account_named( $action ), self::format_from( $assoc_args, array( 'table', 'json' ) ) );
+			return;
+		}
+
+		// The verb after the area, where the area has one.
+		$verbs = array(
+			'two-factor' => 'reset',
+			'passkey'    => 'remove',
+			'sessions'   => 'end',
+		);
+
+		if ( isset( $verbs[ $action ] ) && $verbs[ $action ] !== ( $args[1] ?? '' ) ) {
+			\WP_CLI::error( sprintf( 'Say what to do: `wp bettershield account %1$s %2$s <account>%3$s`.', $action, $verbs[ $action ], 'passkey' === $action ? ' <passkey id|all>' : '' ) );
+		}
+
+		$target = self::account_named( (string) ( $args[ isset( $verbs[ $action ] ) ? 2 : 1 ] ?? '' ) );
+		$this->may_change_account( $target );
+
+		if ( 'two-factor' === $action ) {
+			if ( ! \BetterShield\TwoFactor\Manager::instance()->enabled( $target->ID ) ) {
+				\WP_CLI::error( sprintf( 'Two-factor is not on for %s, so nothing was changed.', $target->user_login ) );
+			}
+
+			self::require_yes( $assoc_args, sprintf( 'This turns off two-factor for %s. It can’t be put back: they set it up again on their profile.', $target->user_login ) );
+			\BetterShield\TwoFactor\Manager::instance()->reset_from_terminal( $target->ID );
+			\WP_CLI::success( sprintf( 'Two-factor is off for %s, and their sessions were ended. It can’t be put back: they set it up again on their profile. They will get an email, and the activity log records it.', $target->user_login ) );
+			return;
+		}
+
+		if ( 'passkey' === $action ) {
+			$this->remove_passkeys( $target, (string) ( $args[3] ?? '' ), $assoc_args );
+			return;
+		}
+
+		if ( 'sessions' === $action ) {
+			$ended = \BetterShield\Login\Sessions::instance()->end_for_user( $target->ID );
+			\WP_CLI::success( sprintf( $ended['network_wide'] ? 'Ended every session %s had on every site of this network. Recorded in the activity log.' : 'Ended every session %s had. Recorded in the activity log.', $target->user_login ) );
+			return;
+		}
+
+		$this->require_new_password( $target, isset( $assoc_args['lift'] ) );
+	}
+
+	/**
+	 * One account's sign-in methods and sessions. Addresses are shown as
+	 * their network, never in full, as the screens show them.
+	 */
+	private function show_account( \WP_User $user, string $format ): void {
+		$status   = \BetterShield\TwoFactor\Manager::instance()->status( $user->ID );
+		$passkeys = \BetterShield\Passkeys\Store::for_user( $user->ID );
+		$tokens   = get_user_meta( $user->ID, 'session_tokens', true );
+		$sessions = array();
+
+		foreach ( is_array( $tokens ) ? $tokens : array() as $session ) {
+			if ( ! is_array( $session ) || (int) ( $session['expiration'] ?? 0 ) < time() ) {
+				continue;
+			}
+
+			$seen       = \BetterShield\Login\Sessions::last_seen( $session );
+			$sessions[] = array(
+				'network' => \BetterShield\Login\Sessions::network_label( $session ),
+				'browser' => \BetterShield\Login\Sessions::device_label( (string) ( $session['ua'] ?? '' ) ),
+				'started' => 'table' === $format ? self::site_time( gmdate( 'Y-m-d H:i:s', (int) ( $session['login'] ?? 0 ) ) ) : gmdate( 'c', (int) ( $session['login'] ?? 0 ) ),
+				'seen'    => 0 === $seen ? '' : ( 'table' === $format ? self::site_time( gmdate( 'Y-m-d H:i:s', $seen ) ) : gmdate( 'c', $seen ) ),
+			);
+		}
+
+		$last = (int) get_user_meta( $user->ID, \BetterShield\Audit\Dormant::META, true );
+		$view = array(
+			'account'              => $user->user_login,
+			'id'                   => $user->ID,
+			'two_factor'           => $status['enabled'] ? 'on' : ( $status['pending'] ? 'being set up' : 'off' ),
+			'backup_codes_left'    => $status['backup_remaining'],
+			'new_password_required' => \BetterShield\Remediation\PasswordHold::has( $user->ID ),
+			'last_sign_in'         => 0 === $last ? '' : ( 'table' === $format ? self::site_time( gmdate( 'Y-m-d H:i:s', $last ) ) : gmdate( 'c', $last ) ),
+			'passkeys'             => array_map(
+				static fn( array $key ): array => array(
+					'id'        => $key['id'],
+					'label'     => $key['label'],
+					'last_used' => self::moment( (string) ( $key['last_used_at'] ?? '' ), $format ),
+				),
+				$passkeys
+			),
+			'sessions'             => $sessions,
+		);
+
+		if ( 'json' === $format ) {
+			\WP_CLI::line( (string) wp_json_encode( $view ) );
+			return;
+		}
+
+		$rows = array();
+
+		foreach ( array( 'account', 'id', 'two_factor', 'backup_codes_left', 'new_password_required', 'last_sign_in' ) as $field ) {
+			$value  = $view[ $field ];
+			$rows[] = array(
+				'field' => $field,
+				'value' => is_bool( $value ) ? ( $value ? 'yes' : 'no' ) : ( '' === $value ? '-' : (string) $value ),
+			);
+		}
+
+		$this->print_rows( 'table', $rows, array( 'field', 'value' ) );
+		\WP_CLI::line( '' );
+		\WP_CLI::line( array() === $view['passkeys'] ? 'Passkeys: none.' : 'Passkeys:' );
+
+		if ( array() !== $view['passkeys'] ) {
+			$this->print_rows( 'table', $view['passkeys'], array( 'id', 'label', 'last_used' ) );
+		}
+
+		\WP_CLI::line( '' );
+		\WP_CLI::line( array() === $sessions ? 'Sessions: none open.' : 'Sessions:' );
+
+		if ( array() !== $sessions ) {
+			$this->print_rows( 'table', $sessions, array( 'network', 'browser', 'started', 'seen' ) );
+		}
+	}
+
+	/**
+	 * A stored moment as the rest of the account view says one: the site's
+	 * own time in a table, ISO 8601 in JSON, nothing when there is none.
+	 */
+	private static function moment( string $stored, string $format ): string {
+		$at = '' === $stored ? false : strtotime( $stored );
+
+		if ( false === $at ) {
+			return '';
+		}
+
+		return 'table' === $format ? self::site_time( gmdate( 'Y-m-d H:i:s', $at ) ) : gmdate( 'c', $at );
+	}
+
+	/** The account a login, email or id names, or an error that says so. */
+	private static function account_named( string $name ): \WP_User {
+		if ( '' === $name ) {
+			\WP_CLI::error( 'Name an account by its login, email or id.' );
+		}
+
+		$user = ctype_digit( $name ) ? get_user_by( 'id', (int) $name ) : ( is_email( $name ) ? get_user_by( 'email', $name ) : get_user_by( 'login', $name ) );
+
+		// On a network, an account of another site is no account of this one.
+		if ( ! $user instanceof \WP_User || ( is_multisite() && ! is_user_member_of_blog( $user->ID ) && ! is_super_admin( $user->ID ) ) ) {
+			\WP_CLI::error( sprintf( 'No account "%s" on this site.', $name ) );
+		}
+
+		return $user;
+	}
+
+	/**
+	 * The dashboard's guards for changing somebody else's account: a --user
+	 * that manages this plugin and may edit that account, and never your own,
+	 * which you change on your own profile.
+	 */
+	private function may_change_account( \WP_User $target ): void {
+		$this->require_manage();
+
+		if ( get_current_user_id() === $target->ID ) {
+			\WP_CLI::error( 'That is the account named with --user. Change your own sign-in methods on your own profile. Nothing was changed.' );
+		}
+
+		if ( ! current_user_can( 'edit_user', $target->ID ) ) {
+			\WP_CLI::error( sprintf( 'The account named with --user cannot edit %s. Nothing was changed.', $target->user_login ) );
+		}
+	}
+
+	/**
+	 * Refuse a change that can't be undone unless --yes was given.
+	 *
+	 * @param array<string, mixed> $assoc_args
+	 */
+	private static function require_yes( array $assoc_args, string $what ): void {
+		if ( ! isset( $assoc_args['yes'] ) ) {
+			\WP_CLI::error( $what . ' Add --yes to go ahead. Nothing was changed.' );
+		}
+	}
+
+	/**
+	 * Remove one passkey, or every one, from somebody else's account.
+	 *
+	 * @param array<string, mixed> $assoc_args
+	 */
+	private function remove_passkeys( \WP_User $target, string $which, array $assoc_args ): void {
+		// Where a network keeps one table of passkeys for every site, they
+		// come off every site at once: the network's decision.
+		if ( ! \BetterShield\Rest\PasskeyController::may_remove_across_sites() ) {
+			\WP_CLI::error( 'Passkeys work on every site in this network, so only a network administrator can remove them. Name one with --user. Nothing was changed.' );
+		}
+
+		$keys = \BetterShield\Passkeys\Store::for_user( $target->ID );
+
+		if ( array() === $keys ) {
+			\WP_CLI::error( sprintf( '%s has no passkeys, so nothing was changed.', $target->user_login ) );
+		}
+
+		if ( 'all' !== $which && ! ( ctype_digit( $which ) && in_array( (int) $which, array_column( $keys, 'id' ), true ) ) ) {
+			\WP_CLI::error( sprintf( 'Name one of %1$s’s passkeys by its id, or say all. Run `wp bettershield account %1$s` to see them. Nothing was changed.', $target->user_login ) );
+		}
+
+		self::require_yes( $assoc_args, sprintf( 'all' === $which ? 'This removes every passkey %s has. It can’t be put back: they add new ones on their profile.' : 'This removes a passkey from %s. It can’t be put back: they add a new one on their profile.', $target->user_login ) );
+
+		$removed = 'all' === $which ? \BetterShield\Passkeys\Store::forget_user( $target->ID ) : ( \BetterShield\Passkeys\Store::remove_for_account( $target->ID, (int) $which ) ? 1 : 0 );
+
+		if ( 0 === $removed ) {
+			\WP_CLI::error( 'The passkey could not be removed. Nothing was changed.' );
+		}
+
+		// What may have been opened with them does not outlive them.
+		\BetterShield\Login\SessionReset::credential_changed( $target->ID, 'passkey' );
+
+		\BetterShield\Events\Writer::instance()->record(
+			'passkey_removed',
+			\BetterShield\Events\Writer::SEVERITY_HIGH,
+			array(
+				'object_type' => 'user',
+				'object_id'   => (string) $target->ID,
+				'context'     => array(
+					'by'    => 'cli',
+					'count' => $removed,
+				),
+			)
+		);
+
+		\WP_CLI::success( sprintf( 1 === $removed ? 'Removed %2$d passkey from %1$s. It can’t be put back: they add a new one on their profile. They will get an email, and the activity log records it.' : 'Removed %2$d passkeys from %1$s. They can’t be put back: they add new ones on their profile. They will get an email, and the activity log records it.', $target->user_login, $removed ) );
+	}
+
+	/** Ask an account for a new password before it signs in again, or lift that. */
+	private function require_new_password( \WP_User $target, bool $lift ): void {
+		if ( $lift ) {
+			if ( ! \BetterShield\Remediation\PasswordHold::has( $target->ID ) ) {
+				\WP_CLI::error( sprintf( '%s is not asked for a new password, so nothing was changed.', $target->user_login ) );
+			}
+
+			if ( ! \BetterShield\Remediation\PasswordHold::lift( $target->ID, 'undo' ) ) {
+				\WP_CLI::error( 'The requirement could not be lifted. Nothing was changed.' );
+			}
+
+			\WP_CLI::success( sprintf( '%s signs in with their password again. Recorded in the activity log.', $target->user_login ) );
+			return;
+		}
+
+		if ( \BetterShield\Remediation\PasswordHold::has( $target->ID ) ) {
+			\WP_CLI::error( sprintf( '%s is already asked for a new password, so nothing was changed.', $target->user_login ) );
+		}
+
+		// The same refusals as the dashboard's hold: the last way in, an
+		// account in the middle of something else.
+		$refused = \BetterShield\Remediation\Accounts::refusal( $target->ID, true );
+
+		if ( '' !== $refused ) {
+			\WP_CLI::error( $refused . ' Nothing was changed.' );
+		}
+
+		$undo = \BetterShield\Remediation\PasswordHold::place( $target->ID, 'cli' );
+
+		if ( '' === $undo ) {
+			\WP_CLI::error( 'The requirement could not be placed. Nothing was changed.' );
+		}
+
+		// A hold nobody was told how to clear would only be a lockout.
+		if ( true !== retrieve_password( $target->user_login ) ) {
+			\BetterShield\Remediation\PasswordHold::lift( $target->ID, 'not_sent' );
+			\WP_CLI::error( 'The reset email failed, so nothing was changed: they sign in as before.' );
+		}
+
+		\BetterShield\Events\Writer::instance()->record(
+			'incident_password_held',
+			\BetterShield\Events\Writer::SEVERITY_MEDIUM,
+			array(
+				'object_type' => 'user',
+				'object_id'   => (string) $target->ID,
+				'context'     => array(
+					'reason' => 'cli',
+					'undo'   => $undo,
+				),
+			)
+		);
+
+		\WP_CLI::success( sprintf( '%1$s must set a new password before signing in, and was sent the reset email. Lift it with `wp bettershield account require-new-password %1$s --lift --user=<login>`.', $target->user_login ) );
 	}
 
 	/**

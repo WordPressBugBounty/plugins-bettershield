@@ -1,6 +1,6 @@
 {
 	"name": "bettershield",
-	"version": "1.1.7",
+	"version": "1.1.8",
 	"private": true,
 	"description": "Development tooling for the BetterShield plugin. The plugin itself ships no Node runtime code.",
 	"scripts": {

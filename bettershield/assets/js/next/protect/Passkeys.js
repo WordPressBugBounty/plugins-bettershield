@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { formatTime, isWorking, useStore } from '../../store';
 import { PROMPT_HINT_AFTER_MS, PROMPT_TIMEOUT_MS, promptClosedWords, promptHint, promptStoppedWords, promptWait } from '../../ui/passkey-prompt';
+import { signalAccepted } from '../../ui/passkey-signal';
 import Alert from '../ui/Alert';
 import Armed from '../ui/Armed';
 import Badge from '../ui/Badge';
@@ -372,6 +373,14 @@ export default function Passkeys( { onChanged, policy = '' } ) {
 	}, [] );
 
 	useEffect( load, [ load ] );
+
+	// Each list read, after an add or a removal too, tells the browser's
+	// passkey store which of these this site still accepts.
+	const signal = state ? state.signal : null;
+
+	useEffect( () => {
+		signalAccepted( signal );
+	}, [ signal ] );
 
 	// The passkey-only roles were saved elsewhere on the screen: the hint
 	// above the button depends on them, so it is read again (#2485).

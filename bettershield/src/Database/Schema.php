@@ -56,8 +56,10 @@ final class Schema {
 	 *     reported it at enrollment; older rows and silent browsers stay unknown.
 	 * 18: whether a file change came under a version nothing confirms; older
 	 *     rows keep the grade they were reported at.
+	 * 19: the named signs of compromise an added file showed, as rule ids and
+	 *     line numbers; older rows have none.
 	 */
-	public const VERSION = 18;
+	public const VERSION = 19;
 
 	private const OPTION = 'bettershield_schema_version';
 
@@ -1094,7 +1096,9 @@ final class Schema {
 			 *
 			 * Never the file's contents — this table holds paths, hashes and
 			 * sizes, and a security record that copied the altered file into
-			 * the database would become the thing worth stealing.
+			 * the database would become the thing worth stealing. `signals`
+			 * holds which named signs of compromise an added file showed and
+			 * on which line, never the bytes that matched.
 			 */
 			"CREATE TABLE {$changes} (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -1113,6 +1117,7 @@ final class Schema {
 				size_after bigint(20) unsigned NULL,
 				status varchar(16) NOT NULL DEFAULT 'new',
 				unconfirmed_update tinyint(1) NOT NULL DEFAULT 0,
+				signals varchar(255) NULL,
 				PRIMARY KEY  (id),
 				KEY idx_status_time (site_id, status, detected_at),
 				KEY idx_path (site_id, path_hash)

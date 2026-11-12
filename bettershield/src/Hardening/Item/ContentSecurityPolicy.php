@@ -747,6 +747,19 @@ final class ContentSecurityPolicy {
 	}
 
 	/**
+	 * This source as the policy holds it, when it is on the allowed list.
+	 *
+	 * @return array{directive: string, source: string}|null
+	 */
+	public static function allowed_source( string $directive, string $source ): ?array {
+		$directive = self::ALLOWABLE[ self::clean( $directive ) ] ?? '';
+		$source    = strtolower( trim( $source ) );
+		$allowed   = self::allowed( \BetterShield\Hardening\Manager::instance()->item_state( 'csp_report_only' ) );
+
+		return '' !== $directive && in_array( $source, $allowed[ $directive ] ?? array(), true ) ? array( 'directive' => $directive, 'source' => $source ) : null;
+	}
+
+	/**
 	 * The sources allowed now, one row each, for the card.
 	 *
 	 * @return array<int, array{directive: string, source: string}>

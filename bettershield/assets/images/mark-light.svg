@@ -243,7 +243,7 @@
 <radialGradient id="paint0_radial_0_6" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(120.399 20.9878) rotate(90.0386) scale(197.295 189.371)">
 <stop offset="0.478236" stop-color="#45464E"/>
 <stop offset="0.824492" stop-color="#00A37B"/>
-<stop offset="1" stop-color="#CDEFE6"/>
+<stop offset="1" stop-color="#147D64"/>
 </radialGradient>
 <radialGradient id="paint191_radial_0_6" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(120.576 115.574) rotate(90) scale(30.0201 30.0209)">
 <stop stop-color="#09E6B4"/>

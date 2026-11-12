@@ -99,6 +99,30 @@ final class AlertsController {
 				return is_wp_error( $result ) ? $result : rest_ensure_response( array( 'alerts' => self::payload() ) );
 			},
 		) );
+		// A window booked to open by itself later, changed by booking again,
+		// and canceled: each needs what opening one now needs.
+		register_rest_route( 'bettershield/v1', '/alerts/maintenance/booking', array(
+			array(
+				'methods' => \WP_REST_Server::CREATABLE,
+				'permission_callback' => $interactive_manage,
+				'args' => array(
+					'starts' => array( 'type' => 'string', 'pattern' => '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$', 'required' => true, 'validate_callback' => 'rest_validate_request_arg', 'sanitize_callback' => 'sanitize_text_field' ),
+					'minutes' => array( 'type' => 'integer', 'enum' => Maintenance::LENGTHS, 'required' => true, 'validate_callback' => 'rest_validate_request_arg', 'sanitize_callback' => 'rest_sanitize_request_arg' ),
+				),
+				'callback' => static function ( \WP_REST_Request $request ) {
+					$result = Maintenance::book( (string) $request['starts'], (int) $request['minutes'] );
+					return is_wp_error( $result ) ? $result : rest_ensure_response( array( 'alerts' => self::payload() ) );
+				},
+			),
+			array(
+				'methods' => \WP_REST_Server::DELETABLE,
+				'permission_callback' => $interactive_manage,
+				'callback' => static function () {
+					$result = Maintenance::cancel_booking();
+					return is_wp_error( $result ) ? $result : rest_ensure_response( array( 'alerts' => self::payload() ) );
+				},
+			),
+		) );
 		register_rest_route( 'bettershield/v1', '/alerts/maintenance/end', array(
 			'methods' => \WP_REST_Server::CREATABLE,
 			'permission_callback' => $interactive_manage,

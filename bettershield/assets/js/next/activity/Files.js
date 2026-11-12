@@ -52,6 +52,24 @@ import Icon from '../ui/Icon';
 import { formatCount } from '../../ui/count';
 import { SelectionBar, SelectionDock, SelectionQuestion, SelectionReceipt } from './Selection';
 
+/**
+ * One named sign of compromise an added file showed, in words (#685).
+ *
+ * @param {Object} sign The sign: its test and line.
+ * @return {string} The words.
+ */
+export function signWords( sign ) {
+	if ( 'php_decodes_and_runs' === sign.test ) {
+		return sprintf(
+			/* translators: %d: a line number in a file. */
+			__( 'Worth a look: line %d decodes text and runs it', 'bettershield' ),
+			sign.line
+		);
+	}
+
+	return __( 'Worth a look: its name starts with a dot, so file lists hide it', 'bettershield' );
+}
+
 /** A path as the design sets it: its own type, breaking only at its separators. */
 function Path( { path } ) {
 	return (
@@ -886,6 +904,11 @@ function FileRow( { change, onRestore, onSuppress, onQuarantine = null, busy, sh
 											<Badge tone="orange">{ __( 'Can run as code', 'bettershield' ) }</Badge>
 										</span>
 									) : null }
+									{ /* What an added file was seen doing, by line, never
+									     its text: worth a look, not a verdict (#685). */ }
+									{ ( change.signals || [] ).map( ( sign ) => (
+										<span key={ sign.test + sign.line }>{ signWords( sign ) }</span>
+									) ) }
 									<span>
 										{ /* One sentence per shape, so a translator can
 										     reorder it and keeps the separator. */ }

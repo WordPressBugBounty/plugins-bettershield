@@ -3,8 +3,8 @@
  *
  * The heading takes focus when the step opens, so it carries the id the panel
  * is labeled by. The footer is the same on every step that has one — Back on
- * the left, Skip and the step's own action on the right — so the way forward
- * is always in the same place and never needs finding. That action is the
+ * the left with Need help?, Skip and the step's own action on the right — so
+ * the way forward is always in the same place and never needs finding. That action is the
  * step's one Primary button; everything inside the step is quieter.
  */
 
@@ -14,6 +14,7 @@ import { __ } from '@wordpress/i18n';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
+import { helpLinks } from './brand';
 import { useSetup } from './context';
 
 /**
@@ -56,8 +57,34 @@ export default function Frame( { title, subtitle, badge, children, footer, varia
 				) : null }
 			</div>
 
-			{ footer }
+			{ footer || ( helpLinks() ? (
+				<div className="bs-ds-setup__help-line">
+					<HelpLink />
+				</div>
+			) : null ) }
 		</>
+	);
+}
+
+/** Where help is, on the page that sells nothing. */
+export const SUPPORT_URL = 'https://bettershield.ai/support/';
+
+/**
+ * A way to reach us from every step: a plain link to the support page, in a
+ * new tab so the setup stays where it was. No chat widget here: that would
+ * load someone else's script on the owner's site.
+ */
+export function HelpLink() {
+	// Left out where an owner's label asks for this plugin's links to go.
+	if ( ! helpLinks() ) {
+		return null;
+	}
+
+	return (
+		<a className="bs-ds-setup__help" href={ SUPPORT_URL } target="_blank" rel="noopener noreferrer">
+			{ __( 'Need help?', 'bettershield' ) }
+			<span className="screen-reader-text">{ __( '(opens in a new tab)', 'bettershield' ) }</span>
+		</a>
 	);
 }
 
@@ -83,6 +110,7 @@ export function Footer( { skip, noSkip = false, primary, locked = false, childre
 						{ __( 'Back', 'bettershield' ) }
 					</Button>
 				) : null }
+				<HelpLink />
 			</div>
 
 			<div className="bs-ds-setup__foot-end">

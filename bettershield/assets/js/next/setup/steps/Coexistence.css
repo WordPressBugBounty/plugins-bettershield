@@ -50,31 +50,3 @@
 	font-weight: 500;
 	color: var(--bs-ds-color-text-primary);
 }
-
-/*
- * Narrow: the ⓘ sits beside Skip, under the main button, never alone on a
- * row of its own.
- */
-@container bs-ds-setup (max-width: 600px) {
-
-	.bs-ds-setup__foot-end:has(> .bs-ds-setup-coex__foot-tip) {
-		display: grid;
-		grid-template-columns: 1fr auto;
-		align-items: center;
-	}
-
-	.bs-ds-setup__foot-end:has(> .bs-ds-setup-coex__foot-tip) > .bs-ds-setup__primary {
-		grid-row: 1;
-		grid-column: 1 / -1;
-	}
-
-	.bs-ds-setup__foot-end:has(> .bs-ds-setup-coex__foot-tip) > .bs-ds-setup__skip {
-		grid-row: 2;
-		grid-column: 1;
-	}
-
-	.bs-ds-setup__foot-end > .bs-ds-setup-coex__foot-tip {
-		grid-row: 2;
-		grid-column: 2;
-	}
-}

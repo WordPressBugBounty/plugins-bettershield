@@ -36,9 +36,9 @@ final class QuickSetupPage {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 		add_filter( 'admin_body_class', array( $this, 'body_class' ) );
 
-		// A network's sites each run their own setup the first time their
-		// administrator opens this plugin, since none of them is redirected
-		// on activation.
+		// A site nobody was redirected from on activation (each site of a
+		// network, a bulk or terminal activation) runs its setup the first
+		// time its administrator opens this plugin.
 		add_action( 'admin_init', array( $this, 'maybe_open_first' ) );
 	}
 
@@ -56,6 +56,9 @@ final class QuickSetupPage {
 			$this->hook = $hook;
 			Quiet::claim( $hook );
 			add_action( 'load-' . $hook, array( $this, 'leave_when_finished' ) );
+			// However the setup was reached, having seen it once is enough:
+			// the first visit to the plugin does not send the owner back.
+			add_action( 'load-' . $hook, array( QuickSetup::class, 'mark_opened' ) );
 		}
 
 		/*
@@ -189,6 +192,7 @@ final class QuickSetupPage {
 				array(
 					'assetsUrl' => plugins_url( 'assets/images/', BETTERSHIELD_FILE ),
 					'brand'     => \BetterShield\Support\Branding::name(),
+					'helpLinks' => ! \BetterShield\Support\Branding::hides_help_links(),
 					'version'   => BETTERSHIELD_VERSION,
 				),
 				$flags

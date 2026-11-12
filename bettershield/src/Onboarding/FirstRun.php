@@ -77,7 +77,15 @@ final class FirstRun {
 			QuickSetup::begin();
 		}
 
-		if ( ! self::is_pending() || 'pending' !== QuickSetup::state()['status'] || self::activated_in_the_background() ) {
+		if ( ! self::is_pending() || 'pending' !== QuickSetup::state()['status'] ) {
+			return;
+		}
+
+		// However it was activated, the first visit to the plugin opens the
+		// setup once; a bulk or background activation is never redirected.
+		QuickSetup::owe_visit();
+
+		if ( self::activated_in_the_background() ) {
 			return;
 		}
 

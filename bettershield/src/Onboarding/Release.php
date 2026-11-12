@@ -55,6 +55,8 @@ final class Release {
 	public static function manifest(): array {
 		return array(
 			// Nothing new switches itself on, or asks to be, with this update.
+			'1.1.8' => array(),
+			// Nothing new switches itself on, or asks to be, with this update.
 			'1.1.7' => array(),
 			// Nothing new switches itself on, or asks to be, with this update.
 			'1.1.6' => array(),

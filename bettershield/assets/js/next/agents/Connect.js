@@ -31,6 +31,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { READ_ONLY, READ_WRITE, appScopePhrase, neverDone, prettyRoutedState, scopePhrase, testSentence } from '../../agents/phrases';
 import { tabUrl } from '../../nav';
 import { formatTime, isWorking, useResource, useStore } from '../../store';
+import { motionAllowed } from '../../ui/hold';
 import useMutationFocus from '../../ui/useMutationFocus';
 import Alert from '../ui/Alert';
 import Armed from '../ui/Armed';
@@ -493,6 +494,36 @@ function Head( { id, icon, title, headingRef = null, tip = null, children = null
 }
 
 /**
+ * What the hub loses from the tools unticked for it. Two separate warnings,
+ * because they cost different things, and neither stops the save.
+ *
+ * @param {Object}   app      The connected app.
+ * @param {string[]} unticked The tools unticked for it right now.
+ * @return {string[]} The sentences to show.
+ */
+export function hubToolWarnings( app, unticked ) {
+	if ( ! app.is_hub ) {
+		return [];
+	}
+
+	const warnings = [];
+
+	if ( unticked.includes( 'get-hub-link' ) ) {
+		warnings.push(
+			app.hub_link_on
+				? __( 'BetterShield Hub will keep getting this site’s events until the Hub link is turned off and on.', 'bettershield' )
+				: __( 'If the Hub link is turned on later, BetterShield Hub won’t take this site’s events.', 'bettershield' )
+		);
+	}
+
+	if ( unticked.includes( 'get-security-overview' ) && unticked.includes( 'get-security-posture' ) ) {
+		warnings.push( __( 'BetterShield Hub will stop getting this site’s score and findings.', 'bettershield' ) );
+	}
+
+	return warnings;
+}
+
+/**
  * The tools one app may use (#1879): every tool its access allows, ticked
  * unless the owner unticked it. Unticked tools are left out of the app's list
  * and refused when it calls them. A tool unticked earlier that its access no
@@ -535,6 +566,9 @@ export function AppToolsPanel( { app, saving, onSave, onCancel } ) {
 				} ) ) }
 				onChange={ setChosen }
 			/>
+			{ hubToolWarnings( app, unticked ).map( ( warning ) => (
+				<Alert key={ warning } layout="default" tone="warning" live desc={ warning } />
+			) ) }
 			<div className="bs-ds-connect__toolsacts">
 				<Button type="primary" size="sm" isBusy={ saving } disabled={ saving } onClick={ () => onSave( unticked ) }>
 					{ __( 'Save Tools', 'bettershield' ) }
@@ -1027,7 +1061,35 @@ function ConnectScreen( { surface } ) {
 			} )
 		);
 
-	const runTest = () => testMcpConnection( afterTest( ( result ) => setTest( result ) ) );
+	/*
+	 * The test answers quickly and its result sits under the rows, so the
+	 * button says it is testing and then shows a tick, the old result goes
+	 * while it runs, and the new one is scrolled into view.
+	 */
+	const [ tested, setTested ] = useState( false );
+	const testResult = useRef( null );
+	const testWords = {
+		idle: __( 'Test Connection', 'bettershield' ),
+		busy: __( 'Testing…', 'bettershield' ),
+	};
+	const testLongest = Object.values( testWords ).reduce( ( a, b ) => ( b.length > a.length ? b : a ) );
+	const runTest = () => {
+		setTest( null );
+		setTested( false );
+		testMcpConnection(
+			afterTest( ( result ) => {
+				setTest( result );
+				setTested( true );
+				window.setTimeout( () => setTested( false ), 2500 );
+			} )
+		);
+	};
+
+	useEffect( () => {
+		if ( test && testResult.current && testResult.current.scrollIntoView ) {
+			testResult.current.scrollIntoView( { block: 'nearest', behavior: motionAllowed() ? 'smooth' : 'auto' } );
+		}
+	}, [ test ] );
 
 	const reads = !! access.read_enabled;
 	const writes = !! access.write_enabled;
@@ -1807,7 +1869,7 @@ function ConnectScreen( { surface } ) {
 				icon="gauge"
 				title={ __( 'Connection diagnostics', 'bettershield' ) }
 				headingRef={ healthHeading }
-				tip={ __( 'Checked live on this site, not assumed. The test makes one real call and shows how far it got.', 'bettershield' ) }
+				tip={ __( 'Verified directly on the live site. The test makes a real call and shows exactly how far the request gets.', 'bettershield' ) }
 			>
 				<Button
 					type="secondary"
@@ -1823,8 +1885,10 @@ function ConnectScreen( { surface } ) {
 						<span>{ recheckWords[ recheck ] || recheckWords.idle }</span>
 					</span>
 				</Button>
-				<Button type="primary" size="sm" icon="play" iconTone="onbrand" isBusy={ testing } disabled={ testing } onClick={ runTest }>
-					{ __( 'Test Connection', 'bettershield' ) }
+				<Button type="primary" size="sm" icon={ tested && ! testing ? 'check' : 'play' } iconTone="onbrand" isBusy={ testing } disabled={ testing } onClick={ runTest }>
+					<span className="bs-ds-connect__recheckwords" data-longest={ testLongest }>
+						<span>{ testWords[ testing ? 'busy' : 'idle' ] }</span>
+					</span>
 				</Button>
 			</Head>
 
@@ -1913,7 +1977,7 @@ function ConnectScreen( { surface } ) {
 			{ /* What the site itself said, under the sentence that translated
 			     it — a certificate's own complaint is the thing a host asks for. */ }
 			{ test ? (
-				<div className="bs-ds-connect__test">
+				<div className="bs-ds-connect__test" ref={ testResult }>
 					<Alert
 						layout="default"
 						tone={ 'ok' === test.step ? 'success' : 'warning' }

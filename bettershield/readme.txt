@@ -4,7 +4,7 @@ Tags: 2fa, passkeys, hardening, activity log, two factor authentication
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.7
+Stable tag: 1.1.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,7 +18,7 @@ It is made by WPDeveloper, whose WordPress products are used on more than 6 mill
 
 = What you get =
 
-* **A security audit and fixes you can undo.** A *72-check audit* scores your site, and thirty one-click fixes close the gaps. All but one wait for your go-ahead.
+* **A security audit and fixes you can undo.** A *75-check audit* scores your site, and thirty one-click fixes close the gaps. All but one wait for your go-ahead.
 * **Two-factor authentication and passkeys.** Any authenticator app plus ten backup codes, or a passkey unlocked with a fingerprint, face or device PIN. Require either by role.
 * **Login protection.** Limit login attempts, a hidden bot check on the sign-in, registration and comment forms, and an allowlist that is never locked out.
 * **An activity log and a file check.** Who did what and when, with a CSV export, and core and plugin files compared with WordPress.org's copies.
@@ -30,11 +30,13 @@ It is made by WPDeveloper, whose WordPress products are used on more than 6 mill
 
 = Quick Setup =
 
-A short Quick Setup Wizard opens once after activation. It offers **5 hardening fixes** that cannot lock anyone out, gives you a way back in (an emailed **single-use recovery link** plus printable recovery codes), and lets you choose which plugin handles which job if you run another security plugin. Every step can be skipped, and run again from Settings > General.
+A short Quick Setup Wizard opens once after activation. It offers **5 hardening fixes** that cannot lock anyone out, gives you a way back in (an emailed **single-use recovery link** plus printable recovery codes), and lets you choose which plugin handles which job if you run another security plugin.
 
-= WordPress Security Audit: 72 checks, explained in plain language =
+Every step can be skipped, and run again from Settings > General.
 
-Seventy-two read-only checks cover access, exposure, updates, extensions, server settings and configuration, including:
+= WordPress Security Audit: 75 checks, explained in plain language =
+
+Seventy-five read-only checks cover access, exposure, updates, extensions, server settings and configuration, including:
 
 * Idle “Admin” accounts nobody has used in over six months
 * User enumeration, XML-RPC, the file editor and the WordPress version on every page
@@ -62,14 +64,14 @@ The thirty one-click fixes:
 
 = Two-factor authentication (2FA) and passkeys =
 
-For yourself, the roles you choose or your WooCommerce customers:
+Login security for yourself, the roles you choose or your WooCommerce customers:
 
 * **Two-factor with any authenticator app** and ten single-use backup codes, never enforced until the app is proven to work.
 * **Require two-factor by role**, with a 14-day grace period by default.
 * **Passkeys:** sign in with a fingerprint, face or device PIN. A passkey is a WebAuthn credential, and only the public half of the key is stored on your site.
 * **Passkey-only, passwordless sign-in by role,** once a working recovery option is in place.
 
-= Login protection and brute force defense =
+= Login security and brute force protection =
 
 * **Limit login attempts:** by default, 5 failed sign-ins in 15 minutes lock that connection out for 15 minutes, doubling with each repeat within a day.
 * **A hidden bot check** on the login, registration, WooCommerce account and comment forms.
@@ -111,13 +113,13 @@ BetterShield can bring over your old plugin's settings, with a preview first and
 
 An optional dashboard for people who look after more than one site. Connect sites from BetterShield Hub to see every score and finding, apply or undo fixes across sites, with sign-in changes and undos waiting for your agreement, get downtime and grade-drop alerts, and invite your team.
 
-* WP-CLI commands for audits, findings, hardening, activity, recovery, file checks, settings, alerts, lockouts, blocklist and reports
-* Settings export and import, with a preview and an undo
+* WP-CLI commands for audits, findings, hardening, activity, recovery, file checks, settings, alerts, lockouts, blocklist, reports and accounts
+* Settings export and import, with preview and undo
 * Multisite: every site's score in one table, and two-factor and passkey rules set once for the network
 
 = BetterShield Ultra =
 
-BetterShield Ultra is for people who look after sites for others. It needs this plugin active and adds:
+BetterShield Ultra gives you full control of your site’s security. It needs this plugin active and adds:
 
 * Two-factor setup at sign-in for the roles you choose, plus trusted devices
 * Passkey reminders by role and a date for passkey-only sign-in
@@ -170,7 +172,7 @@ Yes. The audit, every plain-language explanation, all 30 fixes and their undo, t
 
 = Does BetterShield include a firewall or malware scanner? =
 
-No. BetterShield does not include a firewall and does not scan for or remove malware. It audits your configuration, hardens it with fixes you can undo, secures logins, logs activity, groups suspicious changes into incidents, compares WordPress core and directory plugins with the official WordPress.org copies, and watches your theme and the files nobody publishes for changes.
+No. BetterShield does not include a firewall and does not scan for or remove malware. It audits your configuration, hardens it with fixes you can undo, secures logins, logs activity, groups suspicious changes into incidents, compares WordPress core and directory plugins with the official WordPress.org copies, and watches your theme and the files nobody publishes for changes. On a WooCommerce store it also looks for scripts that do what card-stealing code does, such as hiding where they send data, and names where each one is. It never says a site is clean.
 
 = Will the fixes break my site? =
 
@@ -178,11 +180,17 @@ Every fix can show you what it will change before you apply it, and each can be 
 
 = What happens if I lock myself out? =
 
-Open your latest recovery link and press its one button. BetterShield's sign-in protections pause for one hour and your settings stay as they are. You can generate a fresh link from Protection > Recovery at any time, which stops the old one working. Using a link issues the next one straight away, on the page and by email. A link you never use stops working after 90 days, and BetterShield warns you in the last two weeks. Printed recovery codes are a second way back in.
+Open your latest recovery link and press its one button. BetterShield's sign-in protections pause for one hour and your settings stay as they are.
+
+You can generate a fresh link from Protection > Recovery at any time, which stops the old one working. Using a link issues the next one straight away, on the page and by email.
+
+A link you never use stops working after 90 days, and BetterShield warns you in the last two weeks. Printed recovery codes are a second way back in.
 
 = Can two-factor authentication lock my users out? =
 
-Not by setting it up. Nothing is enforced until the app is proven to work and the backup codes are saved. Required two-factor comes with a grace period (14 days by default), with an email to the account three days before it ends. If someone loses their phone, a backup code signs them in, and an administrator can turn two-factor off for them. If you are the only administrator and have lost both, use your recovery link: while safe mode is on, your password turns two-factor off under Protection > Two-factor, and the account is emailed about it.
+Not by setting it up. Nothing is enforced until the app is proven to work and the backup codes are saved. Required two-factor comes with a grace period (14 days by default), with an email to the account three days before it ends.
+
+If someone loses their phone, a backup code signs them in, and an administrator can turn two-factor off for them. If you are the only administrator and have lost both, use your recovery link: while safe mode is on, your password turns two-factor off under Protection > Two-factor, and the account is emailed about it.
 
 = Which authenticator apps work? =
 
@@ -190,11 +198,17 @@ Any authenticator app that generates time-based one-time codes: Google Authentic
 
 = What is a passkey? =
 
-A passkey is a sign-in credential kept on your phone, laptop or password manager and unlocked with a fingerprint, your face or the device PIN, using the WebAuthn standard. There is no password to phish. BetterShield stores only the public half of the key. Anyone in the roles you choose, and your WooCommerce customers, can add one, and you can require passkey-only sign-in for a role once a working recovery option is in place.
+A passkey is a sign-in credential kept on your phone, laptop or password manager and unlocked with a fingerprint, your face or the device PIN, using the WebAuthn standard. There is no password to phish. BetterShield stores only the public half of the key.
+
+Anyone in the roles you choose, and your WooCommerce customers, can add one, and you can require passkey-only sign-in for a role once a working recovery option is in place.
 
 = Will it slow down my site? =
 
-The Overview measures it and shows the number for your own site, once it has seen enough page views. For visitors, BetterShield runs the fixes you turned on, its login protection on sign-in, the limits on the comment, reset and sign-up forms, the opt-in missing-page limit, and a hidden bot check on the sign-in, registration and comment forms. Audits, file checks and emails never run inside a visitor's page view. On the WooCommerce cart and checkout, BetterShield adds no bot check, skips its sampling, checks and housekeeping, and only records security events.
+The Overview measures it and shows the number for your own site, once it has seen enough page views.
+
+For visitors, BetterShield runs the fixes you turned on, its login protection on sign-in, the limits on the comment, reset and sign-up forms, the opt-in missing-page limit, and a hidden bot check on the sign-in, registration and comment forms.
+
+Audits, file checks and emails never run inside a visitor's page view. On the WooCommerce cart and checkout, BetterShield adds no bot check, skips its sampling, checks and housekeeping, and only records security events.
 
 = Does it send my data anywhere? =
 
@@ -209,23 +223,35 @@ Everything is stored on your own server, unless you connect BetterShield Hub (se
 * **Passkeys:** the device name you gave, when it was added and when it was last used. Only the public half of the key is stored.
 * **Account records:** two-factor setup, backup codes, password-policy status, two-factor deadlines and last sign-in.
 
-Tools > Export Personal Data and Tools > Erase Personal Data both support BetterShield. A few security records are kept on purpose, and the erasure result says so: the date the account last signed in, lockout records, incident evidence and assistant activity. Tools > Site Health > Info lists every record, how long it is kept, and what erasure does to it.
+Tools > Export Personal Data and Tools > Erase Personal Data both support BetterShield. A few security records are kept on purpose, and the erasure result says so: the date the account last signed in, lockout records, incident evidence and assistant activity.
+
+Tools > Site Health > Info lists every record, how long it is kept, and what erasure does to it.
 
 = Can I use BetterShield alongside another security plugin? =
 
-Yes, with care. If another security plugin is active, Quick Setup asks which plugin should keep each shared job, such as login limits, so they don't both do it. On the Hardening screen, a fix the other plugin already covers says so. It does not catch every overlap, so check the other plugin's settings too, and avoid turning on login or two-factor features in both.
+Yes, with care. If another security plugin is active, Quick Setup asks which plugin should keep each shared job, such as login limits, so they don't both do it. On the Hardening screen, a fix the other plugin already covers says so.
+
+It does not catch every overlap, so check the other plugin's settings too, and avoid turning on login or two-factor features in both.
 
 = How do I switch from another security plugin? =
 
-Install BetterShield and let the first audit run; the audit itself changes nothing. Settings > General can then bring over your old plugin's protections, and its sign-in attempt limits once it stops limiting sign-ins (several popular security plugins are supported). You see a preview first, it lists what it could not carry and why, the other plugin is only read, and you can undo the import. Apply any other fixes you want one at a time and switch the old plugin's features off as you go.
+Install BetterShield and let the first audit run; the audit itself changes nothing. Settings > General can then bring over your old plugin's protections, and its sign-in attempt limits once it stops limiting sign-ins (several popular security plugins are supported).
+
+You see a preview first, it lists what it could not carry and why, the other plugin is only read, and you can undo the import. Apply any other fixes you want one at a time and switch the old plugin's features off as you go.
 
 = Can my server’s firewall block the networks BetterShield locks out? =
 
-Yes, on a server that runs Fail2Ban. Turn on “Send lockouts to the server’s firewall” under Protection > Login & Access, or a host can turn it on for every site with the `bettershield_host_ban_line` filter. Each lockout then writes one line to the server’s auth log naming the network (IPv4 /24, IPv6 /64), never an address or a username. A sample filter and jail ship in the plugin’s `fail2ban` folder. A network that holds an address on your allowed list writes no line.
+Yes, on a server that runs Fail2Ban. Turn on “Send lockouts to the server’s firewall” under Protection > Login & Access, or a host can turn it on for every site with the `bettershield_host_ban_line` filter.
+
+Each lockout then writes one line to the server’s auth log naming the network (IPv4 /24, IPv6 /64), never an address or a username. A sample filter and jail ship in the plugin’s `fail2ban` folder. A network that holds an address on your allowed list writes no line.
 
 = Does BetterShield detect vulnerable plugins? =
 
-Yes, when you turn on vulnerability checks in Settings. BetterShield compares what you have installed with published advisories from BetterShield Hub. You don't need a Hub account or an Ultra license. The result shows its age, and if a refresh fails you keep the previous result with a warning. BetterShield also flags plugins the WordPress.org directory has closed or that have had no update for years, and its file check shows any core or directory plugin file that no longer matches the official copy.
+Yes, when you turn on vulnerability checks in Settings. BetterShield compares what you have installed with published advisories from BetterShield Hub. Where the Hub's data comes from Patchstack, the result says so. The Hub answers from its own copy of that data, so nothing is sent to Patchstack.
+
+You don't need a Hub account or an Ultra license. The result shows its age, and if a refresh fails you keep the previous result with a warning.
+
+BetterShield also flags plugins the WordPress.org directory has closed or that have had no update for years, and its file check shows any core or directory plugin file that no longer matches the official copy.
 
 = Is the activity log tamper-proof? =
 
@@ -241,21 +267,39 @@ Yes. Each site keeps its own findings, settings and fixes. The network admin get
 
 = Do I need BetterShield Hub? =
 
-No. It is optional, and everything in the plugin works without it. The hub is for people who look after several sites and want their scores, findings and fixes in one place. You connect each site from its own BetterShield Hub screen and approve it on that site. To end the connection, press Disconnect on the site: removing a site inside the hub does not end it.
+No. It is optional, and everything in the plugin works without it. The hub is for people who look after several sites and want their scores, findings and fixes in one place.
+
+You connect each site from its own BetterShield Hub screen and approve it on that site. To end the connection, press Disconnect on the site: removing a site inside the hub does not end it.
 
 = What can BetterShield Hub see and change? =
 
-What you allow when you connect. Read-only lets it see the score, findings and a few security views, such as administrators by display name and role. Read-and-fix also lets it apply fixes that can be undone, and those take effect at once. Changes to how people sign in, fixes that cannot be fully undone, and undoing a fix, which takes a protection off, show the site's own plan first and wait for a person to agree each time. Connecting switches on the plugin's reading, changing and assistant connection settings if they are off. On the consent page, "Allow it to change this site" starts unticked; tick it only if you want the hub to apply fixes. Every change the hub makes is recorded in the site's activity log. The hub reads the site every few hours; if you also turn on the Hub link under BetterShield Hub, or tick it on the consent page, the site sends its security events and a heartbeat to the hub as they happen, so its alerts arrive in seconds. Turning the link off deletes the key it signs with.
+What you allow when you connect. Read-only lets it see the score, findings and a few security views, such as administrators by display name and role. Read-and-fix also lets it apply fixes that can be undone, and those take effect at once.
+
+Changes to how people sign in, fixes that cannot be fully undone, and undoing a fix, which takes a protection off, show the site's own plan first and wait for a person to agree each time.
+
+Connecting switches on the plugin's reading, changing and assistant connection settings if they are off. On the consent page, "Allow it to change this site" starts unticked; tick it only if you want the hub to apply fixes. Every change the hub makes is recorded in the site's activity log.
+
+The hub reads the site every few hours; if you also turn on the Hub link under BetterShield Hub, or tick it on the consent page, the site sends its security events and a heartbeat to the hub as they happen, so its alerts arrive in seconds. Turning the link off deletes the key it signs with.
 
 = Can an AI assistant change my site? =
 
-Only if you let it. The MCP connection is off until you turn it on under Agents > Connect, and reading and changing are separate switches. With only reading on, an assistant can look and change nothing. With changing on, it can apply fixes. Undoing a fix, putting a changed file back, updating a plugin, moving files into quarantine and changing an account wait for you to agree to the plan it shows you. Every change is recorded in the activity log, and every one that can be undone has an undo. A connection can be issued read-only whatever the switches say. Creating accounts or credentials, changing your recovery options, two-factor or alert settings, lifting lockouts and deleting log rows are never possible through a connection. Agents > Agent surface shows which abilities on your site, from any plugin, can make changes.
+Only if you let it. The MCP connection is off until you turn it on under Agents > Connect, and reading and changing are separate switches. With only reading on, an assistant can look and change nothing. With changing on, it can apply fixes.
+
+Undoing a fix, putting a changed file back, updating a plugin, moving files into quarantine and changing an account wait for you to agree to the plan it shows you. Every change is recorded in the activity log, and every one that can be undone has an undo.
+
+A connection can be issued read-only whatever the switches say. Creating accounts or credentials, changing your recovery options, two-factor or alert settings, lifting lockouts and deleting log rows are never possible through a connection. Agents > Agent surface shows which abilities on your site, from any plugin, can make changes.
 
 = What happens if I delete the plugin? =
 
-Its records stay by default, including the activity log, findings and undo history, so reinstalling picks up where you left off. Fixes it applied, including .htaccess rules, stay applied too, so undo anything you do not want to keep before you delete. Under Settings > General, "When BetterShield is deleted" can instead remove this plugin's records, which also takes its server rules back off.
+Its records stay by default, including the activity log, findings and undo history, so reinstalling picks up where you left off. Fixes it applied, including .htaccess rules, stay applied too, so undo anything you do not want to keep before you delete.
 
-Copies of files it replaced are kept in `wp-content/uploads/bettershield-quarantine/`, because the version that was there may be exactly what somebody put on your site, and BetterShield leaves that decision to you. Remove them one at a time from Activity > File Changes before you delete the plugin, or delete the folder yourself afterward. A third setting does both for you: it packages the copies into one zip file inside `wp-content/uploads/bettershield-quarantine/` (in its `handback` folder), takes the copies away only once that archive has been written, and then removes this plugin's records as above. The zip gets a random name and nothing links to it, so collect it over SFTP or from your host's file manager, and move it out if your server ignores .htaccess rules.
+Under Settings > General, "When BetterShield is deleted" can instead remove this plugin's records, which also takes its server rules back off.
+
+Copies of files it replaced are kept in `wp-content/uploads/bettershield-quarantine/`, because the version that was there may be exactly what somebody put on your site, and BetterShield leaves that decision to you. Remove them one at a time from Activity > File Changes before you delete the plugin, or delete the folder yourself afterward.
+
+A third setting does both for you: it packages the copies into one zip file inside `wp-content/uploads/bettershield-quarantine/` (in its `handback` folder), takes the copies away only once that archive has been written, and then removes this plugin's records as above.
+
+The zip gets a random name and nothing links to it, so collect it over SFTP or from your host's file manager, and move it out if your server ignores .htaccess rules.
 
 = How do I get support? =
 
@@ -269,21 +313,45 @@ Compatible plugins can register confirmed actions through the native WordPress A
 
 BetterShield contacts nine outside addresses. It contacts four addresses operated by WordPress.org to verify and restore official files. It contacts your own AI provider only if you have connected one; Pwned Passwords and usage reporting each require opt-in.
 
-**api.wordpress.org**: the published checksums for your WordPress version, when the file check runs on its schedule or when you start one; the request carries your WordPress version and language. Once a day it also asks whether the directory still lists a few of the plugins you installed from it; that request carries the plugin's slug only. Installs and updates started from BetterShield go through WordPress's installer, from here and downloads.wordpress.org.
+**api.wordpress.org**: the published checksums for your WordPress version, when the file check runs on its schedule or when you start one; the request carries your WordPress version and language.
+
+Once a day it also asks whether the directory still lists a few of the plugins you installed from it; that request carries the plugin's slug only. Installs and updates started from BetterShield go through WordPress's installer, from here and downloads.wordpress.org.
 
 **downloads.wordpress.org**: checksums for a directory plugin at your exact version, during the same check and whenever a plugin is installed or updated, including automatic updates. For WPDeveloper's Pro plugins and Ultra, the same question then goes to checksums.wpdeveloper.com, and for Ultra to bettershield.ai if that has no record. Each carries the plugin's slug and version.
 
 **core.svn.wordpress.org** and **plugins.svn.wordpress.org**: the official copy of one file, fetched when you press Restore on a changed file or open its difference. The request carries the version and the file's path, and the copy is checked against the published checksum before anything is written.
 
-**api.pwnedpasswords.com**: the Pwned Passwords service by Have I Been Pwned, only if you switch on “Leaked password check”, and only when someone signed in to your site sets or changes a password. The password is hashed on your server and only the first five characters of the hash are sent; the comparison happens on your server. No password, account name, email, site address or identifier is sent. Documentation: https://haveibeenpwned.com/API/v3#PwnedPasswords, terms of use: https://haveibeenpwned.com/TermsOfUse, privacy policy: https://haveibeenpwned.com/Privacy
+**api.pwnedpasswords.com**: the Pwned Passwords service by Have I Been Pwned, only if you switch on “Leaked password check”, and only when someone signed in to your site sets or changes a password.
 
-**send.wpinsight.com**: WPDeveloper's usage service, only if you choose to share usage data (Allow & Continue on the first Quick Setup step; Skip sends nothing). At most once a day, and once when you deactivate BetterShield, it sends your site address and title, administrator email, WordPress, PHP and web server versions, language settings, whether the site is multisite, the installed and active plugins, your theme and its version, BetterShield's version and folder name, and the report reference. If you choose to answer the question its Deactivate link asks, the report sent on deactivation also carries your reason and the few words you typed. It sends nothing else about your visitors, users, sign-ins or findings. Turn it off under Settings > General. Terms and conditions: https://wpdeveloper.com/terms-and-conditions, privacy policy: https://wpdeveloper.com/privacy-policy
+The password is hashed on your server and only the first five characters of the hash are sent; the comparison happens on your server. No password, account name, email, site address or identifier is sent. Documentation: https://haveibeenpwned.com/API/v3#PwnedPasswords, terms of use: https://haveibeenpwned.com/TermsOfUse, privacy policy: https://haveibeenpwned.com/Privacy
 
-**BetterShield Hub** (hub.bettershield.ai, or the address a developer sets in wp-config.php), only if you connect the site and approve it on this site's own consent page. Pressing Connect sends your browser to the hub with this site's address, a return address, the access you chose and a single-use ticket. Once connected, it reads the score, findings, tools and the activity log, which names the account behind each change and its truncated networks, and checks the front page every few minutes. With the Hub link on, this site sends it security events every five minutes, accounts as digests and networks truncated, and a heartbeat of versions, digests and, when it changes, the list of installed plugins and themes, signed with a key kept here. Turning the link off stops it; Disconnect ends both. Terms of service: https://bettershield.ai/terms, privacy policy: https://bettershield.ai/privacy
+**send.wpinsight.com**: WPDeveloper's usage service, only if you choose to share usage data (Allow & Continue on the first Quick Setup step; Skip sends nothing).
 
-**Your own AI provider**, only if you have connected one to WordPress and only when you ask for an explanation: of one finding, of your open findings with Explain My Audit, or of an incident. WordPress sends the request through your connector under Settings > Connectors; BetterShield never asks for, stores or sends the key, though Agents > Agent surface shows administrators its last four characters. For one finding it sends that finding's title, severity, description and recorded evidence. Explain my audit sends the titles, severities and recorded evidence of up to twelve open findings in one request. An incident's explanation sends what was recorded about it, with accounts and files named only as placeholders such as "account-1". Web and email addresses are stripped, and file contents, usernames, keys and your site's address are never sent.
+At most once a day, and once when you deactivate BetterShield, it sends your site address and title, administrator email, WordPress, PHP and web server versions, language settings, whether the site is multisite, the installed and active plugins, your theme and its version, BetterShield's version and folder name, and the report reference.
 
-None of the WordPress.org requests carries anything about your site: no site address, email, username, keys, file contents or identifier. The exception is WordPress's own installer, which names your site address in its user agent, as every WordPress update does. They happen on a schedule, when you press a button, or when a plugin is installed or updated, never while a visitor loads a page. If a service cannot be reached, the check says it could not run rather than reporting a file as unchanged.
+If you choose to answer the question its Deactivate link asks, the report sent on deactivation also carries your reason and the few words you typed. It sends nothing else about your visitors, users, sign-ins or findings.
+
+Turn it off under Settings > General. Terms and conditions: https://wpdeveloper.com/terms-and-conditions, privacy policy: https://wpdeveloper.com/privacy-policy
+
+**BetterShield Hub** (hub.bettershield.ai, or the address a developer sets in wp-config.php), only if you connect the site and approve it on this site's own consent page. Pressing Connect sends your browser to the hub with this site's address, a return address, the access you chose and a single-use ticket.
+
+Once connected, it reads the score, findings, tools and the activity log, which names the account behind each change and its truncated networks, and checks the front page every few minutes.
+
+With the Hub link on, this site sends it security events every five minutes, accounts as digests and networks truncated, and a heartbeat of versions, digests and, when it changes, the list of installed plugins and themes, signed with a key kept here.
+
+Turning the link off stops it; Disconnect ends both. Terms of service: https://bettershield.ai/terms, privacy policy: https://bettershield.ai/privacy
+
+**Your own AI provider**, only if you have connected one to WordPress and only when you ask for an explanation: of one finding, of your open findings with Explain My Audit, or of an incident.
+
+WordPress sends the request through your connector under Settings > Connectors; BetterShield never asks for, stores or sends the key, though Agents > Agent surface shows administrators its last four characters.
+
+For one finding it sends that finding's title, severity, description and recorded evidence. Explain my audit sends the titles, severities and recorded evidence of up to twelve open findings in one request. An incident's explanation sends what was recorded about it, with accounts and files named only as placeholders such as "account-1".
+
+Web and email addresses are stripped, and file contents, usernames, keys and your site's address are never sent.
+
+None of the WordPress.org requests carries anything about your site: no site address, email, username, keys, file contents or identifier. The exception is WordPress's own installer, which names your site address in its user agent, as every WordPress update does.
+
+These requests happen on a schedule, when you press a button, or when a plugin is installed or updated, never while a visitor loads a page. If a service cannot be reached, the check says it could not run rather than reporting a file as unchanged.
 
 The four WordPress.org addresses are provided by the WordPress Foundation. Privacy policy: https://wordpress.org/about/privacy/, cookie policy: https://wordpress.org/about/privacy/cookies/
 
@@ -298,6 +366,17 @@ Everything BetterShield keeps about a person is stored on your own server, with 
 Everything that runs is readable in the plugin folder. The PHP in `src/` is not generated, compiled or minified. The admin interface is compiled into `assets/build/` from the sources in `assets/js/` and `assets/css/`, which ship next to it. To rebuild, run `npm install` and then `npm run build`, which uses @wordpress/scripts from the included `package.json`.
 
 == Changelog ==
+
+= 1.1.8 - 12/11/2026 =
+
+- Added: Findings | On a WooCommerce store, a new finding names any script that does what card-stealing code does, says where it is, and lets you accept one you added. Themes the WordPress.org directory removed or stopped updating are named too
+- Added: File Integrity | An added PHP file that decodes code and runs it, or hides behind a name starting with a dot, is marked worth a look, with the line
+- Added: Email Alerts | Book planned maintenance ahead. It starts by itself, everyone you alert hears about the booking at once, and it ends at the booked time
+- Added: WP-CLI | See and change one person's sign-in methods and sessions with wp bettershield account, settle a finding from the terminal, and make wp bettershield audit --strict fail when a check could not run
+- Added: Agents | An assistant shows a plan before each direct finding fix, Connect warns before the Hub's reads are turned off, and Test Connection shows it ran
+- Improved: Vulnerabilities | Each known security issue says whether it can be reached on this site, and the Hub's results can come from either of its sources
+- Improved: Passkeys | A saved passkey is offered in the username field, and one removed here stops being offered by the browser
+- Improved: Screens | The light logo keeps its lower dots visible on light backgrounds
 
 = 1.1.7 - 09/11/2026 =
 
@@ -560,6 +639,10 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 - Added: Multisite | Every site's score in one table and rules a network can set once
 
 == Upgrade Notice ==
+
+= 1.1.8 =
+
+Scripts on a store that may be reading card details are now named, and planned maintenance can be booked ahead. Using BetterShield Ultra? Update it to 1.0.9 too. Recommended for all sites.
 
 = 1.1.7 =
 

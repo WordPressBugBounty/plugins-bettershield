@@ -1,5 +1,5 @@
 <?php
-/** Explicit evidence projections. No heuristics, file content or actor inference. @package BetterShield */
+/** Explicit evidence projections. No actor inference. The only file content behind them is the named signs of compromise an added file showed, carried as rule ids and line numbers, never the bytes. @package BetterShield */
 declare( strict_types=1 );
 namespace BetterShield\Incidents;
 use BetterShield\Events\Writer;
@@ -7,7 +7,7 @@ use BetterShield\Integrity\Packages;
 use BetterShield\Support\Text;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Signals {
-	public const EVENTS = array( 'user_created', 'user_role_granted', 'user_role_changed', 'app_password_created', 'canary_used', 'canary_page_touched', 'hardening_reverted', 'login_protection_updated', 'two_factor_policy_changed', 'passkey_policy_changed', 'network_2fa_policy_changed', 'network_passkey_policy_changed', 'site_setting_changed', 'dormant_privileged_login', 'user_email_changed', 'password_changed', 'account_takeover_sequence', 'plugin_installed', 'plugin_updated', 'update_code_changed' );
+	public const EVENTS = array( 'user_created', 'user_role_granted', 'user_role_changed', 'app_password_created', 'canary_used', 'canary_page_touched', 'hardening_reverted', 'login_protection_updated', 'two_factor_policy_changed', 'passkey_policy_changed', 'network_2fa_policy_changed', 'network_passkey_policy_changed', 'site_setting_changed', 'dormant_privileged_login', 'user_email_changed', 'password_changed', 'account_takeover_sequence', 'plugin_installed', 'plugin_updated', 'update_code_changed', 'store_script_host_added' );
 	public static function event( array $row ): ?array {
 		$type = (string) $row['event_type'];
 		$context = json_decode( (string) ( $row['context'] ?? '' ), true );
@@ -38,9 +38,12 @@ final class Signals {
 		// often the cause of what an anchor shows, so they join an incident
 		// that is open around them. Corroboration only, never an anchor: an
 		// update on its own is upkeep and opens nothing (#717, #2343).
-		elseif ( ! in_array( $type, array( 'hardening_reverted', 'site_setting_changed', 'dormant_privileged_login', 'canary_page_touched', 'account_takeover_sequence', 'plugin_installed', 'plugin_updated', 'update_code_changed' ), true ) ) { return null; }
+		// A store page loading a script from a site it never loaded from
+		// before. Corroboration only, never an anchor: new tags are pasted in
+		// every day, and one is only evidence beside something else.
+		elseif ( ! in_array( $type, array( 'hardening_reverted', 'site_setting_changed', 'dormant_privileged_login', 'canary_page_touched', 'account_takeover_sequence', 'plugin_installed', 'plugin_updated', 'update_code_changed', 'store_script_host_added' ), true ) ) { return null; }
 		$actor = 'user' === ( $row['actor_type'] ?? '' ) ? (int) ( $row['actor_id'] ?? 0 ) : 0;
-		$details = array_intersect_key( $context, array_fill_keys( array( 'roles', 'from', 'to', 'role', 'weakened', 'days_idle' ), true ) );
+		$details = array_intersect_key( $context, array_fill_keys( array( 'roles', 'from', 'to', 'role', 'weakened', 'days_idle', 'host' ), true ) );
 		// Account labels and password names are deliberately not copied. UUIDs
 		// identify revocable credentials, not their secret; management plans
 		// retrieve the current credential independently before acting.
@@ -93,6 +96,18 @@ final class Signals {
 		if ( ! $baseline && ! $core && 'plugin' !== $context ) { return null; }
 		if ( ! preg_match( '/\.(?:' . Packages::SERVER_PHP . ')\z/i', $path ) ) { return null; }
 		return array( 'source_key' => hash( 'sha256', 'integrity:' . $row['id'] . ':' . $row['detected_at'] . ':' . $path . ':' . $row['hash_after'] ), 'occurred_at' => $row['detected_at'], 'announced' => self::file_goes_out_at_once(), 'anchor' => 'added' === $row['change_type'] && empty( $row['unconfirmed_update'] ) ? 'code' : '', 'actor_id' => 0, 'event_type' => 'added' === $row['change_type'] ? 'incident_code_added' : 'incident_code_modified',
-			'snapshot' => array( 'source' => 'integrity', 'source_id' => (int) $row['id'], 'object_type' => 'file', 'object_id' => Text::clip( $path, 1024 ), 'target_user' => 0, 'details' => array( 'context' => $context, 'comparison' => $baseline ? 'saved_baseline' : 'publisher_manifest', 'sha256_or_md5' => (string) $row['hash_after'] ) ) );
+			'snapshot' => array( 'source' => 'integrity', 'source_id' => (int) $row['id'], 'object_type' => 'file', 'object_id' => Text::clip( $path, 1024 ), 'target_user' => 0, 'details' => array( 'context' => $context, 'comparison' => $baseline ? 'saved_baseline' : 'publisher_manifest', 'sha256_or_md5' => (string) $row['hash_after'] ) + self::signs( $row ) ) );
+	}
+	/**
+	 * The named signs of compromise an added file showed, when it showed any.
+	 * They count as corroboration in `Repository::stats()`, and nothing else:
+	 * no anchor, no grade, no action.
+	 *
+	 * @param array<string, mixed> $row
+	 * @return array<string, mixed>
+	 */
+	private static function signs( array $row ): array {
+		$signs = \BetterShield\Audit\CompromiseSigns::parse( (string) ( $row['signals'] ?? '' ) );
+		return array() === $signs ? array() : array( 'signals' => $signs );
 	}
 }

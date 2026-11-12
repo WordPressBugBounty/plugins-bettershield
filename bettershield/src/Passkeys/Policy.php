@@ -116,14 +116,20 @@ final class Policy {
 	/* ---- settings -------------------------------------------------------------- */
 
 	/**
-	 * @return array{roles: string[]}
+	 * The roles held to a passkey, and whether the sign-in form offers a
+	 * saved passkey in the username field's autofill.
+	 *
+	 * @return array{roles: string[], autofill: bool}
 	 */
 	public function settings(): array {
 		$stored = get_option( self::OPTION, array() );
 		$stored = is_array( $stored ) ? $stored : array();
 
 		return array(
-			'roles' => array_values( array_filter( array_map( 'strval', (array) ( $stored['roles'] ?? array() ) ) ) ),
+			'roles'    => array_values( array_filter( array_map( 'strval', (array) ( $stored['roles'] ?? array() ) ) ) ),
+			// On unless it was switched off: a policy saved before the switch
+			// existed has no key, and gets the default.
+			'autofill' => ! array_key_exists( 'autofill', $stored ) || (bool) $stored['autofill'],
 		);
 	}
 
@@ -132,10 +138,13 @@ final class Policy {
 	 * release panel's honesty test and a settings import all read the same
 	 * shape.
 	 *
-	 * @return array{roles: string[]}
+	 * @return array{roles: string[], autofill: bool}
 	 */
 	public function defaults(): array {
-		return array( 'roles' => array() );
+		return array(
+			'roles'    => array(),
+			'autofill' => true,
+		);
 	}
 
 	/**
@@ -148,7 +157,7 @@ final class Policy {
 	 * fresh site is the likeliest one to have none.
 	 *
 	 * @param array<string, mixed> $input
-	 * @return array{roles: string[]}|\WP_Error
+	 * @return array{roles: string[], autofill: bool}|\WP_Error
 	 */
 	public function validate( array $input ) {
 		$current = $this->settings();
@@ -175,7 +184,10 @@ final class Policy {
 			$clean[] = $role;
 		}
 
-		$next = array( 'roles' => array_values( array_unique( $clean ) ) );
+		$next = array(
+			'roles'    => array_values( array_unique( $clean ) ),
+			'autofill' => array_key_exists( 'autofill', $input ) ? rest_sanitize_boolean( $input['autofill'] ) : $current['autofill'],
+		);
 
 		/*
 		 * Naming a role here is the only thing in this plugin that takes an
@@ -274,7 +286,7 @@ final class Policy {
 
 	/**
 	 * @param array<string, mixed> $input
-	 * @return array{roles: string[]}|\WP_Error
+	 * @return array{roles: string[], autofill: bool}|\WP_Error
 	 */
 	public function update_settings( array $input ) {
 		$current = $this->settings();
@@ -286,7 +298,9 @@ final class Policy {
 
 		// The same roles in another order are what is stored already. Saving
 		// them wrote a high event, which alerts, for a change nobody made.
-		if ( array() === array_diff( $current['roles'], $next['roles'] ) && array() === array_diff( $next['roles'], $current['roles'] ) ) {
+		$same_roles = array() === array_diff( $current['roles'], $next['roles'] ) && array() === array_diff( $next['roles'], $current['roles'] );
+
+		if ( $same_roles && $current['autofill'] === $next['autofill'] ) {
 			return $current;
 		}
 
@@ -299,6 +313,24 @@ final class Policy {
 		}
 
 		update_option( self::OPTION, $next, true );
+
+		// Where the sign-in form offers a passkey is not who must use one,
+		// and the requirement's own row is the one that alerts.
+		if ( $current['autofill'] !== $next['autofill'] ) {
+			Writer::instance()->record(
+				'setting_changed',
+				Writer::SEVERITY_LOW,
+				array(
+					'object_type' => 'setting',
+					'object_id'   => 'bettershield_passkey_autofill',
+					'context'     => array( 'enabled' => $next['autofill'] ),
+				)
+			);
+		}
+
+		if ( $same_roles ) {
+			return $next;
+		}
 
 		Writer::instance()->record(
 			'passkey_policy_changed',

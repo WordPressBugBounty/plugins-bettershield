@@ -16,6 +16,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class HubFeed implements Feed {
 	public const ENDPOINT = 'https://hub.bettershield.ai/v1/intelligence/check';
 	public const RETRY = 'bettershield_intelligence_retry';
+
+	/**
+	 * The data providers the Hub answers from. The answer's shape is the
+	 * same for each; the provider names whose ids they are, so each id is
+	 * prefixed with it and its revision count is its own.
+	 */
+	public const PROVIDERS = array( 'wordfence', 'patchstack' );
+
+	/**
+	 * The name a stored result carries. Kept as it was first written, so a
+	 * result stored before there was a choice of provider is still this
+	 * supply's: it names the supply, and the provider is kept beside it
+	 * (State's `provider`).
+	 */
 	public function id(): string {
 		return 'hub-wordfence';
 	}
@@ -94,7 +108,7 @@ final class HubFeed implements Feed {
 		}
 		unset( $raw );
 		$data = json_decode( $body, true, 32 );
-		if ( ! is_array( $data ) || 1 !== ( $data['schema_version'] ?? null ) || 'wordfence' !== ( $data['provider'] ?? null )
+		if ( ! is_array( $data ) || 1 !== ( $data['schema_version'] ?? null ) || ! in_array( $data['provider'] ?? null, self::PROVIDERS, true )
 			|| Inventory::digest( $inventory ) !== ( $data['inventory_digest'] ?? null )
 			|| true !== ( $data['complete'] ?? null ) || false !== ( $data['stale'] ?? null )
 			|| ! isset( $data['revision'] ) || ! is_int( $data['revision'] ) || $data['revision'] < 1
@@ -107,15 +121,19 @@ final class HubFeed implements Feed {
 		foreach ( $inventory as $item ) {
 			$components[ $item['type'] . ':' . strtolower( $item['slug'] ) ] = true;
 		}
+		$provider = (string) $data['provider'];
 		$previous = State::get();
-		if ( 'hub-wordfence' === $previous['feed'] && $data['revision'] < $previous['revision'] ) {
+		// Each provider keeps its own revision count, so an answer from
+		// another provider than the last one starts a fresh count: the first
+		// answer after a switch is accepted whatever the old count was.
+		if ( 'hub-wordfence' === $previous['feed'] && $provider === $previous['provider'] && $data['revision'] < $previous['revision'] ) {
 			return self::error();
 		}
 		$out = array();
 		$seen = array();
 		$attribution = array();
 		foreach ( $data['advisories'] as $advisory ) {
-			if ( ! self::valid_advisory( $advisory ) ) {
+			if ( ! self::valid_advisory( $advisory, $provider ) ) {
 				return self::error();
 			}
 			$key = $advisory['component']['type'] . ':' . strtolower( $advisory['component']['slug'] );
@@ -126,12 +144,12 @@ final class HubFeed implements Feed {
 			$seen[ $id ] = true;
 			$attribution[ wp_json_encode( $advisory['attribution'] ) ] = $advisory['attribution'];
 			$out[] = $advisory + array(
-				'id' => 'wordfence:' . $advisory['provider_id'],
+				'id' => $provider . ':' . $advisory['provider_id'],
 				'type' => $advisory['component']['type'], 'slug' => $advisory['component']['slug'],
 				'fixed_in' => null, 'affected_max' => null, 'disclosed_at' => $advisory['published_at'] ?? '',
 			);
 		}
-		return array( 'advisories' => $out, 'published_at' => $data['fetched_at'], 'revision' => $data['revision'], 'attribution' => array_values( $attribution ) );
+		return array( 'advisories' => $out, 'published_at' => $data['fetched_at'], 'revision' => $data['revision'], 'provider' => $provider, 'attribution' => array_values( $attribution ) );
 	}
 
 	private static function list_of( $value, int $max ): bool {
@@ -188,10 +206,14 @@ final class HubFeed implements Feed {
 		return true;
 	}
 
-	private static function valid_advisory( $a ): bool {
+	/**
+	 * @param mixed  $a        One advisory as answered.
+	 * @param string $provider The answer's own provider, which every advisory in it must name.
+	 */
+	private static function valid_advisory( $a, string $provider ): bool {
 		$required = array( 'schema_version', 'provider', 'provider_id', 'component', 'title', 'severity', 'cvss_score', 'informational', 'exploited', 'affected_ranges', 'patched_versions', 'patched_ranges', 'remediation', 'cve_ids', 'references', 'published_at', 'updated_at', 'attribution' );
 		if ( ! is_array( $a ) || array_diff( $required, array_keys( $a ) ) || array_diff( array_keys( $a ), $required )
-			|| 1 !== $a['schema_version'] || 'wordfence' !== $a['provider'] || ! self::text( $a['provider_id'], 200, false ) || ! preg_match( '/^[A-Za-z0-9_.:-]+$/', $a['provider_id'] )
+			|| 1 !== $a['schema_version'] || $provider !== $a['provider'] || ! self::text( $a['provider_id'], 200, false ) || ! preg_match( '/^[A-Za-z0-9_.:-]+$/', $a['provider_id'] )
 			|| ! is_array( $a['component'] ) || count( $a['component'] ) !== 2 || ! in_array( $a['component']['type'] ?? null, array( 'core', 'plugin', 'theme' ), true )
 			|| ! self::text( $a['component']['slug'] ?? null, 200, false ) || ! preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]*$/D', $a['component']['slug'] )
 			|| ! self::text( $a['title'], 2000, false ) || ( null !== $a['severity'] && ! in_array( $a['severity'], Matcher::SEVERITIES, true ) )

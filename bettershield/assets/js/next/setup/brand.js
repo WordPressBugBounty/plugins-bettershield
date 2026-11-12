@@ -10,3 +10,16 @@ export default function brand() {
 
 	return 'string' === typeof model.brand && '' !== model.brand.trim() ? model.brand : 'BetterShield';
 }
+
+/**
+ * Whether the links to this plugin's support are offered: not where an owner
+ * labeled the chrome and asked for them to go, as the dashboard's sidebar
+ * leaves out Docs & support. The server decides; read when asked.
+ *
+ * @return {boolean} Whether to show them.
+ */
+export function helpLinks() {
+	const model = ( 'undefined' !== typeof window && window.bettershield ) || {};
+
+	return false !== model.helpLinks;
+}

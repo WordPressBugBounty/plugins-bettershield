@@ -331,11 +331,14 @@ final class Repository {
 	}
 	private static function stats( int $id ): array|\WP_Error {
 		global $wpdb;
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS total, SUM(anchor<>'') AS anchors, SUM(anchor='credential') AS credential, COUNT(DISTINCT CASE WHEN anchor<>'' AND actor_id>0 THEN actor_id ELSE NULL END) AS actors FROM %i WHERE incident_id=%d", Schema::table( 'incident_evidence' ), $id ), ARRAY_A );
+		// A named sign of compromise on an added file counts as one more
+		// piece of corroboration, as a second row would: it can move an
+		// incident from review to pattern, and nothing more.
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS total, SUM(anchor<>'') AS anchors, SUM(anchor='credential') AS credential, COUNT(DISTINCT CASE WHEN anchor<>'' AND actor_id>0 THEN actor_id ELSE NULL END) AS actors, SUM(snapshot LIKE %s) AS signs FROM %i WHERE incident_id=%d", '%' . $wpdb->esc_like( '"signals":[{' ) . '%', Schema::table( 'incident_evidence' ), $id ), ARRAY_A );
 		if ( ! $row || '' !== $wpdb->last_error ) { return self::error(); }
 		$repeat = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE incident_id=%d AND anchor<>'' AND actor_id>0 GROUP BY actor_id HAVING COUNT(*)>=2 LIMIT 1", Schema::table( 'incident_evidence' ), $id ) );
 		if ( '' !== $wpdb->last_error ) { return self::error(); }
-		$confidence = (int) $row['credential'] > 0 ? 'decoy_used' : ( (int) $repeat > 1 ? 'linked_access' : ( (int) $row['total'] > 1 ? 'pattern' : 'review' ) );
+		$confidence = (int) $row['credential'] > 0 ? 'decoy_used' : ( (int) $repeat > 1 ? 'linked_access' : ( (int) $row['total'] + (int) $row['signs'] > 1 ? 'pattern' : 'review' ) );
 		return array( 'confidence' => $confidence, 'evidence_count' => (int) $row['total'], 'anchor_count' => (int) $row['anchors'] );
 	}
 	public static function detail( int $id, int $after = 0 ): array|\WP_Error {

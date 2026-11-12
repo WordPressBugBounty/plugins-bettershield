@@ -76,8 +76,19 @@ function Popper() {
  * @param {Object}   props
  * @param {Function} props.onClose   Closes it.
  * @param {boolean}  props.connected Whether the site has just connected to the hub.
+ * @param {boolean}  props.already   Whether it was connected before Connect was pressed.
  */
-export function SetupDoneDialog( { onClose, connected = true } ) {
+export function SetupDoneDialog( { onClose, connected = true, already = false } ) {
+	let text = __( 'Quick Setup is done. You can connect this site to the hub at any time.', 'bettershield' );
+
+	if ( already ) {
+		/* translators: %s: the plugin's name. */
+		text = sprintf( __( 'This site is already connected to %s Hub.', 'bettershield' ), brand() );
+	} else if ( connected ) {
+		/* translators: %s: the plugin's name. */
+		text = sprintf( __( 'Quick Setup is done, and this site is connected to %s Hub.', 'bettershield' ), brand() );
+	}
+
 	const titleId = useId();
 
 	return (
@@ -87,11 +98,7 @@ export function SetupDoneDialog( { onClose, connected = true } ) {
 				<h2 id={ titleId } className="bs-ds-setup-done__title">
 					{ __( 'Congratulations', 'bettershield' ) }
 				</h2>
-				<p className="bs-ds-setup-done__text">
-					{ connected
-						? sprintf( /* translators: %s: the plugin's name. */ __( 'Quick Setup is done, and this site is connected to %s Hub.', 'bettershield' ), brand() )
-						: __( 'Quick Setup is done. You can connect this site to the hub at any time.', 'bettershield' ) }
-				</p>
+				<p className="bs-ds-setup-done__text">{ text }</p>
 			</div>
 		</Modal>
 	);

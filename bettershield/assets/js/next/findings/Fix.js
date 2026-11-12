@@ -42,6 +42,7 @@ import ServerGuidance, { SERVER_GUIDANCE } from './fixes/ServerGuidance';
 import SignInExtras, { SIGN_IN_EXTRAS } from './fixes/SignInExtras';
 import SignInPage from './fixes/SignInPage';
 import StaleAppPasswords from './fixes/StaleAppPasswords';
+import StoreScripts from './fixes/StoreScripts';
 import UnansweredEvents from './fixes/UnansweredEvents';
 import WeakPasswordReset from './fixes/WeakPasswordReset';
 import WorldWritable from './fixes/WorldWritable';
@@ -65,6 +66,7 @@ export const PANELS = {
 	rest_surface_unreviewed: RestRoutes,
 	admin_username_exists: AdminRename,
 	application_passwords_stale: StaleAppPasswords,
+	store_script_reads_cards: StoreScripts,
 	privileged_account_dormant: DormantSuspend,
 	passwords_below_policy: WeakPasswordReset,
 	plugin_updates_available: PluginUpdates,

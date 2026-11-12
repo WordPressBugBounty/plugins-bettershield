@@ -37,3 +37,14 @@ export function unreachedText( feed ) {
 		feed.feed_label || __( 'the vulnerability list', 'bettershield' )
 	);
 }
+
+/**
+ * The credit for whose data the result is, where the Hub answered from a
+ * provider that asks to be named. Empty for any other result.
+ *
+ * @param {Object} feed The vulnerability feed's status.
+ * @return {string} The credit line, or an empty string.
+ */
+export function providerCredit( feed ) {
+	return feed && feed.has_data && 'patchstack' === feed.provider ? __( 'Vulnerability data from Patchstack.', 'bettershield' ) : '';
+}

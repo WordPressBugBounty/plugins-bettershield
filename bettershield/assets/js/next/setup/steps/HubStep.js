@@ -9,8 +9,8 @@
  * goes to the Dashboard. Connect opens the hub in a new tab and leaves this
  * one where it is (#2621); coming back to it reads the setup again, and the
  * step then says the site is connected, with the way to the hub and to the
- * Dashboard. The press that connected it is met once, per tab, with a dialog
- * saying the setup is done.
+ * Dashboard. The press that connected it is met once, in one tab, with a
+ * dialog saying the setup is done; closing it opens the Dashboard.
  */
 
 import { createInterpolateElement, useEffect, useRef, useState } from '@wordpress/element';
@@ -143,11 +143,20 @@ export default function HubStep() {
 					</Footer>
 				}
 			>
+				{ /* Closing it is the end of the setup, as "I’ll Connect Later"
+				     is: the Dashboard opens, the dialog gone first. Only the tab
+				     that shows it leaves; the other one stays on this step. */ }
 				{ celebrating ? (
 					<SetupDoneDialog
+						already={ Boolean( hub.again ) }
 						onClose={ () => {
 							setCelebrating( false );
-							keepFocus();
+
+							if ( links.dashboard ) {
+								leave( links.dashboard );
+							} else {
+								keepFocus();
+							}
 						} }
 					/>
 				) : null }

@@ -40,34 +40,13 @@ final class ScheduledEvents {
 	 * @return array{removed: string[], undo: string}|\WP_Error
 	 */
 	public static function remove( array $hooks ) {
-		$named  = array_column( Cron::report()['events'], 'hook' );
-		$chosen = array_values( array_intersect( $named, array_map( 'strval', $hooks ) ) );
+		$chosen = self::chosen( $hooks );
 
-		if ( array() === $chosen ) {
-			return new \WP_Error( 'bettershield_no_events', __( 'None of those is scheduled with nothing to answer it now, so nothing was removed.', 'bettershield' ), array( 'status' => 409 ) );
+		if ( is_wp_error( $chosen ) ) {
+			return $chosen;
 		}
 
-		$events = array();
-
-		foreach ( _get_cron_array() as $timestamp => $scheduled ) {
-			foreach ( (array) $scheduled as $hook => $instances ) {
-				if ( ! in_array( (string) $hook, $chosen, true ) ) {
-					continue;
-				}
-
-				foreach ( (array) $instances as $instance ) {
-					$events[] = array(
-						'hook'     => (string) $hook,
-						'at'       => (int) $timestamp,
-						// As stored: core keys a run by its serialized arguments,
-						// so renumbering named ones would name a run that is not there.
-						'args'     => (array) ( $instance['args'] ?? array() ),
-						'schedule' => (string) ( $instance['schedule'] ?? '' ),
-						'interval' => (int) ( $instance['interval'] ?? 0 ),
-					);
-				}
-			}
-		}
+		$events = self::runs( $chosen );
 
 		// Kept before anything is removed: no record, no change.
 		$token = Ledger::open( self::ACTION, array( 'events' => $events ), array( 'removed' => $chosen ) );
@@ -106,6 +85,55 @@ final class ScheduledEvents {
 			'removed' => $chosen,
 			'undo'    => $token,
 		);
+	}
+
+	/**
+	 * The named hooks the check finds with nothing to answer them now.
+	 *
+	 * @param string[] $hooks
+	 * @return string[]|\WP_Error
+	 */
+	public static function chosen( array $hooks ) {
+		$named  = array_column( Cron::report()['events'], 'hook' );
+		$chosen = array_values( array_intersect( $named, array_map( 'strval', $hooks ) ) );
+
+		if ( array() === $chosen ) {
+			return new \WP_Error( 'bettershield_no_events', __( 'None of those is scheduled with nothing to answer it now, so nothing was removed.', 'bettershield' ), array( 'status' => 409 ) );
+		}
+
+		return $chosen;
+	}
+
+	/**
+	 * Every scheduled run of these hooks.
+	 *
+	 * @param string[] $hooks
+	 * @return array<int, array{hook: string, at: int, args: array<mixed>, schedule: string, interval: int}>
+	 */
+	public static function runs( array $hooks ): array {
+		$events = array();
+
+		foreach ( _get_cron_array() as $timestamp => $scheduled ) {
+			foreach ( (array) $scheduled as $hook => $instances ) {
+				if ( ! in_array( (string) $hook, $hooks, true ) ) {
+					continue;
+				}
+
+				foreach ( (array) $instances as $instance ) {
+					$events[] = array(
+						'hook'     => (string) $hook,
+						'at'       => (int) $timestamp,
+						// As stored: core keys a run by its serialized arguments,
+						// so renumbering named ones would name a run that is not there.
+						'args'     => (array) ( $instance['args'] ?? array() ),
+						'schedule' => (string) ( $instance['schedule'] ?? '' ),
+						'interval' => (int) ( $instance['interval'] ?? 0 ),
+					);
+				}
+			}
+		}
+
+		return $events;
 	}
 
 	/**

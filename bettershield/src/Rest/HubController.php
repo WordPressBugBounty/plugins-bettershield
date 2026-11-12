@@ -252,7 +252,7 @@ final class HubController {
 		$from   = 'setup' === (string) $request['from'] ? 'setup' : '';
 
 		if ( 'setup' === $from ) {
-			\BetterShield\Onboarding\QuickSetup::await_hub();
+			\BetterShield\Onboarding\QuickSetup::await_hub( array() !== Hub::apps() );
 		}
 
 		Writer::instance()->flush();

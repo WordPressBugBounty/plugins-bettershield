@@ -235,6 +235,9 @@ final class LoginForm {
 			// The sign-in screen's own address, moved where the site moved it.
 			'options' => esc_url_raw( site_url( 'wp-login.php?action=' . self::OPTIONS, 'login_post' ) ),
 			'verify'  => esc_url_raw( site_url( 'wp-login.php?action=' . self::SIGN_IN, 'login_post' ) ),
+			// Whether the username field's own list offers a saved passkey
+			// too. Only where the browser can; the button stays either way.
+			'autofill' => Policy::instance()->settings()['autofill'],
 			'working' => __( 'Waiting for your device…', 'bettershield' ),
 			'hint'    => __( 'Still waiting. A password manager may be asking at the top of the screen. Otherwise, use your password.', 'bettershield' ),
 			'stop'    => __( 'Stop Waiting', 'bettershield' ),
@@ -321,9 +324,166 @@ final class LoginForm {
 				return window.btoa( binary ).replace( /\+/g, '-' ).replace( /\//g, '_' ).replace( /=+$/, '' );
 			}
 
+			/* The server's own reason for a refusal (locked out, paused,
+			   a passkey that cannot sign this account in here) is the one
+			   worth reading. Only this plugin's own: a refusal another
+			   plugin or a firewall answers with is not ours to word, and
+			   gets the general line, as a failure that gives none does. */
+			function refused( answer ) {
+				var error = new Error( 'refused' );
+				var ours = answer && 'string' === typeof answer.code && 0 === answer.code.indexOf( 'bettershield_' );
+				error.reason = ours && 'string' === typeof answer.message ? answer.message : '';
+				return error;
+			}
+
+			/* The device's signed answer, sent as the password form would be,
+			   and the next page followed. The same for the button and for a
+			   passkey picked from the username field's list. */
+			function verify( options, credential ) {
+				return window.fetch( cfg.verify, {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify( Object.assign( landing(), {
+						handle: options.handle,
+						id: credential.id,
+						clientDataJSON: toBase64Url( credential.response.clientDataJSON ),
+						authenticatorData: toBase64Url( credential.response.authenticatorData ),
+						signature: toBase64Url( credential.response.signature )
+					} ) )
+				} )
+					/* This plugin answers in JSON. A page in its place is
+					   another plugin that took the sign-in over. */
+					.then( function ( r ) {
+						return r.text().then( function ( text ) {
+							try {
+								return JSON.parse( text );
+							} catch ( e ) {
+								var other = new Error( 'elsewhere' );
+								other.reason = cfg.elsewhere;
+								throw other;
+							}
+						} );
+					} )
+					.then( function ( result ) {
+						if ( result && result.redirect ) {
+							window.location.assign( result.redirect );
+							return;
+						}
+						throw refused( result );
+					} );
+			}
+
+			/* A passkey offered in the username field's own list, beside the
+			   saved passwords, where most people look. The request waits
+			   quietly until one is picked; the button below cancels it, as a
+			   browser holds one passkey request at a time. */
+			var quiet = null;
+			/* Refused picks from the list on this page. An authenticator that
+			   answers without asking would otherwise be offered again, and
+			   refused again, with no end. */
+			var refusals = 0;
+
+			function listen() {
+				var user = document.getElementById( 'user_login' );
+				if ( ! cfg.autofill || ! user || 'function' !== typeof window.PublicKeyCredential.isConditionalMediationAvailable ) {
+					return;
+				}
+
+				window.PublicKeyCredential.isConditionalMediationAvailable().then( function ( available ) {
+					if ( ! available || quiet ) {
+						return;
+					}
+
+					var tokens = ( user.getAttribute( 'autocomplete' ) || 'username' ).split( /\s+/ );
+					if ( -1 === tokens.indexOf( 'webauthn' ) ) {
+						tokens.push( 'webauthn' );
+						user.setAttribute( 'autocomplete', tokens.join( ' ' ) );
+					}
+
+					var mine = new window.AbortController();
+					var lapse = null;
+					var picked = false;
+					quiet = mine;
+
+					window.fetch( cfg.options, { method: 'POST', credentials: 'same-origin', signal: mine.signal } )
+						.then( function ( r ) { return r.json(); } )
+						.then( function ( options ) {
+							/* No challenge (passkeys paused, too many tries):
+							   the list offers passwords only, as before, and
+							   the button still says why if it is pressed. */
+							if ( ! options || ! options.challenge ) {
+								quiet = null;
+								return;
+							}
+							/* A challenge lasts five minutes. Ask for a fresh
+							   one before it lapses, so a passkey picked after
+							   a long wait still works. */
+							lapse = window.setTimeout( function () {
+								if ( quiet === mine ) {
+									quiet = null;
+									mine.abort();
+									listen();
+								}
+							}, 270000 );
+							return navigator.credentials.get( {
+								mediation: 'conditional',
+								publicKey: {
+									challenge: fromBase64Url( options.challenge ),
+									rpId: options.rpId,
+									userVerification: 'preferred'
+								},
+								signal: mine.signal
+							} ).then( function ( credential ) {
+								window.clearTimeout( lapse );
+								quiet = null;
+								picked = true;
+								button.disabled = true;
+								note.textContent = cfg.working;
+								return verify( options, credential );
+							} );
+						} )
+						.catch( function ( error ) {
+							window.clearTimeout( lapse );
+							/* Canceled for the button or for a fresh
+							   challenge: nothing went wrong. */
+							if ( mine.signal.aborted ) {
+								return;
+							}
+							quiet = null;
+							/* Only a passkey that was picked and then refused
+							   has something to say, and the list offers one
+							   again for the next try. Anything before that
+							   (no challenge, an answer that is not ours)
+							   leaves the list to passwords, as before, and is
+							   not asked again: a request that keeps failing
+							   must not repeat on its own. */
+							if ( ! picked ) {
+								return;
+							}
+							button.disabled = false;
+							note.textContent = ( error && error.reason ) || cfg.failed;
+							/* Three refused picks and the list goes back to
+							   passwords; the button still works. */
+							refusals += 1;
+							if ( refusals < 3 ) {
+								listen();
+							}
+						} );
+				} );
+			}
+
+			listen();
+
 			button.addEventListener( 'click', function () {
 				button.disabled = true;
 				note.textContent = cfg.working;
+
+				if ( quiet ) {
+					var waiting = quiet;
+					quiet = null;
+					waiting.abort();
+				}
 
 				/* The request's own timeout doesn't close a prompt hidden behind
 				   another window, so this does, and the person can too. */
@@ -354,18 +514,6 @@ final class LoginForm {
 					if ( stop.parentNode ) { stop.parentNode.removeChild( stop ); }
 				}
 
-				/* The server's own reason for a refusal (locked out, paused,
-				   a passkey that cannot sign this account in here) is the one
-				   worth reading. Only this plugin's own: a refusal another
-				   plugin or a firewall answers with is not ours to word, and
-				   gets the general line, as a failure that gives none does. */
-				function refused( answer ) {
-					var error = new Error( 'refused' );
-					var ours = answer && 'string' === typeof answer.code && 0 === answer.code.indexOf( 'bettershield_' );
-					error.reason = ours && 'string' === typeof answer.message ? answer.message : '';
-					return error;
-				}
-
 				window.fetch( cfg.options, { method: 'POST', credentials: 'same-origin', signal: controller.signal } )
 					.then( function ( r ) { return r.json(); } )
 					.then( function ( options ) {
@@ -383,39 +531,8 @@ final class LoginForm {
 						} ).then( function ( credential ) {
 							/* The device answered, so there is no more waiting to stop. */
 							settled();
-							return window.fetch( cfg.verify, {
-								method: 'POST',
-								credentials: 'same-origin',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify( Object.assign( landing(), {
-									handle: options.handle,
-									id: credential.id,
-									clientDataJSON: toBase64Url( credential.response.clientDataJSON ),
-									authenticatorData: toBase64Url( credential.response.authenticatorData ),
-									signature: toBase64Url( credential.response.signature )
-								} ) )
-							} );
+							return verify( options, credential );
 						} );
-					} )
-					/* This plugin answers in JSON. A page in its place is
-					   another plugin that took the sign-in over. */
-					.then( function ( r ) {
-						return r.text().then( function ( text ) {
-							try {
-								return JSON.parse( text );
-							} catch ( e ) {
-								var other = new Error( 'elsewhere' );
-								other.reason = cfg.elsewhere;
-								throw other;
-							}
-						} );
-					} )
-					.then( function ( result ) {
-						if ( result && result.redirect ) {
-							window.location.assign( result.redirect );
-							return;
-						}
-						throw refused( result );
 					} )
 					.catch( function ( error ) {
 						settled();
@@ -424,6 +541,9 @@ final class LoginForm {
 						/* Back where the person was, so the next try or the
 						   way past it is one key away. */
 						button.focus();
+						/* And the username field's list offers a passkey
+						   again. */
+						listen();
 					} );
 			} );
 		}() );

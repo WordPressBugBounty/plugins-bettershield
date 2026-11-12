@@ -1630,8 +1630,10 @@ final class Scanner {
 	/**
 	 * Whether a file at this path is one the server would run or include.
 	 *
-	 * By name rather than by contents: reading the file to decide would mean
-	 * this plugin holding the bytes of something it just called suspicious.
+	 * By name rather than by contents: whether the server runs a file is a
+	 * question of its name. What an added file does is read separately, for
+	 * the named signs of compromise only (`signals_of()`), and kept as
+	 * rule ids and line numbers, never as the file's bytes.
 	 */
 	private static function can_execute( string $relative ): bool {
 		// The module's one list, which the baseline walk and the Files
@@ -1813,6 +1815,8 @@ final class Scanner {
 			);
 		}
 
+		$signals = 'added' === $change_type ? self::signals_of( (string) ( $target['root'] ?? '' ), $relative ) : '';
+
 		$wpdb->insert(
 			$table,
 			array(
@@ -1830,6 +1834,7 @@ final class Scanner {
 				'size_after'  => $size_after,
 				'status'      => 'new',
 				'unconfirmed_update' => $explained ? KnownWrites::EXPLAINED : ( $unconfirmed ? 1 : 0 ),
+				'signals'     => '' !== $signals ? $signals : null,
 			)
 		);
 
@@ -1878,6 +1883,47 @@ final class Scanner {
 				),
 			)
 		);
+	}
+
+	/** The largest added file read for the named signs of compromise. */
+	private const SIGNS_MAX_BYTES = 1048576;
+
+	/**
+	 * The named signs of compromise an added file shows, as
+	 * `rule` or `rule:line` joined by commas, or an empty string.
+	 *
+	 * Two, in this first cut: a hidden or dot-prefixed executable name, by
+	 * name alone, and PHP that decodes text and runs it, read as text up to a
+	 * cap. Each is corroboration only: it never opens an incident, changes a
+	 * grade or acts, and it is worded as worth a look, never as a verdict.
+	 */
+	private static function signals_of( string $root, string $relative ): string {
+		if ( ! self::can_execute( $relative ) ) {
+			return '';
+		}
+
+		$signals = array();
+
+		if ( self::is_hidden_executable( $relative ) ) {
+			$signals[] = \BetterShield\Audit\CompromiseSigns::HIDDEN_NAME;
+		}
+
+		$file = '' !== $root ? $root . '/' . $relative : '';
+
+		if ( '' !== $file ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- a file gone since the walk is an ordinary miss, answered below.
+			$size = @filesize( $file );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents, WordPress.PHP.NoSilencedErrors.Discouraged -- an added file inside the install, read as text up to the cap and never kept; a miss is answered below.
+			$text = false !== $size && $size <= self::SIGNS_MAX_BYTES ? @file_get_contents( $file, false, null, 0, self::SIGNS_MAX_BYTES ) : false;
+
+			if ( is_string( $text ) ) {
+				foreach ( \BetterShield\Audit\CompromiseSigns::match( $text, array( \BetterShield\Audit\CompromiseSigns::PHP_DECODES_AND_RUNS ) ) as $found ) {
+					$signals[] = $found['test'] . ':' . (int) $found['line'];
+				}
+			}
+		}
+
+		return implode( ',', $signals );
 	}
 
 	/**

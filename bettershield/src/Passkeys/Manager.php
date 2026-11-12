@@ -819,6 +819,29 @@ final class Manager {
 	}
 
 	/**
+	 * What the browser's passkey store is told about one account's passkeys
+	 * on this site, so it stops offering one that was removed here, or one
+	 * this site no longer accepts.
+	 *
+	 * Only for the account itself, on its own screens, and only where
+	 * passkeys work at all. The ids are the ones the registration options
+	 * already list for this account to exclude.
+	 *
+	 * @return array{rpId: string, userId: string, accepted: string[]}|null
+	 */
+	public static function signal_for( \WP_User $user ): ?array {
+		if ( 0 === (int) $user->ID || ! self::is_available() ) {
+			return null;
+		}
+
+		return array(
+			'rpId'     => self::rp_id(),
+			'userId'   => self::b64url( self::user_handle( $user ) ),
+			'accepted' => Store::usable_credential_ids_for_user( (int) $user->ID ),
+		);
+	}
+
+	/**
 	 * A device-facing account identifier that says nothing about the person.
 	 *
 	 * Never read back. WebAuthn requires a `user.id` in the registration
@@ -830,7 +853,9 @@ final class Manager {
 	 *
 	 * Derived from the relying party rather than from the site address, so
 	 * that one account is one account to every device across a shared domain.
-	 * Nothing reads it back, which is what makes that safe to change.
+	 * Nothing reads it back, which is what makes that safe to change: the
+	 * list of accepted passkeys is sent under it too (signal_for()), and a
+	 * changed value only makes that list match nothing a device holds.
 	 */
 	private static function user_handle( \WP_User $user ): string {
 		$anchor = is_multisite() ? self::rp_id() : home_url();

@@ -756,7 +756,7 @@ final class Checks {
 	 * read of the network's `registration` setting, and writing the site
 	 * option changes nothing; so the network's own value is what is asked.
 	 */
-	private static function registration_is_open(): bool {
+	public static function registration_is_open(): bool {
 		if ( is_multisite() ) {
 			return 'none' !== (string) get_site_option( 'registration', 'none' );
 		}
@@ -899,6 +899,33 @@ final class Checks {
 	}
 
 	/**
+	 * The vulnerability list with each row's standing here, read now, and in
+	 * the order that matters here: exploited first, then what can be reached,
+	 * then what needs an account nobody here has. Nothing is removed.
+	 *
+	 * @param array<string, mixed> $evidence
+	 * @return array<string, mixed>
+	 */
+	private static function with_reach( array $evidence ): array {
+		$rows = array();
+
+		foreach ( $evidence['items'] as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+
+			$item['reach'] = 'affected' === ( $item['match_status'] ?? 'affected' )
+				? \BetterShield\Vulnerabilities\Reach::reach( isset( $item['exploited'] ) ? (bool) $item['exploited'] : null, isset( $item['privilege'] ) ? (string) $item['privilege'] : null )
+				: null;
+			$rows[] = $item;
+		}
+
+		$evidence['items'] = \BetterShield\Vulnerabilities\Reach::order( $rows );
+
+		return $evidence;
+	}
+
+	/**
 	 * A finding's evidence as this reader may see it. The stored row holds
 	 * counts only, because every manager of the plugin reads it; a reader
 	 * who may list users is also shown which accounts, by display name, at
@@ -908,6 +935,10 @@ final class Checks {
 	 * @return mixed
 	 */
 	public static function evidence_for_reader( string $key, $evidence ) {
+		if ( 'vulnerabilities_known' === $key && is_array( $evidence ) && isset( $evidence['items'] ) && is_array( $evidence['items'] ) ) {
+			return self::with_reach( $evidence );
+		}
+
 		if ( 'privileged_password_only' !== $key || ! is_array( $evidence ) || ! current_user_can( 'list_users' ) ) {
 			return $evidence;
 		}
@@ -2349,6 +2380,78 @@ final class Checks {
 			),
 
 			/*
+			 * Themes have no checksums, so what the directory says is the only
+			 * signal for one. Named only when this site saw it listed, with
+			 * the installed version among its releases, and it no longer is:
+			 * the directory answers a removed theme and one it never had the
+			 * same way.
+			 */
+			'theme_closed_in_directory' => array(
+				'group'          => Areas::EXTENSIONS,
+				'title'          => __( 'An installed theme is no longer in the WordPress.org directory', 'bettershield' ),
+				// Medium when it is what the site runs on, the active theme or
+				// its parent; low for one only left installed.
+				'severity'       => static function (): string {
+					$removed = \BetterShield\Vulnerabilities\ThemeDirectory::removed( \BetterShield\Vulnerabilities\Inventory::collect() );
+
+					return array() !== array_filter( array_column( $removed, 'active' ) ) ? 'medium' : 'low';
+				},
+				'why'            => __( 'It will get no more updates from WordPress.org, which does not say why. A theme you aren’t using can still be reached through its files.', 'bettershield' ),
+				'break_note'     => __( 'Check the author’s site first. Switching the active theme changes how the site looks, so try a replacement on a copy of the site.', 'bettershield' ),
+				'hardening_item' => null,
+				'test'           => static function (): ?array {
+					$items   = \BetterShield\Vulnerabilities\Inventory::collect();
+					$removed = \BetterShield\Vulnerabilities\ThemeDirectory::removed( $items );
+
+					if ( array() === $removed ) {
+						return null;
+					}
+
+					$coverage = \BetterShield\Vulnerabilities\ThemeDirectory::coverage( $items );
+
+					return array(
+						'themes'    => $removed,
+						'total'     => count( $removed ),
+						'complete'  => 0 === $coverage['unchecked'],
+						'checked'   => $coverage['checked'],
+						'unchecked' => $coverage['unchecked'],
+					);
+				},
+			),
+
+			/*
+			 * From the same answer: no new request. The plugins' threshold and
+			 * its filter apply.
+			 */
+			'theme_not_updated_in_directory' => array(
+				'group'          => Areas::EXTENSIONS,
+				'title'          => __( 'An installed theme has had no WordPress.org update for years', 'bettershield' ),
+				'severity'       => 'low',
+				'why'            => __( 'Some themes are simply finished, but if nobody maintains one, a flaw found in it may never be fixed.', 'bettershield' ),
+				'break_note'     => __( 'Check the theme’s page and the author’s site first: a newer release may be elsewhere.', 'bettershield' ),
+				'hardening_item' => null,
+				'test'           => static function (): ?array {
+					$items = \BetterShield\Vulnerabilities\Inventory::collect();
+					$stale = \BetterShield\Vulnerabilities\ThemeDirectory::stale( $items );
+
+					if ( array() === $stale ) {
+						return null;
+					}
+
+					$coverage = \BetterShield\Vulnerabilities\ThemeDirectory::coverage( $items );
+
+					return array(
+						'themes'          => $stale,
+						'total'           => count( $stale ),
+						'complete'        => 0 === $coverage['unchecked'],
+						'checked'         => $coverage['checked'],
+						'unchecked'       => $coverage['unchecked'],
+						'older_than_days' => \BetterShield\Vulnerabilities\Directory::stale_after_days(),
+					);
+				},
+			),
+
+			/*
 			 * The one check that asks rather than reasons. "Your .git/config
 			 * is downloadable, here is the address" is a fact somebody can
 			 * verify in five seconds; "your server might serve dotfiles" is
@@ -3416,6 +3519,24 @@ final class Checks {
 				},
 			),
 
+			/*
+			 * Card-stealing code is kept where no file changes: a widget, a
+			 * block theme's template, a snippet plugin or the checkout page.
+			 * Stores only, read by the scheduled sweep, never on this request.
+			 * High, not critical: reading a script's text can't prove what it
+			 * does. Silent until a sweep has something to say, and never
+			 * "clean".
+			 */
+			\BetterShield\Audit\StoreScripts::CHECK => array(
+				'group'          => Areas::EXPOSURE,
+				'title'          => __( 'A script on your store may be reading card details', 'bettershield' ),
+				'severity'       => 'high',
+				'why'            => __( 'It does what card-stealing code does, such as hiding where it sends data, in a place that prints on your pages. Shoppers’ card details could go to someone else.', 'bettershield' ),
+				'break_note'     => __( 'Look at the script where it is named. If you or your developer added it, accept it. If not, remove it, then change the passwords of every administrator.', 'bettershield' ),
+				'hardening_item' => null,
+				'test'           => static fn(): ?array => \BetterShield\Audit\StoreScripts::evidence(),
+			),
+
 			'files_altered'         => array(
 				'group'          => Areas::EXTENSIONS,
 				'title'          => __( 'Some WordPress or plugin files have been changed', 'bettershield' ),
@@ -3551,6 +3672,11 @@ final class Checks {
 							'advisories'        => count( $item['advisories'] ),
 							'match_status'      => $item['match_status'] ?? 'affected',
 							'severity_known'    => $item['severity_known'] ?? true,
+							// What the advisories say about who can use it.
+							// Whether anybody here can is read when the list
+							// is shown (evidence_for_reader()), never stored.
+							'exploited'         => in_array( true, array_column( $item['advisories'], 'exploited' ), true ) ? true : null,
+							'privilege'         => \BetterShield\Vulnerabilities\Reach::privilege_of( $item['advisories'] ),
 						);
 					}
 

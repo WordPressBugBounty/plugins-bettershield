@@ -25,7 +25,7 @@ import { copyToClipboard } from '../../ui/copy';
 import { download } from '../../ui/download';
 import { editedFields } from '../../ui/edits';
 import { limits, offer } from '../../ui/TierOffer';
-import { unreachedText, unreachedWithoutResults } from '../data/vulnerabilities';
+import { providerCredit, unreachedText, unreachedWithoutResults } from '../data/vulnerabilities';
 import useMutationFocus from '../../ui/useMutationFocus';
 import useUnsaved from '../ui/useUnsaved';
 import { contactProblem, urlProblem } from '../../ui/validate';
@@ -539,6 +539,7 @@ function VulnerabilityChecks() {
 							  )
 							: // A check that ran and failed is said once, below.
 							  unreachedWithoutResults( feed ) ? null : __( 'No check has run yet.', 'bettershield' ) }
+						{ providerCredit( feed ) ? ' ' + providerCredit( feed ) : null }
 					</span>
 				</div>
 			) : null }
