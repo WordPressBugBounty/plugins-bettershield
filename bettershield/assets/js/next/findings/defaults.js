@@ -108,6 +108,12 @@ export const DEFAULTS = {
 export const defaultOf = ( finding ) => {
 	const entry = ( finding && DEFAULTS[ finding.id ] ) || null;
 
+	// Nothing listed can be updated here: Details, not Apply Fix, and
+	// left out of the bulk count (#2917).
+	if ( entry && 0 === ( finding.evidence || {} ).updatable ) {
+		return null;
+	}
+
 	return entry && entry.shared && sharedCodeHeld() ? null : entry;
 };
 

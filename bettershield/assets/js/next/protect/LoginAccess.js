@@ -283,7 +283,49 @@ function FormReplay( { form, policy, saved } ) {
  * @param {boolean}  props.hideLabel The label is the row's title, already on screen.
  * @param {string}   props.className Where the number sits.
  */
-function NumberField( { label, help, min, max, value, disabled, onChange, fallback, onReset, format, hideLabel = false, className = '' } ) {
+/**
+ * What is wrong with a number as typed, against the range the server accepts,
+ * or '' when nothing is (a blank is the save bar's to say). Said under the
+ * field as it is typed, not in a banner after Save (#2919).
+ *
+ * @param {*}      value   As typed.
+ * @param {number} min     The lowest accepted.
+ * @param {number} max     The highest accepted.
+ * @param {number} lowest  A lower minimum where 0 also means off: 0 or `lowest` to `max`.
+ * @return {string} The problem, or ''.
+ */
+export function numberProblem( value, min, max, lowest = null ) {
+	const typed = String( value ?? '' ).trim();
+
+	if ( '' === typed ) {
+		return '';
+	}
+
+	const number = Number( typed );
+	const whole = Number.isInteger( number );
+
+	if ( null !== lowest ) {
+		return whole && ( 0 === number || ( number >= lowest && number <= max ) )
+			? ''
+			: sprintf(
+					/* translators: 1: the lowest number accepted other than 0, 2: the highest. */
+					__( 'Enter 0, or a whole number from %1$s to %2$s.', 'bettershield' ),
+					lowest.toLocaleString(),
+					max.toLocaleString()
+			  );
+	}
+
+	return whole && number >= min && number <= max
+		? ''
+		: sprintf(
+				/* translators: 1: the lowest number accepted, 2: the highest. */
+				__( 'Enter a whole number from %1$s to %2$s.', 'bettershield' ),
+				min.toLocaleString(),
+				max.toLocaleString()
+		  );
+}
+
+function NumberField( { label, help, min, max, lowest = null, value, disabled, onChange, fallback, onReset, format, hideLabel = false, className = '', name = '' } ) {
 	return (
 		<div className={ `bs-ds-number${ className ? ` ${ className }` : '' }` }>
 			<Field
@@ -293,6 +335,9 @@ function NumberField( { label, help, min, max, value, disabled, onChange, fallba
 				label={ label }
 				hideLabelFromVision={ hideLabel }
 				help={ help }
+				error={ numberProblem( value, min, max, lowest ) }
+				// The same three fields sit under each form: its name tells them apart (#2919).
+				aria-label={ name ? `${ label }: ${ name }` : undefined }
 				value={ String( value ?? '' ) }
 				disabled={ disabled }
 				onChange={ onChange }
@@ -547,6 +592,19 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 		Object.values( surfaces ).some( ( policy ) =>
 			[ 'threshold', 'window_minutes', 'lockout_minutes' ].some( ( key ) => undefined !== ( policy || {} )[ key ] && String( policy[ key ] ).trim() === '' )
 		);
+
+	// A number outside what the server accepts holds Save too, as a blank
+	// does; each field says its own problem (#2919).
+	const formRanges = { threshold: [ 3, 100 ], window_minutes: [ 1, 1440 ], lockout_minutes: [ 1, 1440 ] };
+	const outOfRange =
+		[
+			numberProblem( value.threshold, 3, 100 ),
+			numberProblem( value.window_minutes, 1, 1440 ),
+			numberProblem( value.lockout_minutes, 1, 1440 ),
+			numberProblem( value.idle_minutes, 0, 1440, 5 ),
+			numberProblem( value.session_cap, 0, 100 ),
+		].some( Boolean ) ||
+		Object.values( surfaces ).some( ( policy ) => Object.entries( formRanges ).some( ( [ key, [ min, max ] ] ) => '' !== numberProblem( ( policy || {} )[ key ], min, max ) ) );
 
 	// Each proxy checked as the lists are, the first problem named with the
 	// entry it is about: this field had no check and only Save refused it.
@@ -868,6 +926,7 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 									min={ 3 }
 									max={ 100 }
 									value={ policy.threshold }
+									name={ form.label }
 									disabled={ saving }
 									onChange={ ( threshold ) => update( { threshold } ) }
 									fallback={ formDefault.threshold }
@@ -878,6 +937,7 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 									min={ 1 }
 									max={ 1440 }
 									value={ policy.window_minutes }
+									name={ form.label }
 									disabled={ saving }
 									onChange={ ( windowMinutes ) => update( { window_minutes: windowMinutes } ) }
 									fallback={ formDefault.window_minutes }
@@ -888,6 +948,7 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 									min={ 1 }
 									max={ 1440 }
 									value={ policy.lockout_minutes }
+									name={ form.label }
 									disabled={ saving }
 									onChange={ ( lockoutMinutes ) => update( { lockout_minutes: lockoutMinutes } ) }
 									fallback={ formDefault.lockout_minutes }
@@ -1023,7 +1084,8 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 							min={ 0 }
 							// What the server accepts. The 1 to 4 gap below it
 							// cannot be a minimum while 0 is allowed, so the
-							// text of the row says it.
+							// check on the field says it (#2919).
+							lowest={ 5 }
 							max={ 1440 }
 							value={ value.idle_minutes }
 							disabled={ saving }
@@ -1079,13 +1141,13 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 			{ dirty ? (
 				<div className="bs-ds-savebar" role="status">
 					<span className="bs-ds-savebar__label">
-						{ incomplete ? __( 'Fill in every number to save.', 'bettershield' ) : __( 'Unsaved changes.', 'bettershield' ) }
+						{ incomplete ? __( 'Fill in every number to save.', 'bettershield' ) : outOfRange ? __( 'Fix the numbers marked below to save.', 'bettershield' ) : __( 'Unsaved changes.', 'bettershield' ) }
 					</span>
 					<span className="bs-ds-savebar__actions">
 						<Button type="ghost" size="sm" disabled={ saving } onClick={ discard }>
 							{ __( 'Discard', 'bettershield' ) }
 						</Button>
-						<Button type="primary" size="sm" isBusy={ saving } disabled={ saving || incomplete } onClick={ save }>
+						<Button type="primary" size="sm" isBusy={ saving } disabled={ saving || incomplete || outOfRange } onClick={ save }>
 							{ __( 'Save', 'bettershield' ) }
 						</Button>
 					</span>

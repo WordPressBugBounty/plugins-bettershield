@@ -34,12 +34,16 @@ function signsIn( auth ) {
 	);
 }
 
+/** What a configuration holds where the key goes, until one is on screen. */
+export const TOKEN_PLACEHOLDER = 'PASTE_YOUR_TOKEN_HERE';
+
 /**
  * @param {Object} props
  * @param {Object} props.snippet  What the picked client is handed.
  * @param {string} props.endpoint The address the card shows for every client.
+ * @param {string} props.token    The new key while it is on screen, or ''.
  */
-export default function Recipe( { snippet, endpoint } ) {
+export default function Recipe( { snippet, endpoint, token = '' } ) {
 	/*
 	 * Codex reads its servers from config.toml, where the JSON block the
 	 * other clients take is a parse error that stops it starting. Its table
@@ -66,10 +70,18 @@ export default function Recipe( { snippet, endpoint } ) {
 	}
 
 	if ( snippet && snippet.json ) {
+		// While the new key is on screen the configuration carries it, so one
+		// copy connects; the placeholder comes back when it clears. Only on
+		// this screen: nothing is stored or sent (#2924). The block shows it
+		// masked, the way the key field does until Show, so a shared or
+		// recorded screen doesn't hand it over; the copy holds it in full.
+		const withKey = ( key ) => snippet.json.split( TOKEN_PLACEHOLDER ).join( key );
+
 		return (
 			<CopyField
 				label={ __( 'Configuration', 'bettershield' ) }
-				value={ snippet.json }
+				value={ token ? withKey( '•'.repeat( 24 ) + token.slice( -4 ) ) : snippet.json }
+				copyValue={ token ? withKey( token ) : undefined }
 				multiline
 				copyLabel={ __( 'Copy the Configuration', 'bettershield' ) }
 			/>

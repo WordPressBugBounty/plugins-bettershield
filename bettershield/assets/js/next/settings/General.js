@@ -358,6 +358,8 @@ export function PasswordPolicy() {
 							>
 								{ __( 'Save Policy', 'bettershield' ) }
 							</Button>
+							{ /* The shared confirmation the other rows give (#2923). */ }
+							<Saved forKey="password-policy" />
 						</div>
 					</SettingRow>
 				);
@@ -1434,6 +1436,50 @@ function ImportPlan( { plan } ) {
 			lines: 'change' === row.action ? changeLines( row.section, row.changes ) : [],
 		} ) ),
 	];
+
+	/*
+	 * What changes first, and everything that already matches folded into
+	 * one line under it: one change among forty-one matches sat near the
+	 * bottom with the same weight, and the button three screens down (#2923).
+	 */
+	const changes = [ 'apply', 'revert', 'reconfigure', 'change' ];
+	const loud = [
+		...rows.filter( ( row ) => ! row.quiet && changes.includes( row.action ) ),
+		// What can't be used here (needs HTTPS, not in this version) comes
+		// under the changes, not above them: it changes nothing.
+		...rows.filter( ( row ) => ! row.quiet && ! changes.includes( row.action ) ),
+	];
+	const quiet = rows.filter( ( row ) => row.quiet );
+
+	return (
+		<>
+			<ImportRows rows={ loud } />
+			{ quiet.length ? (
+				<details className="bs-ds-import__matching">
+					<summary>
+						{ sprintf(
+							/* translators: %d: how many settings in the file already match this site. */
+							_n( '%d setting already matches', '%d settings already match', quiet.length, 'bettershield' ),
+							quiet.length
+						) }
+					</summary>
+					<ImportRows rows={ quiet } />
+				</details>
+			) : null }
+		</>
+	);
+}
+
+/**
+ * The import plan's rows, as a list.
+ *
+ * @param {Object} props
+ * @param {Array}  props.rows The rows, worded.
+ */
+function ImportRows( { rows } ) {
+	if ( ! rows.length ) {
+		return null;
+	}
 
 	return (
 		<ul className="bs-ds-import">

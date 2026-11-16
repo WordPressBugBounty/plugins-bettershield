@@ -108,6 +108,15 @@ final class Manager {
 	private int $passed_gate = 0;
 
 	/**
+	 * Every account an `authenticate` chain resolved in this request, with
+	 * or without two-factor: a session made for one of them came through a
+	 * sign-in (#2932).
+	 *
+	 * @var array<int, true>
+	 */
+	private array $authenticated = array();
+
+	/**
 	 * Clear per-request state. Production never needs this — the flag lives
 	 * and dies with the request — but the test process is many requests in
 	 * one lifetime.
@@ -115,6 +124,7 @@ final class Manager {
 	public function reset_request_state(): void {
 		$this->application_password_user = 0;
 		$this->passed_gate               = 0;
+		$this->authenticated             = array();
 		LoginStep::instance()->reset_request_state();
 	}
 
@@ -129,6 +139,9 @@ final class Manager {
 		// Priority 40: after the password (20), the honeypot (25) and the
 		// lockout gate (30) have all had their say.
 		add_filter( 'authenticate', array( $this, 'gate' ), 40, 3 );
+
+		// Last: whoever the whole chain resolved, two-factor or not.
+		add_filter( 'authenticate', array( $this, 'note_authenticated' ), PHP_INT_MAX, 1 );
 
 		// A session made some other way than through that gate.
 		add_action( 'set_logged_in_cookie', array( $this, 'note_session_past_gate' ), 10, 4 );
@@ -760,6 +773,21 @@ final class Manager {
 	}
 
 	/**
+	 * Mark the account the `authenticate` chain resolved, whatever its
+	 * second factor (#2932).
+	 *
+	 * @param mixed $user What the chain resolved.
+	 * @return mixed
+	 */
+	public function note_authenticated( $user ) {
+		if ( $user instanceof \WP_User ) {
+			$this->authenticated[ (int) $user->ID ] = true;
+		}
+
+		return $user;
+	}
+
+	/**
 	 * Record a session made for an account with two-factor that this request
 	 * never took through the gate: a plugin calling `wp_set_auth_cookie()` runs
 	 * no `authenticate` filter. Recorded and not refused, because refusing would
@@ -777,7 +805,15 @@ final class Manager {
 
 		$user_id = (int) $user_id;
 
-		if ( $user_id < 1 || $this->passed_gate === $user_id || ! $this->enabled( $user_id ) || SafeMode::is_active() ) {
+		if ( $user_id < 1 || $this->passed_gate === $user_id || SafeMode::is_active() ) {
+			return;
+		}
+
+		// Without two-factor, a session for an account that signed in on
+		// this request is that sign-in (#2932).
+		$two_factor = $this->enabled( $user_id );
+
+		if ( ! $two_factor && isset( $this->authenticated[ $user_id ] ) ) {
 			return;
 		}
 
@@ -795,15 +831,40 @@ final class Manager {
 			return;
 		}
 
+		$privileged = \BetterShield\Password\Policy::instance()->user_is_privileged( $user );
+
+		// Without two-factor, only an account that can manage the site is
+		// worth a row: medium, so it waits for the weekly summary.
+		if ( ! $two_factor && ! $privileged ) {
+			return;
+		}
+
 		$source = self::session_source();
 
-		if ( null === \BetterShield\Events\Coalescer::admit( 'bettershield_2fa_skipped_' . md5( $user_id . '|' . $source ), self::SKIPPED_WINDOW ) ) {
+		if ( null === \BetterShield\Events\Coalescer::admit( ( $two_factor ? 'bettershield_2fa_skipped_' : 'bettershield_no_sign_in_' ) . md5( $user_id . '|' . $source ), self::SKIPPED_WINDOW ) ) {
+			return;
+		}
+
+		if ( ! $two_factor ) {
+			Writer::instance()->record(
+				'session_without_sign_in',
+				Writer::SEVERITY_MEDIUM,
+				array(
+					'actor_type'  => 'system',
+					'object_type' => 'user',
+					'object_id'   => (string) $user_id,
+					'context'     => array(
+						'source' => \BetterShield\Abilities\AgentSurface::source_label( $source ),
+					),
+				)
+			);
+
 			return;
 		}
 
 		Writer::instance()->record(
 			'two_factor_skipped',
-			\BetterShield\Password\Policy::instance()->user_is_privileged( $user ) ? Writer::SEVERITY_HIGH : Writer::SEVERITY_MEDIUM,
+			$privileged ? Writer::SEVERITY_HIGH : Writer::SEVERITY_MEDIUM,
 			array(
 				'actor_type'  => 'system',
 				'object_type' => 'user',

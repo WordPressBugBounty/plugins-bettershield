@@ -60,8 +60,11 @@ final class ExpectedFile {
 		$slug    = (string) $target['slug'];
 		$prior   = Baseline::recorded_for( $context, $slug )[ $path ] ?? null;
 		$rows    = self::open_rows( $path, $hash );
+		// A "Missing" row the file now on disk answers: recording it writes
+		// no row, so nothing else would close it (#2935).
+		$returned = self::removed_rows( $path );
 
-		if ( null !== $prior && hash_equals( $prior, $hash ) && array() === $rows ) {
+		if ( null !== $prior && hash_equals( $prior, $hash ) && array() === $rows && array() === $returned ) {
 			return array(
 				'undo' => '',
 				'path' => $path,
@@ -71,11 +74,12 @@ final class ExpectedFile {
 		$token = Ledger::open(
 			self::UNDO,
 			array(
-				'context' => $context,
-				'slug'    => $slug,
-				'path'    => $path,
-				'hash'    => $prior,
-				'rows'    => $rows,
+				'context'  => $context,
+				'slug'     => $slug,
+				'path'     => $path,
+				'hash'     => $prior,
+				'rows'     => $rows,
+				'returned' => $returned,
 			),
 			array( 'hash' => $hash )
 		);
@@ -86,6 +90,9 @@ final class ExpectedFile {
 
 		Baseline::take_in( $target, $relative, $hash, (int) @filesize( $absolute ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- the file was hashed above; if it went since, a size of 0 is recorded and the next check reports it.
 		self::set_status( array_keys( $rows ), 'suppressed' );
+		// Restored, not suppressed: the check reads a suppressed deletion as
+		// covering the next one, so that one would never be reported.
+		self::set_status( array_keys( $returned ), 'restored' );
 
 		Writer::instance()->record(
 			'file_expected',
@@ -132,6 +139,10 @@ final class ExpectedFile {
 
 		foreach ( (array) ( $prior['rows'] ?? array() ) as $id => $status ) {
 			self::set_status( array( (int) $id ), (string) $status, 'suppressed' );
+		}
+
+		foreach ( (array) ( $prior['returned'] ?? array() ) as $id => $status ) {
+			self::set_status( array( (int) $id ), (string) $status, 'restored' );
 		}
 
 		Ledger::mark_reverted( $token );
@@ -205,6 +216,32 @@ final class ExpectedFile {
 		}
 
 		return $open;
+	}
+
+	/**
+	 * The path's "Missing" rows still open or accepted, with their status.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function removed_rows( string $path ): array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- the plugin's own table, one path.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, status FROM %i WHERE site_id = 0 AND path_hash = %s AND change_type = 'removed' AND status IN ('new','acknowledged','suppressed')",
+				Schema::table( 'integrity_changes' ),
+				hash( 'sha256', $path )
+			)
+		);
+
+		$out = array();
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$out[ (int) $row->id ] = (string) $row->status;
+		}
+
+		return $out;
 	}
 
 	/**

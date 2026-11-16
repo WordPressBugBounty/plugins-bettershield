@@ -163,9 +163,11 @@ final class AccountPage {
 
 	/**
 	 * The pages the owner can choose from, by title, with the one in force
-	 * kept in the list however far down it falls.
+	 * kept in the list however far down it falls. Pages that hold the block
+	 * or the shortcode come first, and each says whether it does, so the
+	 * screen can warn about a page that would show only its title (#2921).
 	 *
-	 * @return array<int, array{id: int, title: string}>
+	 * @return array<int, array{id: int, title: string, ready: bool}>
 	 */
 	public static function choices(): array {
 		$pages = get_pages(
@@ -190,10 +192,71 @@ final class AccountPage {
 				$out[] = array(
 					'id'    => (int) $page->ID,
 					'title' => '' === $page->post_title ? '#' . $page->ID : wp_specialchars_decode( $page->post_title, ENT_QUOTES ),
+					'ready' => self::holds_panel( $page ),
 				);
 			}
 		}
 
-		return $out;
+		// Stable: the title order holds within each group.
+		$ready = array_values( array_filter( $out, static fn( array $page ): bool => $page['ready'] ) );
+		$rest  = array_values( array_filter( $out, static fn( array $page ): bool => ! $page['ready'] ) );
+
+		return array_merge( $ready, $rest );
+	}
+
+	/**
+	 * Whether a page holds the Sign-in Security block or its shortcode,
+	 * itself or through a published synced pattern, which shows its blocks
+	 * on the page as its own.
+	 */
+	public static function holds_panel( \WP_Post $post ): bool {
+		return self::content_holds_panel( (string) $post->post_content, array() );
+	}
+
+	/**
+	 * @param int[] $seen Patterns already looked in, so one that refers back
+	 *                    to itself ends the search.
+	 */
+	private static function content_holds_panel( string $content, array $seen ): bool {
+		if ( has_block( self::BLOCK, $content ) || has_shortcode( $content, self::SHORTCODE ) ) {
+			return true;
+		}
+
+		if ( false === strpos( $content, '<!-- wp:block ' ) || count( $seen ) >= 5 ) {
+			return false;
+		}
+
+		foreach ( self::pattern_refs( parse_blocks( $content ) ) as $ref ) {
+			$pattern = in_array( $ref, $seen, true ) ? null : get_post( $ref );
+
+			if ( $pattern instanceof \WP_Post && 'wp_block' === $pattern->post_type && 'publish' === $pattern->post_status
+				&& self::content_holds_panel( (string) $pattern->post_content, array_merge( $seen, array( $ref ) ) ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * The synced patterns a list of parsed blocks refers to, nested ones included.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks
+	 * @return int[]
+	 */
+	private static function pattern_refs( array $blocks ): array {
+		$refs = array();
+
+		foreach ( $blocks as $block ) {
+			if ( 'core/block' === ( $block['blockName'] ?? '' ) && ! empty( $block['attrs']['ref'] ) ) {
+				$refs[] = (int) $block['attrs']['ref'];
+			}
+
+			if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
+				$refs = array_merge( $refs, self::pattern_refs( $block['innerBlocks'] ) );
+			}
+		}
+
+		return $refs;
 	}
 }

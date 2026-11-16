@@ -25,9 +25,16 @@ import Icon from '../ui/Icon';
 import { Saved } from '../ui/Setting';
 import Skeleton, { Bone } from '../ui/Skeleton';
 import Table, { Cell, Row } from '../ui/Table';
+import { linkedSetting } from '../ui/useFocusTarget';
 
 const TITLE_ID = 'bs-ds-observed-title';
 const BODY_ID = 'bs-ds-observed-body';
+
+/**
+ * The name a link's `?focus=` gives this card: a fixed finding's Put Back
+ * link opens it here, with the fixes that can be put back (#2917).
+ */
+export const FIX_UNDOS = 'fix-undos';
 
 /**
  * The recorded change before it has been read: its name, and the three values
@@ -347,7 +354,12 @@ function Changes( { name, about = '', list, rows, review, onReview, onClose, las
 	);
 }
 
-export default function ObservedChanges() {
+/**
+ * @param {Object} props
+ * @param {Object} [props.toggleRef] Given the card's Show details button, so an
+ *                                   arrival at #undo can open it (#2918).
+ */
+export default function ObservedChanges( { toggleRef } = {} ) {
 	const { setObservedCapture, letBackIn, busy } = useStore();
 	const [ data, setData ] = useState( null );
 	const [ error, setError ] = useState( '' );
@@ -369,7 +381,8 @@ export default function ObservedChanges() {
 	// for it again. On the first read's line, its Try again re-read the first
 	// page instead and dropped the pages already loaded.
 	const [ moreError, setMoreError ] = useState( '' );
-	const [ open, setOpen ] = useState( false );
+	// Open already when a link asked for it, so what it points at is shown.
+	const [ open, setOpen ] = useState( () => FIX_UNDOS === linkedSetting() );
 	const loadMore = () => {
 		setMoreBusy( true );
 		setMoreError( '' );
@@ -458,9 +471,10 @@ export default function ObservedChanges() {
 	};
 
 	return (
-		<Card className="bs-ds-observed" aria-labelledby={ TITLE_ID }>
+		<Card className="bs-ds-observed" aria-labelledby={ TITLE_ID } data-bs-focus={ FIX_UNDOS }>
 			<CardHead icon="history" title={ __( 'Undo important setting changes', 'bettershield' ) } id={ TITLE_ID } auto>
 				<Button
+					ref={ toggleRef }
 					type="ghost"
 					size="sm"
 					iconOnly

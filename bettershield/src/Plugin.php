@@ -710,6 +710,11 @@ final class Plugin {
 		add_action( 'deleted_plugin', array( Vulnerabilities\Scanner::class, 'on_deleted' ) );
 		add_action( 'deleted_theme', array( Vulnerabilities\Scanner::class, 'on_deleted' ) );
 		add_action( 'bettershield_inventory_recheck', array( Vulnerabilities\Scanner::class, 'recheck' ) );
+		// Other plugins' MCP routes are asked once and the answer kept: one
+		// switched on, off or updated may answer differently now.
+		foreach ( array( 'activated_plugin', 'deactivated_plugin', 'upgrader_process_complete' ) as $changed ) {
+			add_action( $changed, array( Abilities\McpEndpoints::class, 'forget' ) );
+		}
 
 		// The vulnerability check: runs only when a feed is bound and the
 		// owner turned it on; otherwise it returns at once, recording nothing.

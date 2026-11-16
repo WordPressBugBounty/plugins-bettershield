@@ -1,14 +1,14 @@
-=== BetterShield – Security Audit, Hardening, 2FA, Passkeys, Login Protection & Activity Log ===
+=== BetterShield – Security Audit, Hardening, 2FA & Passkeys ===
 Contributors: wpdevteam
 Tags: 2fa, passkeys, hardening, activity log, two factor authentication
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.8
+Stable tag: 1.1.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Security audit in plain language, 30 hardening fixes you can undo, two-factor authentication (2FA), passkeys, login protection and an activity log.
+Free WordPress security audit with 30 hardening fixes you can undo, 2FA, passkeys, login protection, an activity log and file integrity checks.
 
 == Description ==
 
@@ -367,6 +367,18 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 
 == Changelog ==
 
+= 1.1.9 - 16/11/2026 =
+
+- Added: Activity | An administrator session that opens without the sign-in form is now recorded. Each restore of a changed setting, role, account or plugin names what it put back, an undone restore is recorded too, and a session row names the plugin that opened it
+- Improved: Findings | Apply Fix shows on a known security issue only when an update can install, Put Back in Activity opens the fixes it points to, and Done recently says the undo once with a link to more undos
+- Improved: Login & Access | Each number is checked as you type and Save waits until it is in range, and a locked connection sees one notice on the sign-in page with the unlock link
+- Improved: Two-Factor | The Sign-in Security page picker marks the pages that show the panel and lists them first, a page that holds it through a synced pattern counts, and the code field says it takes a backup code too
+- Improved: Agents | The copied configuration carries the new key in full, another plugin's AI connection is checked by asking it, and a connection stays paired when a refresh answer is lost on the way
+- Improved: Settings | An import lists what it will change first, folds the rows that already match, and Save Policy confirms it saved
+- Improved: Other Security Plugins | One more security plugin's sign-in jobs are recognized, and they count only while it is doing them
+- Fixed: File Integrity | A missing file that comes back closes its row, and undoing that puts it back
+- Fixed: Audit | The check of the site's REST routes no longer moves a theme's widgets to Inactive
+
 = 1.1.8 - 12/11/2026 =
 
 - Added: Findings | On a WooCommerce store, a new finding names any script that does what card-stealing code does, says where it is, and lets you accept one you added. Themes the WordPress.org directory removed or stopped updating are named too
@@ -639,6 +651,10 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 - Added: Multisite | Every site's score in one table and rules a network can set once
 
 == Upgrade Notice ==
+
+= 1.1.9 =
+
+Sessions that open without the sign-in form are now recorded, Apply Fix shows only when an update can install, and Login & Access checks each number as you type. Using BetterShield Ultra? Update it to 1.0.10 too. Recommended for all sites.
 
 = 1.1.8 =
 

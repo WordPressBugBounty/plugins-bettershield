@@ -64,40 +64,7 @@ final class PluginUpdates {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		$offers    = self::offers();
-		$installed = get_plugins();
-		$rows      = array();
-
-		if ( 'vulnerabilities_known' === $finding ) {
-			foreach ( State::affected_now() as $item ) {
-				if ( 'plugin' !== ( $item['type'] ?? '' ) ) {
-					// A theme or WordPress itself: its update is on the Updates screen.
-					$rows[] = array(
-						'file'     => '',
-						'name'     => (string) ( $item['name'] ?? $item['slug'] ?? '' ),
-						'version'  => (string) ( $item['installed_version'] ?? '' ),
-						'offer'    => '',
-						'fixed_in' => (string) ( $item['fixed_in'] ?? '' ),
-						'refused'  => self::reason( 'not_plugin' ),
-					);
-					continue;
-				}
-
-				$file = Inventory::file_for( (string) ( $item['slug'] ?? '' ) );
-
-				if ( null === $file ) {
-					continue;
-				}
-
-				$rows[] = self::row( $file, $installed[ $file ] ?? array(), $offers[ $file ] ?? null ) + array( 'fixed_in' => (string) ( $item['fixed_in'] ?? '' ) );
-			}
-		} else {
-			foreach ( $offers as $file => $offer ) {
-				if ( isset( $installed[ $file ] ) ) {
-					$rows[] = self::row( $file, $installed[ $file ], $offer ) + array( 'fixed_in' => '' );
-				}
-			}
-		}
+		$rows = self::rows( $finding );
 
 		return array(
 			'rows'        => $rows,
@@ -110,6 +77,109 @@ final class PluginUpdates {
 			'updates_url' => is_multisite() ? network_admin_url( 'update-core.php' ) : admin_url( 'update-core.php' ),
 			'updated'     => self::open_updates(),
 		);
+	}
+
+	/**
+	 * Each plugin, theme or WordPress itself the finding lists, as the panel
+	 * shows it.
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	private static function rows( string $finding ): array {
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$offers    = self::offers();
+		$installed = get_plugins();
+		$rows      = array();
+
+		if ( 'vulnerabilities_known' === $finding ) {
+			foreach ( State::affected_now() as $item ) {
+				$fixed_in = (string) ( $item['fixed_in'] ?? '' );
+
+				if ( 'plugin' !== ( $item['type'] ?? '' ) ) {
+					// A theme or WordPress itself: its update is on the Updates
+					// screen when WordPress offers one there (#2917).
+					$theme  = 'theme' === ( $item['type'] ?? '' );
+					$waits  = $theme && ! self::theme_offered( (string) ( $item['slug'] ?? '' ) );
+					$rows[] = array(
+						'file'     => '',
+						'name'     => (string) ( $item['name'] ?? $item['slug'] ?? '' ),
+						'version'  => (string) ( $item['installed_version'] ?? '' ),
+						'offer'    => '',
+						'fixed_in' => $fixed_in,
+						'refused'  => $waits ? self::waiting( $fixed_in, true ) : self::reason( 'not_plugin' ),
+					);
+					continue;
+				}
+
+				$file = Inventory::file_for( (string) ( $item['slug'] ?? '' ) );
+
+				if ( null === $file ) {
+					continue;
+				}
+
+				$row = self::row( $file, $installed[ $file ] ?? array(), $offers[ $file ] ?? null ) + array( 'fixed_in' => $fixed_in );
+
+				// A known fixed version WordPress isn't offering here yet
+				// is named, not called missing (#2917).
+				if ( '' === $row['offer'] ) {
+					$row['refused'] = self::waiting( $fixed_in, false );
+				}
+
+				$rows[] = $row;
+			}
+		} else {
+			foreach ( $offers as $file => $offer ) {
+				if ( isset( $installed[ $file ] ) ) {
+					$rows[] = self::row( $file, $installed[ $file ], $offer ) + array( 'fixed_in' => '' );
+				}
+			}
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * How many of the finding's rows can be updated here in one press: the
+	 * finding's row offers Apply Fix only when there is one (#2917).
+	 */
+	public static function updatable( string $finding ): int {
+		return count( array_filter( self::rows( $finding ), static fn( array $row ): bool => '' === $row['refused'] ) );
+	}
+
+	/**
+	 * Whether WordPress's update cache offers a newer version of a theme.
+	 */
+	private static function theme_offered( string $slug ): bool {
+		$data = get_site_transient( 'update_themes' );
+
+		if ( '' === $slug || ! is_object( $data ) ) {
+			return false;
+		}
+
+		$offer = (array) ( ( (array) ( $data->response ?? array() ) )[ $slug ] ?? array() );
+
+		return '' !== (string) ( $offer['new_version'] ?? '' );
+	}
+
+	/**
+	 * What a row WordPress offers no update for says: the fixed version
+	 * when one is known, so it doesn't contradict "Fixed in" (#2917).
+	 */
+	private static function waiting( string $fixed_in, bool $theme ): string {
+		if ( '' === $fixed_in ) {
+			return $theme
+				? __( 'No fixed version is offered yet. Consider switching to another theme until one is.', 'bettershield' )
+				: self::reason( 'no_offer' );
+		}
+
+		return $theme
+			/* translators: %s: the version that fixes the issue. */
+			? sprintf( __( 'Version %s fixes this, but WordPress isn’t offering it here yet. Get it from the theme’s own site, or switch to another theme until you can update.', 'bettershield' ), $fixed_in )
+			/* translators: %s: the version that fixes the issue. */
+			: sprintf( __( 'Version %s fixes this, but WordPress isn’t offering it here yet. Get it from the plugin’s own site, or deactivate the plugin until you can update.', 'bettershield' ), $fixed_in );
 	}
 
 	/**

@@ -340,6 +340,22 @@
 	color: var(--bs-ds-color-text-secondary);
 }
 
+/* Everything that already matches, folded into one line under the changes. */
+.bs-ds-import__matching {
+	margin-top: var(--bs-ds-space-sm);
+	font-size: var(--bs-ds-size-small);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-import__matching > summary {
+	padding: var(--bs-ds-space-xxs) 0;
+	cursor: pointer;
+}
+
+.bs-ds-import__matching > .bs-ds-import {
+	margin-top: var(--bs-ds-space-xs);
+}
+
 /* A narrow card: what would happen goes under the thing it happens to. */
 @container bs-ds-content (max-width: 600px) {
 

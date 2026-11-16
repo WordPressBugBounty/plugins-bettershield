@@ -189,13 +189,31 @@ export default function FindingsCard( { overview, view, setView } ) {
 	// "Undo never expires" over a row whose undo leaves the header in
 	// browsers is the claim that row's own caveat takes back.
 	const whole = open.every( ( entry ) => false !== entry.reversible );
-	let recentLede = null;
+	// Said once: the badge when every row can still be undone at any time,
+	// the lede otherwise, which says which ones when some are already
+	// undone or off (#2918).
+	const everyOne = undoable > 0 && undoable === recent.length;
+	let recentWords = null;
 
-	if ( undoable > 0 && undoable === recent.length ) {
-		recentLede = __( 'You can undo any of these.', 'bettershield' );
-	} else if ( undoable > 0 ) {
-		recentLede = __( 'You can undo any of these.', 'bettershield' );
+	if ( undoable > 0 && ! everyOne ) {
+		recentWords = __( 'You can undo the ones still on.', 'bettershield' );
+	} else if ( everyOne && ! whole ) {
+		recentWords = __( 'You can undo any of these.', 'bettershield' );
 	}
+
+	// Only protection switches are listed here; a quarantine or an update
+	// made from Findings is undone from Activity's list, in a card that
+	// starts folded, so the link asks for it open (#2918).
+	const activityLog = sectionUrl( 'bettershield-activity' );
+	const activity = activityLog ? `${ activityLog }#undo` : '';
+	const recentLede =
+		recentWords || activity ? (
+			<>
+				{ recentWords }
+				{ recentWords && activity ? ' ' : null }
+				{ activity ? <a href={ activity }>{ __( 'More undos on Activity', 'bettershield' ) }</a> : null }
+			</>
+		) : null;
 	const unknown = overview.checks_unknown || [];
 	// A stale finding's check is already listed among the ones that could not
 	// run; it is shown once, as that check.
@@ -409,7 +427,7 @@ export default function FindingsCard( { overview, view, setView } ) {
 							view={ view }
 							headRef={ headRef }
 							head={ __( 'Done recently', 'bettershield' ) }
-							badge={ undoable > 0 && whole ? __( 'You can undo these at any time.', 'bettershield' ) : null }
+							badge={ everyOne && whole ? __( 'You can undo these at any time.', 'bettershield' ) : null }
 							lede={ recentLede }
 							scroll
 							empty={ __( 'Nothing to undo', 'bettershield' ) }

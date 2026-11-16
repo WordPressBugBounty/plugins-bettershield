@@ -115,7 +115,8 @@ function Enrollment( { onDone } ) {
 				<div className="bs-ds-2fa__actions">
 					<Button
 						type="primary"
-						size="sm"
+						// Add a Passkey's size, the other card's start (#2921).
+						size="md"
 						isBusy={ working }
 						disabled={ working }
 						onClick={ () =>
@@ -347,7 +348,7 @@ function Enabled( { status, onDone } ) {
 					</>
 				) : (
 					<FieldRow>
-						<Field width="md" label={ __( 'App code or backup code', 'bettershield' ) } value={ fresh } onChange={ setFresh } inputMode="numeric" />
+						<Field width="md" label={ __( 'Authenticator app code or backup code', 'bettershield' ) } value={ fresh } onChange={ setFresh } inputMode="numeric" />
 						{ /* The card's one primary action while two-factor is on. */ }
 						<Button
 							type="primary"
@@ -399,7 +400,7 @@ function Enabled( { status, onDone } ) {
 			) : (
 				<SettingRow title={ __( 'Turn off', 'bettershield' ) }>
 					<FieldRow>
-						<Field width="md" label={ __( 'App code or backup code', 'bettershield' ) } value={ code } onChange={ setCode } inputMode="numeric" />
+						<Field width="md" label={ __( 'Authenticator app code or backup code', 'bettershield' ) } value={ code } onChange={ setCode } inputMode="numeric" />
 						<Button
 							type="secondary"
 							size="sm"
@@ -828,6 +829,8 @@ export function AccountPagePicker() {
 		return null;
 	}
 
+	const chosenPage = ( resource.data.account_pages || [] ).find( ( page ) => Number( page.id ) === Number( resource.data.account_page || 0 ) );
+
 	return (
 		<SettingRow
 			title={ __( 'Sign-in Security Page', 'bettershield' ) }
@@ -845,6 +848,12 @@ export function AccountPagePicker() {
 				kind="select"
 				width="md"
 				label={ __( 'Page', 'bettershield' ) }
+				// A page without the block shows only its title (#2921).
+				help={
+					chosenPage && false === chosenPage.ready
+						? __( 'This page doesn’t have the Sign-in Security block yet. Add it, or choose another page.', 'bettershield' )
+						: undefined
+				}
 				value={ String( resource.data.account_page || 0 ) }
 				disabled={ saving }
 				options={ [

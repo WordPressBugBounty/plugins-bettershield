@@ -926,6 +926,32 @@ final class Checks {
 	}
 
 	/**
+	 * Findings that close without anyone fixing anything, by key: null when
+	 * closing only means their first check ran, or the key of the finding
+	 * that takes their place while that one is open (#2917).
+	 */
+	private const CLOSED_UNFIXED = array(
+		'files_never_checked'           => null,
+		'recovery_readiness_incomplete' => 'recovery_unconfirmed',
+	);
+
+	/**
+	 * Whether a finding that closed was never fixed, so Findings › Fixed
+	 * leaves it out.
+	 *
+	 * @param array<string, true> $open The keys open now.
+	 */
+	public static function closed_unfixed( string $key, array $open ): bool {
+		if ( ! array_key_exists( $key, self::CLOSED_UNFIXED ) ) {
+			return false;
+		}
+
+		$successor = self::CLOSED_UNFIXED[ $key ];
+
+		return null === $successor || isset( $open[ $successor ] );
+	}
+
+	/**
 	 * A finding's evidence as this reader may see it. The stored row holds
 	 * counts only, because every manager of the plugin reads it; a reader
 	 * who may list users is also shown which accounts, by display name, at
@@ -936,7 +962,9 @@ final class Checks {
 	 */
 	public static function evidence_for_reader( string $key, $evidence ) {
 		if ( 'vulnerabilities_known' === $key && is_array( $evidence ) && isset( $evidence['items'] ) && is_array( $evidence['items'] ) ) {
-			return self::with_reach( $evidence );
+			// How many listed plugins one press can update now: with none,
+			// the row offers Details, not Apply Fix (#2917).
+			return self::with_reach( $evidence ) + array( 'updatable' => \BetterShield\Fixes\PluginUpdates::updatable( $key ) );
 		}
 
 		if ( 'privileged_password_only' !== $key || ! is_array( $evidence ) || ! current_user_can( 'list_users' ) ) {
@@ -2070,7 +2098,7 @@ final class Checks {
 				'title'          => __( 'A WordPress core update is available', 'bettershield' ),
 				'severity'       => 'high',
 				'why'            => __( 'WordPress updates often fix security problems, and those problems are targeted within hours once made public.', 'bettershield' ),
-				'break_note'     => __( 'Update from Dashboard → Updates. Your host may also offer staged updates.', 'bettershield' ),
+				'break_note'     => __( 'Update from Dashboard › Updates. Your host may also offer staged updates.', 'bettershield' ),
 				'hardening_item' => null,
 				'test'           => static function () {
 					$data = self::fresh_update_cache( 'update_core' );
@@ -3631,7 +3659,7 @@ final class Checks {
 					return $severity;
 				},
 				'why'            => __( 'Once a security issue is made public, sites that haven’t updated get targeted within hours. “Couldn’t compare your version” means we couldn’t tell if yours is affected.', 'bettershield' ),
-				'break_note'     => __( 'Update from Dashboard → Updates. If there is no fix yet, deactivate the plugin or switch themes.', 'bettershield' ),
+				'break_note'     => __( 'Update from Dashboard › Updates. If there is no fix yet, deactivate the plugin or switch themes.', 'bettershield' ),
 				'hardening_item' => null,
 				'test'           => static function (): ?array {
 					/*

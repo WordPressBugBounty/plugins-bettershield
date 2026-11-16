@@ -1238,6 +1238,7 @@ final class Query {
 				'blog_public'         => __( 'Search engine visibility', 'bettershield' ),
 				'bettershield_store_account_tab' => __( 'Sign-in security on WooCommerce My Account', 'bettershield' ),
 				'bettershield_account_page' => __( 'Sign-in security page', 'bettershield' ),
+				'bettershield_observed_changes' => __( 'Save old values so I can undo changes', 'bettershield' ),
 			);
 		$name  = $names[ strtolower( $id ) ] ?? null;
 
@@ -1248,7 +1249,7 @@ final class Query {
 		$say = static function ( $value ) use ( $id ): string {
 			$value = (string) $value;
 
-			if ( 'users_can_register' === $id ) {
+			if ( 'users_can_register' === $id || 'bettershield_observed_changes' === $id ) {
 				return '1' === $value ? __( 'on', 'bettershield' ) : __( 'off', 'bettershield' );
 			}
 

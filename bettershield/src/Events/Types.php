@@ -103,6 +103,8 @@ final class Types {
 			'incident_code_added' => __( 'New code file appeared', 'bettershield' ),
 			'incident_code_modified' => __( 'Code file changed', 'bettershield' ),
 			'observed_change_response' => __( 'Action taken on an observed change', 'bettershield' ),
+			'observed_change_restored' => __( 'Old value restored', 'bettershield' ),
+			'observed_change_reapplied' => __( 'Restore undone', 'bettershield' ),
 			'incident_response_applied' => __( 'Incident response step taken', 'bettershield' ),
 			'incident_cron_unanswered' => __( 'A scheduled task ran with no code to handle it', 'bettershield' ),
 			/*
@@ -236,6 +238,7 @@ final class Types {
 			'two_factor_disabled'     => __( 'Two-factor turned off', 'bettershield' ),
 			'two_factor_failed'       => __( 'Two-factor code rejected', 'bettershield' ),
 			'two_factor_skipped'      => __( 'Signed in without a two-factor code', 'bettershield' ),
+			'session_without_sign_in' => __( 'Session opened without the sign-in form', 'bettershield' ),
 			'two_factor_backup_used'  => __( 'Backup code used', 'bettershield' ),
 			'two_factor_backup_reissued' => __( 'New backup codes issued', 'bettershield' ),
 			'two_factor_imported'     => __( 'Two-factor brought over from another plugin', 'bettershield' ),
@@ -632,6 +635,8 @@ final class Types {
 			// BetterShield's own incident record, not a site setting (#2616).
 			'incident_response_applied' => Areas::PLUGIN,
 			'observed_change_response' => Areas::CONFIGURATION,
+			'observed_change_restored' => Areas::CONFIGURATION,
+			'observed_change_reapplied' => Areas::CONFIGURATION,
 			'incident_cron_unanswered' => Areas::EXPOSURE,
 			'incident_account_demoted' => Areas::ACCESS,
 			'incident_cron_unscheduled' => Areas::EXPOSURE,
@@ -750,6 +755,7 @@ final class Types {
 			'two_factor_enabled'      => Areas::ACCESS,
 			'two_factor_disabled'     => Areas::ACCESS,
 			'two_factor_skipped'      => Areas::ACCESS,
+			'session_without_sign_in' => Areas::ACCESS,
 			'two_factor_failed'       => Areas::ACCESS,
 			'two_factor_backup_used'  => Areas::ACCESS,
 			'two_factor_backup_reissued' => Areas::ACCESS,

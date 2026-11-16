@@ -18,10 +18,10 @@
  *   decides, so two requests presenting the same code cannot both be the first.
  *   Read-modify-write over a shared option cannot make that promise: both
  *   readers see an unspent code, and both mint.
- * - **Refresh tokens rotate, and a spent one is remembered.** Presenting a
- *   refresh token that has already been rotated away revokes the whole family
- *   it belongs to, which is what OAuth 2.1 asks for and the only way a copied
- *   token becomes visible rather than merely useless.
+ * - **Refresh tokens rotate, and a spent one is remembered.** Presenting one
+ *   again revokes its whole family, as OAuth 2.1 asks, so a copied token is
+ *   seen rather than merely useless; unless the pair that replaced it was
+ *   never used, which is a renewal whose answer was lost, and is retried.
  * - **Tokens are bound to this endpoint.** A client that names a resource must
  *   name this one, and every token records the resource it was issued for.
  * - **Nothing secret is stored.** Access and refresh tokens exist in the
@@ -102,6 +102,22 @@ final class OAuth {
 	 * reads and every write rewrites in full.
 	 */
 	private const MAX_SPENT_PER_FAMILY = 8;
+
+	/**
+	 * How long after a rotation its refresh token may be presented again as a
+	 * retry, while the pair that replaced it has never been used.
+	 *
+	 * A client whose answer was lost on the way still holds the token it sent,
+	 * and asks again with it the next time it needs the site. That can be some
+	 * hours later, so the window is a day, not a minute.
+	 */
+	private const RENEWAL_RETRY_WINDOW = 86400;
+
+	/**
+	 * How many times one rotation may be retried. Each retry remembers the pair
+	 * it withdrew as spent, so this stays inside MAX_SPENT_PER_FAMILY.
+	 */
+	private const MAX_RENEWAL_RETRIES = 5;
 
 	/**
 	 * The name the round-trip check's own credential is filed under.
@@ -792,6 +808,38 @@ final class OAuth {
 				 * never the one in the request.
 				 */
 				if ( isset( $state['spent'][ $key ] ) ) {
+					$next = self::unused_successor( $state, (array) $state['spent'][ $key ], $client_id );
+
+					/*
+					 * The one exception: the pair that replaced it has never
+					 * been used, here or on a call. That is a client that never
+					 * received its answer (a timeout, a connection dropped after
+					 * this site had rotated) asking again, not a copy in a second
+					 * pair of hands. The uncollected pair is withdrawn and a new
+					 * one minted in its place. The withdrawn refresh token is
+					 * remembered as spent with nothing after it, so whoever turns
+					 * up holding it is answered as a copy.
+					 */
+					if ( '' !== $next ) {
+						$withdrawn = (array) $state['refresh'][ $next ];
+
+						unset( $state['refresh'][ $next ] );
+
+						if ( isset( $withdrawn['access'] ) ) {
+							unset( $state['tokens'][ (string) $withdrawn['access'] ] );
+						}
+
+						$state['spent'][ $next ] = array(
+							'family'    => (string) ( $withdrawn['family'] ?? '' ),
+							'client_id' => (string) $withdrawn['client_id'],
+							'expires'   => time() + self::REFRESH_TTL,
+						);
+
+						$state['spent'][ $key ]['retries'] = (int) ( $state['spent'][ $key ]['retries'] ?? 0 ) + 1;
+
+						return array( 'entry' => $withdrawn );
+					}
+
 					$owner = (string) ( $state['spent'][ $key ]['client_id'] ?? '' );
 
 					self::drop_family( $state, (string) ( $state['spent'][ $key ]['family'] ?? '' ) );
@@ -816,6 +864,7 @@ final class OAuth {
 				// Rotation: the presented token and the access token it minted
 				// both stop working here, before the new pair exists, and the
 				// digest is remembered so presenting it again is answerable.
+				// So is when: a retry of this rotation is held to a window.
 				unset( $state['refresh'][ $key ] );
 
 				if ( isset( $entry['access'] ) ) {
@@ -826,6 +875,7 @@ final class OAuth {
 					'family'    => (string) ( $entry['family'] ?? '' ),
 					'client_id' => (string) $entry['client_id'],
 					'expires'   => time() + self::REFRESH_TTL,
+					'rotated'   => time(),
 				);
 
 				return array( 'entry' => $entry );
@@ -975,6 +1025,50 @@ final class OAuth {
 	}
 
 	/**
+	 * The pair that replaced a spent refresh token, while presenting that token
+	 * again is still a retry of its renewal rather than a copy being used.
+	 *
+	 * Only while nothing has used the replacement: its refresh token is still
+	 * the live one (a rotation would have removed it) and no call has been made
+	 * with its access token. Held as well to the application the token was
+	 * issued to, to a window after the rotation and to a few retries. Past any
+	 * of those the token is a copy, as every spent token was before, and as one
+	 * rotated before the replacement was recorded still is.
+	 *
+	 * @param array<string, mixed> $state
+	 * @param array<string, mixed> $spent The spent entry presented.
+	 * @return string The replacement's refresh digest; empty for a copy.
+	 */
+	private static function unused_successor( array $state, array $spent, string $client_id ): string {
+		$next   = (string) ( $spent['next'] ?? '' );
+		$family = (string) ( $spent['family'] ?? '' );
+
+		if ( '' === $next || '' === $family || ! isset( $state['refresh'][ $next ] ) || ! is_array( $state['refresh'][ $next ] ) ) {
+			return '';
+		}
+
+		$successor = $state['refresh'][ $next ];
+
+		if ( $family !== (string) ( $successor['family'] ?? '' ) || ! empty( $successor['used'] ) ) {
+			return '';
+		}
+
+		if ( ! hash_equals( (string) ( $spent['client_id'] ?? '' ), $client_id ) ) {
+			return '';
+		}
+
+		if ( time() - (int) ( $spent['rotated'] ?? 0 ) > self::RENEWAL_RETRY_WINDOW ) {
+			return '';
+		}
+
+		if ( (int) ( $spent['retries'] ?? 0 ) >= self::MAX_RENEWAL_RETRIES ) {
+			return '';
+		}
+
+		return $next;
+	}
+
+	/**
 	 * Everything descended from one grant, gone.
 	 *
 	 * @param array<string, mixed> $state
@@ -1065,6 +1159,12 @@ final class OAuth {
 					$state['refresh'][ $rkey ]['hub'] = $hub;
 				}
 
+				// What the rotated token was exchanged for, in the same write:
+				// presenting it again is a retry only while this pair goes unused.
+				if ( '' !== $rotated ) {
+					$state['spent'][ $rotated ]['next'] = $rkey;
+				}
+
 				return true;
 			}
 		);
@@ -1122,6 +1222,18 @@ final class OAuth {
 			return null;
 		}
 
+		/*
+		 * The first call a pair makes settles the rotation that minted it: the
+		 * client evidently holds the pair, so the refresh token it replaced is
+		 * spent for good, and presenting that again is a copy, never a retry.
+		 * Written once per pair, on its first call, not once per call.
+		 */
+		$refresh = (string) ( $entry['refresh'] ?? '' );
+
+		if ( '' !== $refresh && isset( $state['refresh'][ $refresh ] ) && is_array( $state['refresh'][ $refresh ] ) && empty( $state['refresh'][ $refresh ]['used'] ) ) {
+			self::mark_used( $refresh );
+		}
+
 		// Recorded against the client rather than the token, so the answer
 		// survives the rotation that replaces the token every hour.
 		if ( isset( $state['clients'][ $client_id ] ) && is_array( $state['clients'][ $client_id ] ) ) {
@@ -1136,6 +1248,23 @@ final class OAuth {
 			'client_id' => $client_id,
 			'scope'     => WriteGrants::scope( $entry ),
 			'user_id'   => (int) $entry['user_id'],
+		);
+	}
+
+	/**
+	 * Record that a pair has been used, on the call that uses it.
+	 *
+	 * Not deferred to shutdown as the last-used stamp is: until it lands, the
+	 * refresh token this pair replaced still reads as a retry. It is one write
+	 * per pair, an hour apart for a client in steady use.
+	 */
+	private static function mark_used( string $refresh ): void {
+		self::mutate(
+			static function ( array &$state ) use ( $refresh ): void {
+				if ( isset( $state['refresh'][ $refresh ] ) && is_array( $state['refresh'][ $refresh ] ) ) {
+					$state['refresh'][ $refresh ]['used'] = true;
+				}
+			}
 		);
 	}
 

@@ -52,6 +52,14 @@ final class RestSurface {
 	 */
 	private const UNINTERESTING = array( 'oembed/1.0' );
 
+	/**
+	 * Core routes whose permission check writes: it saves the widget areas
+	 * first, moving every widget of a sidebar this request didn't register
+	 * to Inactive, which on a block theme is all of them. Never asked, so
+	 * looking changes nothing; undetermined, since either can be open.
+	 */
+	private const WRITES_WHEN_ASKED = array( '/wp/v2/sidebars', '/wp/v2/widgets' );
+
 	private const OPEN         = 'open';
 	private const CLOSED       = 'closed';
 	private const UNDETERMINED = 'undetermined';
@@ -266,7 +274,7 @@ final class RestSurface {
 			return self::CLOSED;
 		}
 
-		if ( self::takes_a_value_from_the_path( $route ) ) {
+		if ( self::takes_a_value_from_the_path( $route ) || in_array( $route, self::WRITES_WHEN_ASKED, true ) ) {
 			return self::UNDETERMINED;
 		}
 

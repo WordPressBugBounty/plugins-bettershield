@@ -342,6 +342,9 @@ export function RowDetail( { finding, id, fromAlert = false } ) {
 	);
 }
 
+/** Findings whose fix Activity's list of fixes can put back. */
+const PUT_BACK = [ 'inactive_extensions', 'plugin_updates_available', 'vulnerabilities_known' ];
+
 /**
  * One finding's row.
  *
@@ -531,6 +534,25 @@ export function Row( { finding, areaLabel, selectable, selected, onSelect, open,
 			<Button type="secondary" size="sm" icon="external-link" iconTone="2" href={ finding.control.url } aria-label={ aboutFinding( finding.control.label, finding ) }>
 				{ finding.control.label }
 			</Button>
+		);
+	}
+
+	// What a fix moved to quarantine or updated is put back from Activity's
+	// list of fixes, once its banner is gone: the fixed row says where (#2917).
+	const activity = sectionUrl( 'bettershield-activity' );
+
+	if ( 'fixed' === view && ! finding.fixed_now && PUT_BACK.includes( finding.id ) && mayManage() && activity ) {
+		// Straight to the list that holds Put Back, opened: Activity's top
+		// shows the log, with the list closed further down.
+		const putBack = `${ activity }${ activity.includes( '?' ) ? '&' : '?' }focus=fix-undos`;
+
+		action = (
+			<>
+				{ action }
+				<Button type="ghost" size="sm" icon="external-link" iconTone="2" href={ putBack } aria-label={ aboutFinding( __( 'Put Back in Activity', 'bettershield' ), finding ) }>
+					{ __( 'Put Back in Activity', 'bettershield' ) }
+				</Button>
+			</>
 		);
 	}
 

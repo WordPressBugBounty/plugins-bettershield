@@ -21,6 +21,7 @@ import { KeyValue, KeyValues } from '../ui/KeyValue';
 import Table, { Cell, Row, TitleMeta } from '../ui/Table';
 import { severityName } from '../data/severity';
 import { providerCredit, unreachedText, unreachedWithoutResults } from '../data/vulnerabilities';
+import { sectionUrl } from '../../nav';
 
 /** A finding's severity, with its word. */
 function Severity( { severity } ) {
@@ -482,16 +483,30 @@ export function VulnerabilityNote( { feed } ) {
 	}
 
 	let text;
+	// Where vulnerability checks are switched on, opened at the switch (#2917).
+	const settings = sectionUrl( 'bettershield-settings' );
+	let turnOn = null;
 	if ( ! feed.feed_bound ) {
 		text = __( 'This version of BetterShield doesn’t check plugins against a list of known security issues. It only tells you about available updates.', 'bettershield' );
 	} else if ( ! feed.enabled ) {
-		text = __( 'Vulnerability checks are off, so nothing was checked for known vulnerabilities. Turn them on in Settings.', 'bettershield' );
+		text = __( 'Vulnerability checks are off, so nothing was checked for known vulnerabilities.', 'bettershield' );
+		turnOn = settings ? (
+			<a href={ `${ settings }${ settings.includes( '?' ) ? '&' : '?' }focus=vulnerability_checks` }>{ __( 'Turn them on in Settings.', 'bettershield' ) }</a>
+		) : (
+			__( 'Turn them on in Settings.', 'bettershield' )
+		);
 	} else if ( unreachedWithoutResults( feed ) ) {
 		text = unreachedText( feed );
 	} else if ( ! feed.has_data ) {
 		text = __( 'Vulnerability checks are on but have not run yet.', 'bettershield' );
 	} else {
-		text = sprintf(
+		// Under a day old, the age says nothing the date doesn't (#2917).
+		text = ( feed.age_days || 0 ) < 1 ? sprintf(
+			/* translators: 1: feed name, 2: date. */
+			__( 'Checked against %1$s. List last updated %2$s.', 'bettershield' ),
+			feed.feed_label,
+			formatTime( feed.published_at || feed.fetched_at )
+		) : sprintf(
 			/* translators: 1: feed name, 2: date, 3: an age, already carrying its own unit. */
 			__( 'Checked against %1$s. List last updated %2$s (%3$s).', 'bettershield' ),
 			feed.feed_label,
@@ -519,7 +534,7 @@ export function VulnerabilityNote( { feed } ) {
 	return (
 		<>
 			<Icon name={ NOTE_ICON } size={ 16 } tone="3" />
-			<div className="bs-ds-ffeed"><p>{ text }</p>
+			<div className="bs-ds-ffeed"><p>{ text }{ turnOn ? ' ' : null }{ turnOn }</p>
 				{ ( feed.attribution || [] ).map( ( attribution, index ) => <details key={ index }><summary>{ __( 'Source', 'bettershield' ) }</summary>
 					{ attribution.message ? <p>{ attribution.message }</p> : null }
 					{ ( attribution.notices || [] ).map( ( notice, n ) => <p key={ n }>{ notice.source }: { notice.notice } { notice.license } { notice.license_url ? <a href={ notice.license_url } target="_blank" rel="noopener noreferrer">{ __( 'License', 'bettershield' ) }</a> : null }</p> ) }

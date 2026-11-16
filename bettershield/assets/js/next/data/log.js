@@ -85,7 +85,23 @@ function requirementPhrases( context ) {
 	];
 }
 
+/*
+ * A session some code opened outside the sign-in form: the plugin that asked
+ * for it is the one thing the owner reads the row for (#2932).
+ */
+const openedBy = ( context ) => [
+	context.source
+		? sprintf(
+				/* translators: %s: the plugin that opened a session, e.g. "User Switching". */
+				__( 'opened by %s', 'bettershield' ),
+				String( context.source )
+		  )
+		: null,
+];
+
 const CONTEXT_PHRASES = {
+	two_factor_skipped: openedBy,
+	session_without_sign_in: openedBy,
 	user_role_changed: ( context ) => [
 		'from' in context || 'to' in context
 			? sprintf(

@@ -1145,7 +1145,7 @@ final class Protection {
 		// honored; the late authenticate hook catches every other path.
 		add_filter( 'wp_authenticate_user', array( $this, 'note_attempt' ), 1, 2 );
 		add_filter( 'wp_authenticate_user', array( $this, 'enforce' ), 5, 1 );
-		add_filter( 'authenticate', array( $this, 'enforce' ), 30, 1 );
+		add_filter( 'authenticate', array( $this, 'enforce' ), 30, 3 );
 
 		// What was typed, so a blocked name is refused in the words core
 		// would use for that same attempt (see refuse_blocked_name()).
@@ -1217,12 +1217,24 @@ final class Protection {
 
 	/**
 	 * @param mixed $user
+	 * @param mixed $username What was typed, on `authenticate`.
+	 * @param mixed $password What was typed, on `authenticate`.
 	 * @return mixed
 	 */
-	public function enforce( $user ) {
+	public function enforce( $user, $username = null, $password = null ) {
 		// Each evaluation decides afresh; the memory below is for the failure
 		// core reports right after a refusal, and for nothing else.
 		$this->refused = false;
+
+		/*
+		 * wp-login.php runs the chain with nothing typed on every page load.
+		 * Nothing was tried, so nothing is refused: the notice above the form,
+		 * with its unlock link, says the connection is paused, and a red error
+		 * waits for a real try (#2920).
+		 */
+		if ( 'authenticate' === current_filter() && ! $user instanceof \WP_User && '' === trim( (string) $username ) && '' === (string) $password ) {
+			return $user;
+		}
 
 		$settings = $this->settings();
 
@@ -1317,21 +1329,7 @@ final class Protection {
 			 * Asking for a link promises nothing to someone who gets none.
 			 */
 
-			return new \WP_Error(
-				'bettershield_locked',
-				$minutes > 0
-					? sprintf(
-						/* translators: %d: minutes until sign-in from this connection is allowed again. */
-						_n(
-							'Too many failed sign-ins from this connection. Wait about %d minute, or ask for an unlock link on the sign-in page.',
-							'Too many failed sign-ins from this connection. Wait about %d minutes, or ask for an unlock link on the sign-in page.',
-							$minutes,
-							'bettershield'
-						),
-						$minutes
-					)
-					: __( 'Too many failed sign-ins from this connection. Wait a little, or ask for an unlock link on the sign-in page.', 'bettershield' )
-			);
+			return new \WP_Error( 'bettershield_locked', self::locked_message( $minutes ) );
 		}
 
 		// Only here, where core has found the account and not yet compared
@@ -1340,6 +1338,7 @@ final class Protection {
 		if ( $settings['attempt_limit'] && $resolved['confident'] && 'wp_authenticate_user' === current_filter() && ! $this->reserve( ClientIp::lockout_hmac( $resolved ), $settings ) ) {
 			$this->refused = true;
 
+			// No lockout yet, so no notice with a link above the form.
 			return new \WP_Error(
 				'bettershield_locked',
 				__( 'Too many failed sign-ins from this connection. Wait a little, or ask for an unlock link on the sign-in page.', 'bettershield' )
@@ -1347,6 +1346,45 @@ final class Protection {
 		}
 
 		return $user;
+	}
+
+	/**
+	 * What a paused connection is told. On the sign-in page the unlock link
+	 * is in the notice above the form, so it points there instead of sending
+	 * the person to the page they are on (#2920).
+	 *
+	 * @param int $minutes Until it ends, or 0 when not known.
+	 */
+	private static function locked_message( int $minutes ): string {
+		$here = 'wp-login.php' === ( $GLOBALS['pagenow'] ?? '' );
+
+		if ( $minutes > 0 ) {
+			return $here
+				? sprintf(
+					/* translators: %d: minutes until sign-in from this connection is allowed again. */
+					_n(
+						'Too many failed sign-ins from this connection. Wait about %d minute, or use the unlock link above.',
+						'Too many failed sign-ins from this connection. Wait about %d minutes, or use the unlock link above.',
+						$minutes,
+						'bettershield'
+					),
+					$minutes
+				)
+				: sprintf(
+					/* translators: %d: minutes until sign-in from this connection is allowed again. */
+					_n(
+						'Too many failed sign-ins from this connection. Wait about %d minute, or ask for an unlock link on the sign-in page.',
+						'Too many failed sign-ins from this connection. Wait about %d minutes, or ask for an unlock link on the sign-in page.',
+						$minutes,
+						'bettershield'
+					),
+					$minutes
+				);
+		}
+
+		return $here
+			? __( 'Too many failed sign-ins from this connection. Wait a little, or use the unlock link above.', 'bettershield' )
+			: __( 'Too many failed sign-ins from this connection. Wait a little, or ask for an unlock link on the sign-in page.', 'bettershield' );
 	}
 
 	/**

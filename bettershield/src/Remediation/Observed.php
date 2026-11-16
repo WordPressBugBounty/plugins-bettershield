@@ -24,7 +24,7 @@ final class Observed {
 	}
 	public static function settings( bool $enabled ): array|\WP_Error {
 		if ( ! current_user_can( Capabilities::MANAGE ) || ( $enabled && ! \BetterShield\Database\Schema::ready( 'observed_changes' ) ) || ! Claim::claim( self::OPTION, 30 ) ) { return self::error(); }
-		try { $s = self::policy(); $s['enabled'] = $enabled; if ( ! update_option( self::OPTION, $s, true ) && self::policy() !== $s ) { return self::error(); } self::event( 'capture_policy', '' ); return $s; } finally { Claim::release( self::OPTION ); }
+		try { $s = self::policy(); $was = ! empty( $s['enabled'] ); $s['enabled'] = $enabled; if ( ! update_option( self::OPTION, $s, true ) && self::policy() !== $s ) { return self::error(); } if ( $was !== $enabled ) { self::policy_event( $enabled ); } return $s; } finally { Claim::release( self::OPTION ); }
 	}
 	private static function capture( array $record ): string {
 		$json = wp_json_encode( $record );
@@ -189,9 +189,9 @@ final class Observed {
 			if ( ! self::save( $token, array( 'phase' => 'started', 'action' => $action ) ) ) { return self::error(); }
 			self::$changing = true;
 			try { $result = self::execute( $r, $undo, $token ); } catch ( \Throwable $e ) { return self::error( __( 'The response was interrupted. Check the current state before trying again.', 'bettershield' ) ); } finally { self::$changing = false; }
-			if ( is_wp_error( $result ) || ! $result ) { self::event( 'interrupted', $token ); return self::error( __( 'We couldn’t confirm this worked. Check the setting before trying again.', 'bettershield' ) ); }
+			if ( is_wp_error( $result ) || ! $result ) { self::event( 'interrupted', $r ); return self::error( __( 'We couldn’t confirm this worked. Check the setting before trying again.', 'bettershield' ) ); }
 			if ( ! self::save( $token, array( 'phase' => $undo ? 'undone' : 'applied', 'at' => gmdate( 'c' ) ) ) ) { return self::error(); }
-			self::event( $undo ? 'undone' : 'applied', $token ); return self::view( $token );
+			self::event( $undo ? 'undone' : 'applied', $r ); return self::view( $token );
 		} finally { Claim::release( 'observed_response' ); }
 	}
 	private static function execute( array $r, bool $undo, string $token ): bool|\WP_Error {
@@ -223,5 +223,71 @@ final class Observed {
 		do_action( "update_option_{$name}", $old, $value, $name ); do_action( 'updated_option', $name, $old, $value );
 		return is_scalar( $value ) ? (string) get_option( $name ) === (string) $value : get_option( $name ) === $value;
 	}
-	private static function event( string $action, string $token ): void { \BetterShield\Events\Writer::instance()->record( 'observed_change_response', \BetterShield\Events\Writer::SEVERITY_HIGH, array( 'object_type' => 'change', 'object_id' => $token, 'context' => array( 'action' => $action ) ) ); }
+	/**
+	 * What the owner did to a recorded change, named by the setting, role,
+	 * account or plugin it changed rather than its undo token (#2922). The
+	 * owner's own restore and its undo are graded as an owner's setting
+	 * change is; a response that stopped partway stays high.
+	 *
+	 * A new account's response keeps it from signing in, so it is recorded
+	 * as the suspension it is, the way a dormant account's is, not as an old
+	 * value put back. A role and a plugin carry the name the list shows,
+	 * since neither row type is named by its stored id.
+	 *
+	 * @param array<string, mixed> $r The recorded change.
+	 */
+	private static function event( string $action, array $r ): void {
+		$kind    = (string) ( $r['kind'] ?? '' );
+		$types   = 'account' === $kind
+			? array(
+				'applied' => 'account_suspended',
+				'undone'  => 'account_suspension_lifted',
+			)
+			: array(
+				'applied' => 'observed_change_restored',
+				'undone'  => 'observed_change_reapplied',
+			);
+		$context = array( 'action' => $action );
+		if ( 'account' === $kind ) {
+			$context['reason'] = 'observed';
+		} elseif ( 'role' === $kind ) {
+			$context['roles'] = array( self::name_of( $r ) );
+		} elseif ( 'plugin' === $kind ) {
+			$context['name'] = self::name_of( $r );
+		}
+		$objects = array(
+			'option'  => 'setting',
+			'role'    => 'role',
+			'account' => 'user',
+			'plugin'  => 'plugin',
+		);
+		\BetterShield\Events\Writer::instance()->record(
+			$types[ $action ] ?? 'observed_change_response',
+			isset( $types[ $action ] ) ? \BetterShield\Events\Writer::SEVERITY_MEDIUM : \BetterShield\Events\Writer::SEVERITY_HIGH,
+			array(
+				'object_type' => $objects[ $kind ] ?? 'setting',
+				'object_id'   => (string) ( $r['target'] ?? '' ),
+				'context'     => $context,
+			)
+		);
+	}
+
+	/**
+	 * Saving the old values switch is a setting saved, not something done to
+	 * a recorded change (#2922).
+	 */
+	private static function policy_event( bool $enabled ): void {
+		\BetterShield\Events\Writer::instance()->record(
+			'setting_changed',
+			\BetterShield\Events\Writer::SEVERITY_MEDIUM,
+			array(
+				'object_type' => 'setting',
+				'object_id'   => self::OPTION,
+				'context'     => array(
+					'before' => $enabled ? '0' : '1',
+					'after'  => $enabled ? '1' : '0',
+				),
+			)
+		);
+	}
 }

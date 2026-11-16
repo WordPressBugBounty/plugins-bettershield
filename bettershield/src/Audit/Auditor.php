@@ -1288,9 +1288,23 @@ final class Auditor {
 
 		$out = array();
 
+		// What is open now, so a finding a newer one took the place of is
+		// not listed as fixed (#2917).
+		$open = array();
+
+		foreach ( $rows as $row ) {
+			if ( 'open' === (string) $row->status ) {
+				$open[ (string) $row->finding_key ] = true;
+			}
+		}
+
 		foreach ( $rows as $row ) {
 			if ( ! isset( $checks[ $row->finding_key ] ) ) {
 				continue; // A finding left behind by a removed check.
+			}
+
+			if ( 'fixed' === (string) $row->status && Checks::closed_unfixed( (string) $row->finding_key, $open ) ) {
+				continue; // Closed by its first check, or by its successor: nobody fixed it.
 			}
 
 			$check  = $checks[ $row->finding_key ];

@@ -9,13 +9,19 @@
  * took no credential at all. Agents › Surface listed the registry and the
  * application passwords, and none of these.
  *
- * Read, never called: the REST routes are walked for the shapes an MCP
- * server takes (a path segment named mcp, a streamable or SSE transport
- * beside one, a protected-resource document), each is attributed to the
- * plugin its callback lives in, and a route whose permission callback is
- * missing, `__return_true`, or answers yes to a caller nobody signed in as
- * is said to accept calls without signing in. The permission callback is
- * asked, as core asks it on every request; the endpoint itself never is.
+ * The REST routes are walked for the shapes an MCP server takes (a path
+ * segment named mcp, a streamable or SSE transport beside one, a
+ * protected-resource document), and each is attributed to the plugin its
+ * callback lives in. A route whose permission callback is missing,
+ * `__return_true`, or answers yes to a caller nobody signed in as is then
+ * asked itself over a request this site makes to itself, with no cookie and
+ * a short timeout, for `initialize` (and `tools/list` only when that came
+ * back as a JSON-RPC error), both read-only: many servers let the permission callback through and
+ * refuse in the handler, where they send the 401 and WWW-Authenticate
+ * challenge MCP clients start OAuth from. Only a route that gives that
+ * caller a JSON-RPC result is said to accept calls without signing in.
+ * OAuth discovery and sign-in routes are public by design and are listed as
+ * sign-in routes, never as open. Core's own routes are never called.
  * Where vulnerability checks have data, the owner's known advisories are
  * named. This plugin's own endpoint is left out: it has its own card.
  *
@@ -40,7 +46,32 @@ final class McpEndpoints {
 	private const SHAPE = '#(?:^|/)(?:mcp|model-context-protocol|oauth-protected-resource)(?:[/_-]|$)#i';
 
 	/**
-	 * @return array<int, array{route: string, owner: string, owner_label: string, open: bool, advisory: bool}>
+	 * A route that has to answer a stranger: the protected-resource or
+	 * authorization-server document, or an OAuth step a client takes before
+	 * it holds a token.
+	 */
+	private const SIGN_IN = '#(?:^|/)(?:(?:oauth-)?protected-resource|oauth-authorization-server|openid-configuration)(?:/|$)|(?:^|/)oauth2?(?:/[^/]+)*/(?:authorize|token|register|revoke|device)(?:/|$)#i';
+
+	/** Where each route's answer is kept between checks. */
+	public const CACHE = 'bettershield_mcp_route_answers';
+
+	/** How long a clear answer is kept: a plugin update or switch clears it sooner. */
+	private const KEEP = 12 * HOUR_IN_SECONDS;
+
+	/** How long a route that couldn't be asked is left before asking again. */
+	private const KEEP_UNCHECKED = HOUR_IN_SECONDS;
+
+	/** Seconds one call to another plugin's route may take. */
+	private const TIMEOUT = 3;
+
+	/** Seconds all of one report's calls may take together. */
+	private const BUDGET = 9.0;
+
+	/** Seconds this request has spent calling routes so far. */
+	private static float $spent = 0.0;
+
+	/**
+	 * @return array<int, array{route: string, owner: string, owner_label: string, open: bool, sign_in: bool, advisory: bool}>
 	 */
 	public static function report(): array {
 		$server = rest_get_server();
@@ -53,33 +84,11 @@ final class McpEndpoints {
 				continue;
 			}
 
-			$owner = '';
-			$open  = false;
+			$found_row = self::row( $route, (array) $handlers );
 
-			foreach ( (array) $handlers as $handler ) {
-				if ( ! is_array( $handler ) ) {
-					continue;
-				}
-
-				if ( '' === $owner ) {
-					$owner = self::owner_of( $handler['callback'] ?? null );
-				}
-
-				$open = $open || self::answers_anyone( $handler, $route );
+			if ( null !== $found_row ) {
+				$found[] = $found_row;
 			}
-
-			// Core's own routes are not another plugin's door.
-			if ( 'wordpress' === $owner ) {
-				continue;
-			}
-
-			$found[] = array(
-				'route'       => $route,
-				'owner'       => $owner,
-				'owner_label' => '' === $owner ? __( 'Unknown source', 'bettershield' ) : AgentSurface::source_label( $owner ),
-				'open'        => $open,
-				'advisory'    => '' !== $owner && self::has_advisory( $owner ),
-			);
 		}
 
 		usort(
@@ -88,6 +97,283 @@ final class McpEndpoints {
 		);
 
 		return $found;
+	}
+
+	/**
+	 * One matched route as the report lists it, or null for core's own.
+	 *
+	 * @param array<int|string, mixed> $handlers
+	 * @return array{route: string, owner: string, owner_label: string, open: bool, sign_in: bool, advisory: bool}|null
+	 */
+	public static function row( string $route, array $handlers ): ?array {
+		$owner   = '';
+		$through = false;
+
+		foreach ( $handlers as $handler ) {
+			if ( ! is_array( $handler ) ) {
+				continue;
+			}
+
+			if ( '' === $owner ) {
+				$owner = self::owner_of( $handler['callback'] ?? null );
+			}
+
+			$through = $through || self::answers_anyone( $handler, $route );
+		}
+
+		// Core's own routes are not another plugin's door, and never called.
+		if ( 'wordpress' === $owner ) {
+			return null;
+		}
+
+		$sign_in = 1 === preg_match( self::SIGN_IN, $route );
+		$refused = false;
+		$open    = ! $sign_in && $through && self::serves_stranger( $route, $refused );
+
+		return array(
+			'route'       => $route,
+			'owner'       => $owner,
+			'owner_label' => '' === $owner ? __( 'Unknown source', 'bettershield' ) : AgentSurface::source_label( $owner ),
+			// Public by design is not open; past the permission callback,
+			// only a real answer to a stranger is.
+			'open'        => $open,
+			'sign_in'     => $sign_in,
+			// Let through, called, and neither refused nor answered as MCP:
+			// it doesn't ask for a sign-in, it just isn't an AI connection.
+			'not_mcp'     => ! $open && ! $sign_in && $through && ! $refused,
+			'advisory'    => '' !== $owner && self::has_advisory( $owner ),
+		);
+	}
+
+	/**
+	 * Whether the route gives a caller nobody signed in as a JSON-RPC result.
+	 *
+	 * It is asked over a request this site makes to itself, with no cookie,
+	 * so the route answers exactly what a stranger gets, and runs in its own
+	 * request: what it prints, the headers it sends, a sleep or an `exit`
+	 * stay there, and the timeout bounds what it can cost this one. The
+	 * answer is kept, so a route with side effects is not called again on
+	 * every Agent surface load or audit, and `initialize` is sent alone
+	 * unless it came back as a JSON-RPC error. A refusal (401, 403, a
+	 * WWW-Authenticate challenge, an error) is not open, and sets
+	 * `$refused`. A route that couldn't be asked (loopback blocked, timed
+	 * out, or past this report's time budget) reads as its permission
+	 * callback says: open, as before it was asked.
+	 *
+	 * @param bool $refused Set when the route asked the caller to sign in.
+	 */
+	private static function serves_stranger( string $route, bool &$refused = false ): bool {
+		// A route with a parameter in its path can't be called as listed.
+		if ( str_contains( $route, '(?P<' ) || str_contains( $route, '(' ) ) {
+			return true;
+		}
+
+		$kept = get_transient( self::CACHE );
+		$kept = is_array( $kept ) ? $kept : array();
+		$key  = md5( $route );
+
+		if ( isset( $kept[ $key ] ) && is_array( $kept[ $key ] ) && (int) ( $kept[ $key ]['until'] ?? 0 ) > time() ) {
+			$refused = ! empty( $kept[ $key ]['refused'] );
+
+			return ! empty( $kept[ $key ]['open'] );
+		}
+
+		$answer = self::ask( $route );
+
+		// Past this report's time budget: not the route's doing, so nothing
+		// is kept, and it is asked on the next load.
+		if ( false === $answer ) {
+			return true;
+		}
+
+		if ( null === $answer ) {
+			$kept[ $key ] = array(
+				'open'    => true,
+				'refused' => false,
+				'until'   => time() + self::KEEP_UNCHECKED,
+			);
+		} else {
+			$kept[ $key ] = $answer + array( 'until' => time() + self::KEEP );
+		}
+
+		set_transient( self::CACHE, $kept, self::KEEP );
+
+		$refused = ! empty( $kept[ $key ]['refused'] );
+
+		return ! empty( $kept[ $key ]['open'] );
+	}
+
+	/**
+	 * What a stranger gets from the route, null when it couldn't be asked,
+	 * or false when this report's time budget ran out first.
+	 *
+	 * @return array{open: bool, refused: bool}|null|false
+	 */
+	private static function ask( string $route ) {
+		$path = self::path_of( $route );
+
+		if ( null === $path ) {
+			return null;
+		}
+
+		foreach ( array( 'initialize', 'tools/list' ) as $index => $method ) {
+			$left = self::BUDGET - self::$spent;
+
+			if ( $left < 1 ) {
+				return 0 === $index ? false : null;
+			}
+
+			$began    = microtime( true );
+			$response = \BetterShield\Support\Http::same_site_post(
+				$path,
+				array(
+					'timeout' => (int) min( self::TIMEOUT, floor( $left ) ),
+					'headers' => array(
+						'Content-Type' => 'application/json',
+						'Accept'       => 'application/json, text/event-stream',
+					),
+					'body'    => (string) wp_json_encode(
+						array(
+							'jsonrpc' => '2.0',
+							'id'      => $index + 1,
+							'method'  => $method,
+							'params'  => 'initialize' === $method ? array(
+								'protocolVersion' => '2025-06-18',
+								'capabilities'    => new \stdClass(),
+								'clientInfo'      => array(
+									'name'    => 'bettershield-audit',
+									'version' => '1',
+								),
+							) : new \stdClass(),
+						)
+					),
+				)
+			);
+
+			self::$spent += microtime( true ) - $began;
+
+			if ( is_wp_error( $response ) ) {
+				return null;
+			}
+
+			$status  = (int) wp_remote_retrieve_response_code( $response );
+			$headers = array();
+
+			// Requests' header dictionary is iterable, not an array to cast.
+			foreach ( wp_remote_retrieve_headers( $response ) as $name => $value ) {
+				$headers[ strtolower( (string) $name ) ] = $value;
+			}
+
+			$body    = (string) wp_remote_retrieve_body( $response );
+
+			if ( self::is_refusal( $status, $headers ) ) {
+				return array(
+					'open'    => false,
+					'refused' => true,
+				);
+			}
+
+			if ( self::is_result( $body ) ) {
+				return array(
+					'open'    => true,
+					'refused' => false,
+				);
+			}
+
+			// `tools/list` is worth asking only of a route that answered as
+			// JSON-RPC but not with a result (a server that skips
+			// `initialize`). Anything else is not an AI connection, and is
+			// not called again.
+			if ( ! self::is_rpc_error( $body ) ) {
+				break;
+			}
+		}
+
+		return array(
+			'open'    => false,
+			'refused' => false,
+		);
+	}
+
+	/**
+	 * The route as a path on this site, the way `rest_url()` spells it for
+	 * the site's permalinks, or null when that isn't under the site's home.
+	 */
+	private static function path_of( string $route ): ?string {
+		$home = home_url( '/' );
+		$url  = rest_url( ltrim( $route, '/' ) );
+
+		if ( ! str_starts_with( $url, $home ) ) {
+			return null;
+		}
+
+		return '/' . ltrim( substr( $url, strlen( $home ) ), '/' );
+	}
+
+	/**
+	 * Forgets every route's kept answer: a plugin switched on, off or
+	 * updated may answer differently now.
+	 */
+	public static function forget(): void {
+		delete_transient( self::CACHE );
+	}
+
+	/**
+	 * Whether an answer's body is a JSON-RPC result.
+	 */
+	private static function is_result( string $data ): bool {
+		if ( self::is_result_message( json_decode( $data, true ) ) ) {
+			return true;
+		}
+
+		// Streamable HTTP may answer as a stream of events, each message on
+		// a `data:` line: asked with text/event-stream accepted, that is as
+		// real an answer as plain JSON (#2939).
+		foreach ( preg_split( '/\r\n|\r|\n/', $data ) as $line ) {
+			if ( str_starts_with( $line, 'data:' ) && self::is_result_message( json_decode( trim( substr( $line, 5 ) ), true ) ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether an answer's body is a JSON-RPC error, as plain JSON or on an
+	 * event stream's `data:` line.
+	 */
+	private static function is_rpc_error( string $data ): bool {
+		$lines = array_merge( array( $data ), preg_split( '/\r\n|\r|\n/', $data ) );
+
+		foreach ( $lines as $line ) {
+			$line    = str_starts_with( $line, 'data:' ) ? trim( substr( $line, 5 ) ) : $line;
+			$message = json_decode( $line, true );
+
+			if ( is_array( $message ) && array_key_exists( 'error', $message ) && isset( $message['jsonrpc'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether an answer refuses the caller: an error status, or a
+	 * WWW-Authenticate challenge.
+	 *
+	 * @param array<string, mixed> $headers Lowercased names.
+	 */
+	private static function is_refusal( int $status, array $headers ): bool {
+		return $status >= 400 || array_key_exists( 'www-authenticate', $headers );
+	}
+
+	/**
+	 * Whether one decoded JSON-RPC message is a result, not an error.
+	 *
+	 * @param mixed $message
+	 */
+	private static function is_result_message( $message ): bool {
+		return is_array( $message ) && array_key_exists( 'result', $message ) && ! array_key_exists( 'error', $message );
 	}
 
 	/**

@@ -747,7 +747,9 @@ export default function Findings() {
 	 * what was already undone (#1811).
 	 */
 	const bringBack = ( act, id, message ) => () => {
-		setResult( ( current ) => ( current && ( current.keys || [] ).includes( id ) ? null : current ) );
+		// Every status change replaces the banner: one left up for another
+		// finding kept an Undo that reopened that one, not this (#2917).
+		setResult( null );
 		act( id, () => {
 			say( message );
 			toTitle();
@@ -789,7 +791,7 @@ export default function Findings() {
 			// make-pot hands it to the label instead.
 			const said = sprintf(
 				/* translators: %s: a finding's title. */
-				__( '%s is back in Open.', 'bettershield' ),
+				__( '“%s” is back in Open.', 'bettershield' ),
 				finding.title
 			);
 
@@ -799,7 +801,7 @@ export default function Findings() {
 		if ( 'suppressed' === view ) {
 			const said = sprintf(
 				/* translators: %s: a finding's title. */
-				__( '%s is back in Open.', 'bettershield' ),
+				__( '“%s” is back in Open.', 'bettershield' ),
 				finding.title
 			);
 

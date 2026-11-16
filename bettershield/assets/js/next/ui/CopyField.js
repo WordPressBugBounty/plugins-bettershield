@@ -90,11 +90,13 @@ export function CopyButton( { text, label, type = 'secondary', inPlace = false }
  * @param {string}  props.value     The value.
  * @param {boolean} props.multiline A block of lines rather than one line.
  * @param {string}  props.copyLabel The button's words; "Copy" by default.
+ * @param {string}  props.copyValue What the button copies, when it differs from
+ *                                  what is shown (a key shown masked).
  * @param {string}  props.dir       The value's direction: "ltr" for an address,
  *                                  a key or code; "auto" for words in the
  *                                  reader's language, such as a message.
  */
-export default function CopyField( { label, value, multiline = false, copyLabel, dir = 'ltr' } ) {
+export default function CopyField( { label, value, copyValue, multiline = false, copyLabel, dir = 'ltr' } ) {
 	const text = value || '';
 	const labelId = `bs-ds-copy-${ useId().replace( /[^\w-]/g, '' ) }`;
 
@@ -117,7 +119,7 @@ export default function CopyField( { label, value, multiline = false, copyLabel,
 				) : (
 					<input className="bs-ds-copyfield__value" type="text" dir={ dir } readOnly value={ text } aria-label={ label } />
 				) }
-				<CopyButton text={ text } label={ copyLabel || __( 'Copy', 'bettershield' ) } inPlace />
+				<CopyButton text={ undefined === copyValue ? text : copyValue } label={ copyLabel || __( 'Copy', 'bettershield' ) } inPlace />
 			</div>
 		</div>
 	);

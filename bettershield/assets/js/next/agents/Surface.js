@@ -1163,6 +1163,12 @@ function McpServers( { endpoints } ) {
 							<Cell>
 								{ endpoint.open ? (
 									<Badge tone={ kindTone( 'high' ) }>{ __( 'anyone, no sign-in', 'bettershield' ) }</Badge>
+								) : endpoint.sign_in ? (
+									// OAuth discovery and sign-in steps have to answer a caller with no token (#2939).
+									<Badge tone={ kindTone( 'neutral' ) }>{ __( 'sign-in route', 'bettershield' ) }</Badge>
+								) : endpoint.not_mcp ? (
+									// Let a stranger through but gave no AI-connection answer, so it asks for no sign-in either.
+									<Badge tone={ kindTone( 'neutral' ) }>{ __( 'not an AI connection', 'bettershield' ) }</Badge>
 								) : (
 									<Badge tone={ kindTone( 'neutral' ) }>{ __( 'signed-in users only', 'bettershield' ) }</Badge>
 								) }

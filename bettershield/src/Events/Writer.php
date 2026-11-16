@@ -176,6 +176,8 @@ final class Writer {
 		'store_script_unaccepted',
 		'store_script_host_added',
 		'observed_change_response',
+		'observed_change_restored',
+		'observed_change_reapplied',
 		'dormant_privileged_login',
 		// A ruling that reaches every site of a network is history no site
 		// may thin on its own behalf.
@@ -414,6 +416,8 @@ final class Writer {
 		'two_factor_failed',
 		// Usually a visitor's page view, where a magic link or social sign-in lands.
 		'two_factor_skipped',
+		// The same, for an administrator with no second factor to skip.
+		'session_without_sign_in',
 		// Re-entering a password to reach something dangerous, refused. The
 		// same signal as a wrong second factor: somebody is at the door of an
 		// action this plugin guards.

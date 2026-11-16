@@ -455,10 +455,10 @@ function SamplingNotice( { sampling } ) {
  * What an arrival asks this tab to open, from the address's fragment.
  *
  * @param {string} hash The address's fragment, with its #.
- * @return {?string} 'filters', 'search' or null.
+ * @return {?string} 'filters', 'search', 'undo' or null.
  */
 function arrivedFor( hash ) {
-	return { '#filters': 'filters', '#search': 'search' }[ hash ] || null;
+	return { '#filters': 'filters', '#search': 'search', '#undo': 'undo' }[ hash ] || null;
 }
 
 export default function SiteActivity( { network = false } ) {
@@ -531,6 +531,9 @@ export default function SiteActivity( { network = false } ) {
 	 */
 	const searchField = useRef( null );
 	const filtersToggle = useRef( null );
+	// #undo, from the Overview's "More undos on Activity" (#2918): the
+	// folded card that lists them is opened and focused.
+	const undoToggle = useRef( null );
 	const [ arrival, setArrival ] = useState( () => arrivedFor( window.location.hash ) );
 
 	useEffect( () => {
@@ -542,7 +545,7 @@ export default function SiteActivity( { network = false } ) {
 	}, [] );
 
 	useEffect( () => {
-		const node = 'search' === arrival ? searchField.current : filtersToggle.current;
+		const node = { search: searchField, filters: filtersToggle, undo: undoToggle }[ arrival ]?.current;
 
 		if ( ! arrival || ! node ) {
 			return;
@@ -558,10 +561,12 @@ export default function SiteActivity( { network = false } ) {
 				return;
 			}
 
-			if ( 'search' === arrival ) {
-				node.focus();
-			} else if ( 'true' !== node.getAttribute( 'aria-expanded' ) ) {
+			if ( 'search' !== arrival && 'true' !== node.getAttribute( 'aria-expanded' ) ) {
 				node.click();
+			}
+
+			if ( 'filters' !== arrival ) {
+				node.focus();
 			}
 		}, 0 );
 	} );
@@ -981,7 +986,7 @@ export default function SiteActivity( { network = false } ) {
 		<>
 			<Stats label={ __( 'Activity at a glance', 'bettershield' ) } tiles={ tiles } />
 
-			{ canManage && ! network ? <ObservedChanges /> : null }
+			{ canManage && ! network ? <ObservedChanges toggleRef={ undoToggle } /> : null }
 
 			<Card className="bs-ds-log" aria-labelledby="bs-ds-log-title">
 				{ /* The export is the one control about the whole log rather than

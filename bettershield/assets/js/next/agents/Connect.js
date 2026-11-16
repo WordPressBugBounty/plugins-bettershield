@@ -133,10 +133,12 @@ export function vscodeConfig( url ) {
  * What each client does with what this card hands it, in its own order: three
  * short steps, the same three places every time (get it, paste it, finish).
  *
- * @param {string} client One of CLIENTS' keys.
+ * @param {string}  client One of CLIENTS' keys.
+ * @param {boolean} hasKey The new key is on screen, so the configuration
+ *                         already carries it (#2924).
  * @return {string[]} The steps, in order.
  */
-export function clientSteps( client ) {
+export function clientSteps( client, hasKey = false ) {
 	switch ( client ) {
 		case 'chatgpt':
 			return [
@@ -148,13 +150,17 @@ export function clientSteps( client ) {
 			return [
 				__( 'Create a connection key below.', 'bettershield' ),
 				__( 'In Claude Desktop, open Settings → Developer → Edit Config and add the configuration.', 'bettershield' ),
-				__( 'Put your key in place of PASTE_YOUR_TOKEN_HERE, then restart Claude Desktop.', 'bettershield' ),
+				hasKey
+					? __( 'Your key is already in it, so just restart Claude Desktop.', 'bettershield' )
+					: __( 'Put your key in place of PASTE_YOUR_TOKEN_HERE, then restart Claude Desktop.', 'bettershield' ),
 			];
 		case 'cursor':
 			return [
 				__( 'Create a connection key below.', 'bettershield' ),
 				__( 'In Cursor, open Settings → MCP → Add new server and paste the configuration.', 'bettershield' ),
-				__( 'Put your key in place of PASTE_YOUR_TOKEN_HERE, then save.', 'bettershield' ),
+				hasKey
+					? __( 'Your key is already in it, so just save.', 'bettershield' )
+					: __( 'Put your key in place of PASTE_YOUR_TOKEN_HERE, then save.', 'bettershield' ),
 			];
 		case 'vscode':
 			return [
@@ -1717,11 +1723,12 @@ function ConnectScreen( { surface } ) {
 			</div>
 
 			<div className="bs-ds-connect__recipe" { ...panelProps( CLIENTS_ID, pickedClient.key ) }>
-				<Steps steps={ clientSteps( pickedClient.key ) } />
+				<Steps steps={ clientSteps( pickedClient.key, paired && !! token ) } />
 				{ paired ? (
 					<Recipe
 						snippet={ 'vscode' === pickedClient.key ? { json: vscodeConfig( connection.fallback_endpoint || endpoint ) } : snippets[ pickedClient.key ] }
 						endpoint={ endpoint }
+						token={ token || '' }
 					/>
 				) : (
 					<p className="bs-ds-connect__needkey">{ __( 'This assistant needs a connection key. Create one below, then copy the setup.', 'bettershield' ) }</p>

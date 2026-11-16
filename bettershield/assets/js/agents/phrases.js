@@ -200,10 +200,10 @@ export function testSentence( result ) {
 		const tools = Number( result.tools || 0 );
 
 		return sprintf(
-			/* translators: %d: how many actions answered the test. */
+			/* translators: %d: how many tools the endpoint offered. */
 			_n(
-				'It works. %d action is available to your assistant.',
-				'It works. %d actions are available to your assistant.',
+				'It works. %d tool is available to your assistant.',
+				'It works. %d tools are available to your assistant.',
 				tools,
 				'bettershield'
 			),

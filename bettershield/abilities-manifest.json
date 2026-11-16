@@ -1,7 +1,7 @@
 {
     "schema": "bettershield.abilities-manifest/1",
     "plugin": "bettershield",
-    "plugin_version": "1.1.8",
+    "plugin_version": "1.1.9",
     "locale": "en_US",
     "catalog_hashes": {
         "read": "sha256:3625a765918754340f72167f8996c883615e8c5b4acdc1ffba3aad471b9dc2bf",

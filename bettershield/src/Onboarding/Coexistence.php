@@ -116,6 +116,16 @@ final class Coexistence {
 		'change-wp-admin-login/change-wp-admin-login.php' => array(
 			'login_url' => array( 'aio_login__cwpal_enable', false ),
 		),
+		// Keeps every switch in one option, "t" for on and "f" for off,
+		// written when it is switched on: the sign-in limit on, two-factor
+		// and the moved address off. It reads a switch it can't find as off,
+		// as on a network's other sites, where it turns itself off. Its
+		// two-factor asks only the roles it names, which active() reads.
+		'cloudsecure-wp-security/cloudsecure-wp.php' => array(
+			'login_limits' => array( 'cloudsecurewp_config', false, 'disable_login', array( 't' ) ),
+			'two_factor'   => array( 'cloudsecurewp_config', false, 'two_factor_authentication', array( 't' ) ),
+			'login_url'    => array( 'cloudsecurewp_config', false, 'rename_login_page', array( 't' ) ),
+		),
 		// Each limits sign-ins only while its lockout is switched on: on out
 		// of the box in the first two, off in the others. One more keeps
 		// that switch in a table of its own. See active().
@@ -215,6 +225,9 @@ final class Coexistence {
 			'ninjafirewall/ninjafirewall.php'                                 => array( 'login_limits', 'firewall' ),
 			'limit-login-attempts-reloaded/limit-login-attempts-reloaded.php' => array( 'login_limits' ),
 			'limit-login-attempts/limit-login-attempts.php'                   => array( 'login_limits' ),
+			// Each job behind its own switch: the sign-in limit on out of the
+			// box, two-factor and the moved address off. See SWITCHED_JOBS.
+			'cloudsecure-wp-security/cloudsecure-wp.php'                      => array( 'login_limits', 'two_factor', 'login_url' ),
 			'loginizer/loginizer.php'                                         => array( 'login_limits' ),
 			// Limits from the moment it loads, with no switch to turn it off.
 			'wps-limit-login/wps-limit-login.php'                             => array( 'login_limits' ),
@@ -319,6 +332,17 @@ final class Coexistence {
 
 			if ( 'hide-my-wp/index.php' === $file && ! self::switched_on( array( 'hmwp_options', false, 'hmwp_2falogin' ) ) ) {
 				$jobs = array_diff( $jobs, array( 'two_factor' ) );
+			}
+
+			// Asks only the roles it names, and nobody while none are: never
+			// saved, as when it is switched on from its WP-CLI command, or
+			// every role unticked on its screen.
+			if ( 'cloudsecure-wp-security/cloudsecure-wp.php' === $file ) {
+				$roles = get_option( 'cloudsecurewp_two_factor_authentication_roles', array() );
+
+				if ( ! is_array( $roles ) || array() === array_filter( $roles, 'is_string' ) ) {
+					$jobs = array_diff( $jobs, array( 'two_factor' ) );
+				}
 			}
 
 			// Kept for the whole network; 0, or not yet written, until it is
