@@ -49,7 +49,12 @@ final class Migrate {
 		'lockdown'  => array( 'login-lockdown/loginlockdown.php' ),
 		// A moved sign-in address, and the dashboard hidden with it.
 		'wps'       => array( 'wps-hide-login/wps-hide-login.php' ),
+		// Who must use two-factor, and how long they have to set it up.
+		'wp2fa'     => array( 'wp-2fa/wp-2fa.php' ),
 	);
+
+	/** The longest grace period two-factor's requirement keeps, in days. */
+	private const MAX_GRACE_DAYS = 90;
 
 	/**
 	 * The settings that source keeps one option each, under its own prefix:
@@ -151,12 +156,21 @@ final class Migrate {
 				'name'     => '' !== $name ? $name : __( 'A security plugin that is no longer installed', 'bettershield' ),
 				'active'   => $active,
 				'document' => $read['document'],
-				'mapped'   => count( $read['document']['hardening'] ?? array() ) + self::carried_login( (array) ( $read['document']['login_protection'] ?? array() ) ),
+				'mapped'   => count( $read['document']['hardening'] ?? array() ) + self::carried_login( (array) ( $read['document']['login_protection'] ?? array() ) ) + ( isset( $read['document']['two_factor_policy'] ) ? 1 : 0 ),
 				'unmapped' => $read['unmapped'],
 			);
 		}
 
 		return $out;
+	}
+
+	/**
+	 * The plugin files a source reads, either edition.
+	 *
+	 * @return string[]
+	 */
+	public static function files_of( string $key ): array {
+		return self::SOURCES[ $key ] ?? array();
 	}
 
 	/**
@@ -311,6 +325,16 @@ final class Migrate {
 					'redirect' => '' !== $redirect ? $redirect : '404',
 				);
 
+			case 'wp2fa':
+				// One option for the whole rule; never saved, it requires nobody.
+				$policy = get_option( 'wp_2fa_policy', null );
+
+				if ( ! is_array( $policy ) && is_multisite() && $network ) {
+					$policy = get_site_option( 'wp_2fa_policy', null );
+				}
+
+				return is_array( $policy ) ? $policy : null;
+
 			case 'loginizer':
 				$options = get_option( 'loginizer_options' );
 
@@ -419,6 +443,10 @@ final class Migrate {
 			return null;
 		}
 
+		// Who its two-factor is required of, from its sign-in security's own
+		// settings table: only those rows.
+		$out['_wfls'] = self::wfls_policy_raw();
+
 		// Whether anybody is enrolled in its two-factor: a count, never a row.
 		$secrets = self::existing_table( array( $wpdb->base_prefix . 'wfls_2fa_secrets' ) );
 
@@ -426,6 +454,157 @@ final class Migrate {
 		$out['_two_factor_enrolled'] = null !== $secrets && (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $secrets ) ) > 0 ? '1' : '0';
 
 		return $out;
+	}
+
+	/**
+	 * The rows of Wordfence's sign-in security settings that say who must use
+	 * two-factor and for how long they may put it off, by name.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function wfls_policy_raw(): array {
+		global $wpdb;
+
+		$table = self::existing_table( array( $wpdb->base_prefix . 'wfls_settings' ) );
+
+		if ( null === $table ) {
+			return array();
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- another plugin's own settings table, read once when the owner asks what can be brought over; nothing is written to it.
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT name, value FROM %i WHERE name LIKE %s OR name = %s', $table, $wpdb->esc_like( 'required-2fa-role.' ) . '%', '2fa-user-grace-period' ) );
+		$out  = array();
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$out[ (string) $row->name ] = (string) $row->value;
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Another plugin's rule for who must use two-factor, added to this site's
+	 * own rather than put in its place: every role either requires, and the
+	 * shorter wait. Taken whole, a rule for subscribers dropped administrators
+	 * from a requirement this site already had, and a longer wait came with
+	 * it. Where this site requires nobody yet, the wait is the other plugin's,
+	 * since there is no wait of this site's to keep.
+	 *
+	 * @param array{roles: string[], grace_days: int} $policy
+	 * @return array{roles: string[], grace_days: int}
+	 */
+	public static function added_to_current( array $policy ): array {
+		$current = \BetterShield\TwoFactor\Policy::instance()->settings();
+		$roles   = array_values( array_map( 'strval', (array) $current['roles'] ) );
+
+		if ( array() === $roles ) {
+			return $policy;
+		}
+
+		return array(
+			'roles'      => array_values( array_unique( array_merge( $roles, array_map( 'strval', (array) $policy['roles'] ) ) ) ),
+			'grace_days' => min( (int) $current['grace_days'], (int) $policy['grace_days'] ),
+		);
+	}
+
+	/**
+	 * WP 2FA's rule for who must use two-factor, as this plugin's requirement
+	 * by role, or null where it requires nobody this plugin can name. What
+	 * it requires by account, or of a network's administrators, is listed.
+	 *
+	 * @param array<string, mixed>                              $raw      Its `wp_2fa_policy` option.
+	 * @param array<int, array{setting: string, reason: string}> $unmapped
+	 * @return array{roles: string[], grace_days: int}|null
+	 */
+	private static function wp2fa_policy( array $raw, array &$unmapped ): ?array {
+		$policy   = (string) ( $raw['enforcement-policy'] ?? 'do-not-enforce' );
+		$all      = array_keys( wp_roles()->roles );
+		$listed   = static fn( $value ): array => array_values( array_filter( array_map( 'strval', is_array( $value ) ? $value : ( '' === (string) $value ? array() : explode( ',', (string) $value ) ) ) ) );
+		$excluded = $listed( $raw['excluded_roles'] ?? array() );
+		$roles    = array();
+
+		if ( 'all-users' === $policy ) {
+			$roles = $all;
+		} elseif ( 'certain-roles-only' === $policy ) {
+			$roles = array_values( array_intersect( $listed( $raw['enforced_roles'] ?? array() ), $all ) );
+		} elseif ( in_array( $policy, array( 'superadmins-only', 'superadmins-siteadmins-only', 'enforce-on-multisite' ), true ) ) {
+			$unmapped[] = array(
+				'setting' => __( 'Two-factor required across the network', 'bettershield' ),
+				'reason'  => __( 'Required by role here. Choose the roles under Protection › Two-Factor, or set the network’s rule in Network Admin.', 'bettershield' ),
+			);
+		}
+
+		if ( 'certain-users-only' === $policy || array() !== $listed( $raw['enforced_users'] ?? array() ) || array() !== $listed( $raw['excluded_users'] ?? array() ) ) {
+			$unmapped[] = array(
+				'setting' => __( 'Two-factor required or excused for named accounts', 'bettershield' ),
+				'reason'  => __( 'Two-factor is required by role here, not by account.', 'bettershield' ),
+			);
+		}
+
+		$roles = array_values( array_diff( $roles, $excluded ) );
+
+		if ( 'do-not-enforce' === $policy || array() === $roles ) {
+			return null;
+		}
+
+		$days = 0;
+
+		if ( 'use-grace-period' === ( $raw['grace-policy'] ?? '' ) ) {
+			$seconds = array(
+				'days'    => DAY_IN_SECONDS,
+				'hours'   => HOUR_IN_SECONDS,
+				'seconds' => 1,
+			)[ (string) ( $raw['grace-period-denominator'] ?? 'days' ) ] ?? DAY_IN_SECONDS;
+
+			$days = (int) ceil( max( 0, (int) ( $raw['grace-period'] ?? 0 ) ) * $seconds / DAY_IN_SECONDS );
+		}
+
+		return array(
+			'roles'      => $roles,
+			'grace_days' => min( self::MAX_GRACE_DAYS, $days ),
+		);
+	}
+
+	/**
+	 * Wordfence's rule for who must use two-factor, as this plugin's
+	 * requirement by role, or null where it requires nobody this plugin can
+	 * name. Its rule for a network's super administrators is listed.
+	 *
+	 * @param array<string, string>                             $raw      Its rows, as `wfls_policy_raw()` reads them.
+	 * @param array<int, array{setting: string, reason: string}> $unmapped
+	 * @return array{roles: string[], grace_days: int}|null
+	 */
+	private static function wf_policy( array $raw, array &$unmapped ): ?array {
+		$all   = array_keys( wp_roles()->roles );
+		$roles = array();
+
+		foreach ( $raw as $name => $value ) {
+			if ( 0 !== strpos( $name, 'required-2fa-role.' ) || ! is_numeric( $value ) || (int) $value <= 0 ) {
+				continue;
+			}
+
+			$role = substr( $name, strlen( 'required-2fa-role.' ) );
+
+			if ( 'super-admin' === $role ) {
+				$unmapped[] = array(
+					'setting' => __( 'Two-factor required of super administrators', 'bettershield' ),
+					'reason'  => __( 'Required by role here. Set the network’s rule in Network Admin.', 'bettershield' ),
+				);
+			} elseif ( in_array( $role, $all, true ) ) {
+				$roles[] = $role;
+			}
+		}
+
+		if ( array() === $roles ) {
+			return null;
+		}
+
+		$grace = $raw['2fa-user-grace-period'] ?? '10';
+
+		return array(
+			'roles'      => $roles,
+			'grace_days' => min( self::MAX_GRACE_DAYS, max( 0, is_numeric( $grace ) ? (int) $grace : 10 ) ),
+		);
 	}
 
 	/**
@@ -472,6 +651,7 @@ final class Migrate {
 		$blocked  = array();
 		$unmapped = array();
 		$address  = null;
+		$policy   = null;
 
 		if ( 'solid' === $key ) {
 			$storage = (array) ( $raw['storage'] ?? array() );
@@ -583,6 +763,9 @@ final class Migrate {
 
 			$lists    = self::lists( $raw['whitelisted'] ?? '' );
 			$unmapped = array_merge( $unmapped, $lists['unmapped'], self::wf_not_carried( $raw ) );
+			$policy   = self::wf_policy( is_array( $raw['_wfls'] ?? null ) ? $raw['_wfls'] : array(), $unmapped );
+		} elseif ( 'wp2fa' === $key ) {
+			$policy = self::wp2fa_policy( $raw, $unmapped );
 		} elseif ( 'llar' === $key ) {
 			// Its times are kept in seconds; these are minutes.
 			$login = self::numbers( $raw['allowed_retries'] ?? null, self::minutes( $raw['valid_duration'] ?? null ), self::minutes( $raw['lockout_duration'] ?? null ) );
@@ -756,6 +939,10 @@ final class Migrate {
 
 		foreach ( array_values( array_unique( array_intersect( $items, self::ITEMS ) ) ) as $item ) {
 			$document['hardening'][ $item ] = array( 'active' => true );
+		}
+
+		if ( null !== $policy ) {
+			$document['two_factor_policy'] = self::added_to_current( $policy );
 		}
 
 		if ( null !== $address ) {

@@ -41,6 +41,7 @@ import { listOf } from '../../../setup/format';
 import { formatCount } from '../../../ui/count';
 import { announce } from '../../../ui/announce';
 import brand from '../brand';
+import { chosenFor, listedOff, switchingOff as offOf } from '../switchingOff';
 
 /** Each job's tile in its card's header. */
 const ICONS = {
@@ -73,7 +74,7 @@ function words( row, vulnerabilityChecks = false, home = '/wp-login.php' ) {
 				options: [
 					{ value: 'bettershield', label: sprintf( /* translators: %s: the plugin's name. */ __( 'Use %s', 'bettershield' ), brand() ), note: __( 'Recommended', 'bettershield' ) },
 					/* translators: %s: one or more plugin names. */
-					{ value: 'keep', label: sprintf( __( 'Keep %s', 'bettershield' ), names ), note: sprintf( /* translators: %s: the plugin's name. */ __( '%s’s sign-in limit is turned off', 'bettershield' ), brand() ) },
+					{ value: 'keep', label: sprintf( __( 'Keep %s', 'bettershield' ), names ), short: __( 'Keep theirs', 'bettershield' ), note: sprintf( /* translators: %s: the plugin's name. */ __( '%s’s sign-in limit is turned off', 'bettershield' ), brand() ) },
 				],
 			};
 		case 'two_factor':
@@ -84,7 +85,7 @@ function words( row, vulnerabilityChecks = false, home = '/wp-login.php' ) {
 				options: [
 					{ value: 'bettershield', label: sprintf( /* translators: %s: the plugin's name. */ __( 'Use %s', 'bettershield' ), brand() ), note: __( 'Recommended', 'bettershield' ) },
 					/* translators: %s: one or more plugin names. */
-					{ value: 'keep', label: sprintf( __( 'Keep %s', 'bettershield' ), names ), note: sprintf( /* translators: %s: the plugin's name. */ __( '%s won’t set up its own two-factor', 'bettershield' ), brand() ) },
+					{ value: 'keep', label: sprintf( __( 'Keep %s', 'bettershield' ), names ), short: __( 'Keep theirs', 'bettershield' ), note: sprintf( /* translators: %s: the plugin's name. */ __( '%s won’t set up its own two-factor', 'bettershield' ), brand() ) },
 				],
 			};
 		case 'login_url': {
@@ -98,6 +99,8 @@ function words( row, vulnerabilityChecks = false, home = '/wp-login.php' ) {
 					: /* translators: 1: this plugin's name, 2: one or more plugin names. */
 					  sprintf( __( '%1$s’s sign-in address is on too, and only one address can work. Turn off %1$s’s under Login & Access, or deactivate %2$s.', 'bettershield' ), brand(), names );
 			}
+			// An address held for the way back in (#2968) comes over at the
+			// end of the run without a word here: the card stays quiet.
 
 			return {
 				title: __( 'Sign-in address', 'bettershield' ),
@@ -115,7 +118,7 @@ function words( row, vulnerabilityChecks = false, home = '/wp-login.php' ) {
 							  sprintf( __( 'Your sign-in page goes back to %s', 'bettershield' ), home ),
 					},
 					/* translators: %s: one or more plugin names. */
-					{ value: 'keep', label: sprintf( __( 'Keep %s', 'bettershield' ), names ), note: sprintf( /* translators: %s: the plugin's name. */ __( '%s won’t change your sign-in address', 'bettershield' ), brand() ) },
+					{ value: 'keep', label: sprintf( __( 'Keep %s', 'bettershield' ), names ), short: __( 'Keep theirs', 'bettershield' ), note: sprintf( /* translators: %s: the plugin's name. */ __( '%s won’t change your sign-in address', 'bettershield' ), brand() ) },
 				],
 			};
 		}
@@ -178,19 +181,6 @@ function jobWords() {
  */
 function keptFor( plugin, choices ) {
 	return ( plugin.jobs || [] ).filter( ( job ) => 'bettershield' !== choices[ job ] );
-}
-
-/**
- * The jobs a plugin is kept for by a choice on screen. A job with no choice,
- * such as a firewall, is left out: nothing on this step can hand it over,
- * so it never stands between the owner and the Plugins screen (#2232).
- *
- * @param {Object} plugin  The plugin, with its jobs.
- * @param {Object} choices Job => choice, as on screen.
- * @return {string[]} The jobs a choice still keeps it for.
- */
-function chosenFor( plugin, choices ) {
-	return ( plugin.jobs || [] ).filter( ( job ) => Object.prototype.hasOwnProperty.call( choices, job ) && 'bettershield' !== choices[ job ] );
 }
 
 /**
@@ -369,7 +359,7 @@ function heldBack( why, name, networkPlugins = '' ) {
 }
 
 export default function Coexistence() {
-	const { state, run, hold, busy, advance, setNotice, links, keepFocus, stayOnStep, refresh } = useSetup();
+	const { state, run, hold, busy, advance, setNotice, links, keepFocus, stayOnStep, refresh, setDraft = () => {} } = useSetup();
 	/*
 	 * Plugins switched off from this step, for their Turn It Back On: once
 	 * off, a plugin is no longer among the rows. And those core left on, by
@@ -397,6 +387,14 @@ export default function Coexistence() {
 		return initial;
 	} );
 
+	// The picture beside the step follows the answers as they are chosen,
+	// before anything is saved.
+	useEffect( () => {
+		setDraft( { coexistence: choices } );
+	}, [ choices ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	useEffect( () => () => setDraft( null ), [] ); // eslint-disable-line react-hooks/exhaustive-deps
+
 	/*
 	 * A plugin doing several jobs is offered once, under the last of its
 	 * cards, so one confirmation covers everything it stops.
@@ -414,6 +412,7 @@ export default function Coexistence() {
 	 * every job with a choice is BetterShield's, under the last of its cards.
 	 */
 	const pointed = ( plugin, job ) =>
+		! ( plugin.waits && 'bettershield' === choices.login_url ) &&
 		! chosenFor( plugin, choices ).length && ( 'off' === plugin.why || ( '' === plugin.why && keptFor( plugin, choices ).length > 0 ) ) && lastCardOf( plugin ) === job;
 
 	// Reachable by WordPress's own link, so the main button can take it.
@@ -435,26 +434,12 @@ export default function Coexistence() {
 	 * choice is BetterShield's on screen, once, where WordPress gives a link
 	 * this account may use. The cards already say what else stops with each.
 	 */
-	const listed = [];
-
-	rows.forEach( ( row ) =>
-		( row.deactivate || [] ).forEach( ( plugin ) => {
-			if ( listed.some( ( other ) => other.file === plugin.file ) ) {
-				return;
-			}
-
-			const jobs = plugin.jobs || [];
-
-			if ( ! chosenFor( plugin, choices ).length && jobs.some( ( job ) => 'bettershield' === choices[ job ] ) ) {
-				listed.push( plugin );
-			}
-		} )
-	);
+	const listed = listedOff( rows, choices );
 
 	// How many other plugins the step names, for its heading.
 	const others = new Set( rows.flatMap( ( row ) => row.plugins || [] ) ).size;
 
-	const movable = listed.filter( ( plugin ) => ( 'off' === plugin.why || '' === plugin.why ) && ( plugin.link || plugin.deactivate_url ) );
+	const movable = offOf( listed );
 
 	// The plugins the main button switches off.
 	const switchingOff = movable;
@@ -804,6 +789,7 @@ export default function Coexistence() {
 						label: primaryLabel(),
 						onClick: save,
 						busy: 'coexistence' === busy,
+						icon: false,
 					} }
 				/>
 			}
@@ -818,12 +804,20 @@ export default function Coexistence() {
 				}
 
 				return (
-					<SettingsCard key={ row.job } icon={ ICONS[ row.job ] || 'shield' } title={ text.title } intro={ 'choice' === row.kind ? undefined : text.statement }>
+					<SettingsCard
+						key={ row.job }
+						icon={ ICONS[ row.job ] || 'shield' }
+						title={ text.title }
+						// A choice card is its title and its answers; the picture beside
+						// the step names the plugins.
+						intro={ 'choice' === row.kind ? undefined : text.statement }
+					>
 						{ 'choice' === row.kind ? (
 							<div className="bs-ds-setup-card__body">
 								<Choice
 									legend={ text.title }
 									quiet
+									inline
 									value={ chosen }
 									options={ text.options.map( ( option ) => ( 'bettershield' === option.value ? { ...option, tip: useTip( row ) } : option ) ) }
 									onChange={ ( value ) => setChoices( { ...choices, [ row.job ]: value } ) }

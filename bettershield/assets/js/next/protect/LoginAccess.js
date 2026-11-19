@@ -790,7 +790,7 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 				<Rule
 					focusKey="honeypot"
 					title={ __( 'Block simple bots on forms', 'bettershield' ) }
-					help={ __( 'Stops many bots on sign-in, sign-up and comment forms, with no puzzle for people.', 'bettershield' ) }
+					help={ __( 'Stops many bots on sign-in, sign-up, password reset, comment and contact forms, with no puzzle for people.', 'bettershield' ) }
 					checked={ value.honeypot }
 					saved={ Boolean( saved.honeypot ) }
 					disabled={ saving }
@@ -799,10 +799,11 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 						{
 							key: 'how',
 							label: __( 'How this works', 'bettershield' ),
-							lead: __( 'A hidden field and a timer on sign-in, registration and comment forms.', 'bettershield' ),
+							lead: __( 'A hidden field and a timer on sign-in, registration, password reset and comment forms, and on Contact Form 7, WPForms and Fluent Forms.', 'bettershield' ),
 							points: [
 								__( 'A script that fills every field is refused.', 'bettershield' ),
 								__( 'So is one that submits faster than any person could.', 'bettershield' ),
+								__( 'A guest comment sent without the hidden fields goes to Spam, where you can still approve it.', 'bettershield' ),
 							],
 						},
 					] }

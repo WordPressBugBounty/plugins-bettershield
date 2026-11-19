@@ -4,7 +4,7 @@ Tags: 2fa, passkeys, hardening, activity log, two factor authentication
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.9
+Stable tag: 1.1.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,7 +18,7 @@ It is made by WPDeveloper, whose WordPress products are used on more than 6 mill
 
 = What you get =
 
-* **A security audit and fixes you can undo.** A *75-check audit* scores your site, and thirty one-click fixes close the gaps. All but one wait for your go-ahead.
+* **A security audit and fixes you can undo.** A *76-check audit* scores your site, and thirty one-click fixes close the gaps. All but one wait for your go-ahead.
 * **Two-factor authentication and passkeys.** Any authenticator app plus ten backup codes, or a passkey unlocked with a fingerprint, face or device PIN. Require either by role.
 * **Login protection.** Limit login attempts, a hidden bot check on the sign-in, registration and comment forms, and an allowlist that is never locked out.
 * **An activity log and a file check.** Who did what and when, with a CSV export, and core and plugin files compared with WordPress.org's copies.
@@ -34,9 +34,9 @@ A short Quick Setup Wizard opens once after activation. It offers **5 hardening 
 
 Every step can be skipped, and run again from Settings > General.
 
-= WordPress Security Audit: 75 checks, explained in plain language =
+= WordPress Security Audit: 76 checks, explained in plain language =
 
-Seventy-five read-only checks cover access, exposure, updates, extensions, server settings and configuration, including:
+Seventy-six read-only checks cover access, exposure, updates, extensions, server settings and configuration, including:
 
 * Idle “Admin” accounts nobody has used in over six months
 * User enumeration, XML-RPC, the file editor and the WordPress version on every page
@@ -317,7 +317,7 @@ BetterShield contacts nine outside addresses. It contacts four addresses operate
 
 Once a day it also asks whether the directory still lists a few of the plugins you installed from it; that request carries the plugin's slug only. Installs and updates started from BetterShield go through WordPress's installer, from here and downloads.wordpress.org.
 
-**downloads.wordpress.org**: checksums for a directory plugin at your exact version, during the same check and whenever a plugin is installed or updated, including automatic updates. For WPDeveloper's Pro plugins and Ultra, the same question then goes to checksums.wpdeveloper.com, and for Ultra to bettershield.ai if that has no record. Each carries the plugin's slug and version.
+**downloads.wordpress.org**: checksums for a directory plugin at your version, during that check and whenever a plugin is installed or updated, including automatic updates, and once per version your directory theme's package. For WPDeveloper's Pro plugins and Ultra, it then asks checksums.wpdeveloper.com, and for Ultra bettershield.ai if that has no record. Each carries a slug and version.
 
 **core.svn.wordpress.org** and **plugins.svn.wordpress.org**: the official copy of one file, fetched when you press Restore on a changed file or open its difference. The request carries the version and the file's path, and the copy is checked against the published checksum before anything is written.
 
@@ -366,6 +366,16 @@ Everything BetterShield keeps about a person is stored on your own server, with 
 Everything that runs is readable in the plugin folder. The PHP in `src/` is not generated, compiled or minified. The admin interface is compiled into `assets/build/` from the sources in `assets/js/` and `assets/css/`, which ship next to it. To rebuild, run `npm install` and then `npm run build`, which uses @wordpress/scripts from the included `package.json`.
 
 == Changelog ==
+
+= 1.1.10 - 19/11/2026 =
+
+- Added: Audit | A new finding says when the server's PHP is missing a security fix that a newer release of the same version already has, and names the release to ask your host for
+- Added: File Integrity | The active theme and its parent, when WordPress.org lists them at your version, are compared once with the copy it published, so a file changed before BetterShield was installed is found too
+- Added: Login & Access | The bot check now covers the lost-password form and popular contact forms, and a comment, form or reset sent without its hidden fields is caught. Failed sign-ins are counted even when another plugin redirects right after them
+- Improved: Other Security Plugins | One more plugin's own two-factor is recognized for the roles it covers, and an account another plugin already asks a code of is left to it rather than asked for two
+- Fixed: Two-Factor | A bot check on the sign-in form no longer refuses the sign-in after the right code, a refusal after the code says so with Sign In Again, the code screen opens from a sign-in page another plugin draws, and two-factor brought over from another plugin keeps its unused backup codes and only ever adds to who must use it
+- Fixed: Passkeys | A passkey signs in on a sign-in page with a bot check, and an account another plugin has blocked is refused with a passkey as with a password
+- Fixed: Hardening | Browser protections no longer sends its headers twice on a server that already adds them
 
 = 1.1.9 - 16/11/2026 =
 
@@ -651,6 +661,10 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 - Added: Multisite | Every site's score in one table and rules a network can set once
 
 == Upgrade Notice ==
+
+= 1.1.10 =
+
+Two-factor and passkey sign-in now work beside other sign-in plugins, and the audit says when PHP is missing a security fix. Using BetterShield Ultra? Update it to 1.0.11 too. Recommended for all sites.
 
 = 1.1.9 =
 

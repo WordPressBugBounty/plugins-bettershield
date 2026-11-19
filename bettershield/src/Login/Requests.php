@@ -250,6 +250,12 @@ final class Requests {
 			return;
 		}
 
+		// Caught by the bot check first: that request failed a different
+		// test, and is not counted toward this limit.
+		if ( $errors instanceof \WP_Error && in_array( 'bettershield_honeypot', $errors->get_error_codes(), true ) ) {
+			return;
+		}
+
 		$source = $this->source();
 		$policy = Protection::instance()->surface_policy( Surfaces::RESET );
 

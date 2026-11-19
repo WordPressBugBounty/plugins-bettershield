@@ -92,6 +92,95 @@ final class Checks {
 	);
 
 	/**
+	 * PHP releases that fixed a serious flaw in PHP itself, with the first
+	 * fixed release on each branch. Only security releases belong here, not
+	 * every monthly one: being a routine release behind is not a finding.
+	 * Updated by hand with a release, as PHP_EOL is. A branch newer than
+	 * every branch in an entry already has that entry's fix.
+	 */
+	private const PHP_SECURITY_FIXES = array(
+		array(
+			'date'       => '2026-10-21',
+			'advisories' => array( 'GHSA-w8hw-w9fx-j79w', 'GHSA-6wmf-4rv5-p3rp' ),
+			'fixed'      => array(
+				'8.2' => '8.2.35',
+				'8.3' => '8.3.36',
+				'8.4' => '8.4.27',
+				'8.5' => '8.5.12',
+			),
+		),
+	);
+
+	/**
+	 * Whether a PHP version is missing a security fix its branch already got.
+	 *
+	 * Null when it is not: a fixed release, a branch past end of life (that
+	 * finding says it, so the score drops once), a branch newer than the
+	 * list, or a version that cannot be read. A Debian or Ubuntu build below
+	 * the fix is unknown, because those distributions backport fixes without
+	 * changing the number.
+	 *
+	 * @param string      $version A PHP version, as PHP reports it.
+	 * @param string|null $today   YYYY-MM-DD, for tests; today in UTC otherwise.
+	 * @return array{version: string, fixed_in: string, since: string, advisories: list<string>}|\WP_Error|null
+	 */
+	public static function php_security_fix_missing_in( string $version, ?string $today = null ) {
+		if ( 1 !== preg_match( '/^(\d+)\.(\d+)\.(\d+)(.*)$/', trim( $version ), $parts ) ) {
+			return null;
+		}
+
+		$branch  = $parts[1] . '.' . $parts[2];
+		$release = $parts[1] . '.' . $parts[2] . '.' . $parts[3];
+		$today   = $today ?? gmdate( 'Y-m-d' );
+
+		if ( isset( self::PHP_EOL[ $branch ] ) && $today > self::PHP_EOL[ $branch ] ) {
+			return null;
+		}
+
+		$fixed_in   = null;
+		$since      = '';
+		$advisories = array();
+
+		foreach ( self::PHP_SECURITY_FIXES as $entry ) {
+			$fix = $entry['fixed'][ $branch ] ?? null;
+
+			if ( null === $fix || ! version_compare( $release, $fix, '<' ) ) {
+				continue;
+			}
+
+			$advisories = array_merge( $advisories, $entry['advisories'] );
+
+			if ( null === $fixed_in || version_compare( $fix, $fixed_in, '>' ) ) {
+				$fixed_in = $fix;
+				$since    = $entry['date'];
+			}
+		}
+
+		if ( null === $fixed_in ) {
+			return null;
+		}
+
+		if ( 1 === preg_match( '/ubuntu|deb/i', $parts[4] ) ) {
+			return new \WP_Error(
+				'bettershield_audit_unknown',
+				sprintf(
+					/* translators: 1: a PHP version as the server reports it; 2: a PHP release, e.g. 8.3.36. */
+					__( 'This server runs a Debian or Ubuntu build of PHP %1$s. Those builds add fixes without changing the number. Check your host’s security notices for the fix in PHP %2$s.', 'bettershield' ),
+					trim( $version ),
+					$fixed_in
+				)
+			);
+		}
+
+		return array(
+			'version'    => $release,
+			'fixed_in'   => $fixed_in,
+			'since'      => $since,
+			'advisories' => array_values( array_unique( $advisories ) ),
+		);
+	}
+
+	/**
 	 * Where the control that answers a finding lives, for the findings whose
 	 * answer is not a one-click fix.
 	 *
@@ -2183,6 +2272,20 @@ final class Checks {
 						'branch'    => $branch,
 						'eol_since' => self::PHP_EOL[ $branch ],
 					);
+				},
+			),
+
+			'php_security_fix_missing' => array(
+				'group'          => Areas::SERVER,
+				'title'          => __( 'This PHP version is missing a security fix', 'bettershield' ),
+				'severity'       => 'high',
+				'why'            => __( 'A newer release of the same PHP version fixes a serious security flaw. This site still runs a release without that fix.', 'bettershield' ),
+				'break_note'     => __( 'Your host updates PHP within the same version, usually without changing anything else. Check your site afterward.', 'bettershield' ),
+				'hardening_item' => null,
+				// The version the site serves pages with, as php_end_of_life
+				// reads it, so CLI and web PHP can't disagree.
+				'test'           => static function () {
+					return self::php_security_fix_missing_in( Observed::php_version() );
 				},
 			),
 

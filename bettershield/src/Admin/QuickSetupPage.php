@@ -199,9 +199,17 @@ final class QuickSetupPage {
 			) . ';' .
 			'window.bettershieldSetup = ' . wp_json_encode(
 				array(
-					'state' => QuickSetup::payload( QuickSetup::is_done() && 'ready' === QuickSetup::state()['step'] ),
+					// With the summary on the last two steps: Ready draws it, and the
+					// hub step's closing dialog lists what the setup changed.
+					'state' => QuickSetup::payload( QuickSetup::is_done() && in_array( QuickSetup::state()['step'], array( 'ready', 'hub' ), true ) ),
 					'links' => self::links(),
 					'site'  => wp_specialchars_decode( (string) get_option( 'blogname' ), ENT_QUOTES ),
+					// The page's foot names the site by its address and who is
+					// setting it up, and its head carries a logo the owner's
+					// label may have replaced.
+					'host'  => (string) wp_parse_url( home_url(), PHP_URL_HOST ),
+					'user'  => wp_specialchars_decode( (string) wp_get_current_user()->display_name, ENT_QUOTES ),
+					'logo'  => \BetterShield\Support\Branding::logo_url(),
 				),
 				$flags
 			) . ';',
@@ -241,6 +249,7 @@ final class QuickSetupPage {
 		return array(
 			'dashboard' => $section( Sections::ROOT ),
 			'activity'  => $section( 'bettershield-activity' ),
+			'findings'  => $section( 'bettershield-findings' ),
 			'hub'       => $section( Sections::HUB ),
 			'hardening' => $section( 'bettershield-protect', 'hardening' ),
 			'login'     => $section( 'bettershield-protect', 'login' ),

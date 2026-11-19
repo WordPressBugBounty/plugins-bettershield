@@ -413,7 +413,10 @@ final class PasskeyController {
 		 * through and this plugin's own gate stands aside by name — the
 		 * passkey factor rule is applied just below, not by the gate.
 		 */
-		$verdict = \BetterShield\TwoFactor\Manager::instance()->reenter_chain( $user );
+		// And the account checks core runs inside its password handler,
+		// which a passkey never reaches: an approval plugin's denied member
+		// is refused here as with a password (#3010).
+		$verdict = \BetterShield\TwoFactor\Manager::instance()->reenter_chain( $user, false, true );
 
 		if ( ! $verdict instanceof \WP_User || (int) $verdict->ID !== (int) $user->ID ) {
 			$error = $verdict instanceof \WP_Error ? $verdict : new \WP_Error( 'bettershield_passkey_rejected', __( 'That passkey could not be used to sign in.', 'bettershield' ) );

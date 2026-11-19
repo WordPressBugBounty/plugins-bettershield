@@ -106,6 +106,14 @@ final class Manifest {
 		'xspeed-pro',
 	);
 
+	/**
+	 * Bounds on a theme package: the download, one file in it, and how many
+	 * entries are read. A theme is usually a few megabytes.
+	 */
+	private const THEME_PACKAGE_MAX_BYTES   = 20971520;
+	private const THEME_FILE_MAX_BYTES      = 16777216;
+	private const THEME_PACKAGE_MAX_ENTRIES = 10000;
+
 	/** The publisher's checksums, in wordpress.org's own format. */
 	private const PUBLISHER_URL = 'https://checksums.wpdeveloper.com/plugin-checksums/%s/%s.json';
 
@@ -465,6 +473,216 @@ final class Manifest {
 	}
 
 	/**
+	 * The files a directory theme shipped at the exact version installed,
+	 * read from its published package.
+	 *
+	 * The directory publishes no checksums for themes, but it does publish
+	 * the package for every release, and the package is a reference copy. It
+	 * is downloaded to a temporary file within a size cap, each file in it
+	 * that can run (`Packages::can_run()`, what the theme's walk reads) is
+	 * hashed from the archive, and the package is deleted. Only the list of
+	 * paths and hashes is kept, once per slug and version, like a plugin's.
+	 *
+	 * Asked only for a theme the directory listed at the installed version;
+	 * a 404 still answers "not published" and is remembered like a plugin's.
+	 *
+	 * @param array<string, mixed> $args Request arguments, for tests.
+	 * @return array{algo: string, files: array<string, string>, version: string, source: string}|\WP_Error
+	 */
+	public static function theme( string $slug, string $version, array $args = array() ) {
+		$slug    = sanitize_key( $slug );
+		$version = trim( $version );
+
+		if ( '' === $slug || '' === $version || 1 !== preg_match( '/^[0-9A-Za-z.\-_]+$/', $version ) ) {
+			return new \WP_Error(
+				'bettershield_theme_unidentified',
+				__( 'This theme does not name its directory entry or version, so its package can’t be looked up.', 'bettershield' ),
+				array( 'reason' => self::REASON_NOT_PUBLISHED, 'status' => 404 )
+			);
+		}
+
+		$key    = self::cache_key( Unpublished::CONTEXT_THEME, $slug, $version );
+		$cached = self::cached( $key );
+		if ( null !== $cached ) {
+			return $cached;
+		}
+
+		$missed = self::recently_failed( $key );
+		if ( null !== $missed ) {
+			return $missed;
+		}
+
+		$files = self::theme_files( $slug, $version, $args );
+
+		if ( is_wp_error( $files ) ) {
+			self::remember_failure( $key, $files );
+
+			return $files;
+		}
+
+		$manifest = array(
+			'algo'    => 'sha256',
+			'files'   => $files,
+			'version' => $version,
+			'source'  => self::SOURCE_DIRECTORY,
+		);
+
+		self::remember( $key, $manifest );
+
+		return $manifest;
+	}
+
+	/**
+	 * Download one theme package and hash the files in it that can run.
+	 *
+	 * @param array<string, mixed> $args
+	 * @return array<string, string>|\WP_Error Path relative to the theme => SHA-256.
+	 */
+	private static function theme_files( string $slug, string $version, array $args ) {
+		$unreachable = static function ( string $message ): \WP_Error {
+			return new \WP_Error(
+				'bettershield_theme_package_unreadable',
+				$message,
+				array( 'reason' => self::REASON_UNREACHABLE, 'status' => 502 )
+			);
+		};
+
+		if ( ! class_exists( '\\ZipArchive' ) ) {
+			return $unreachable( __( 'This server can’t open ZIP files, so the theme couldn’t be compared with its published copy. It is compared with how it was when BetterShield first checked it.', 'bettershield' ) );
+		}
+
+		if ( ! function_exists( 'wp_tempnam' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+
+		$archive = wp_tempnam( 'bettershield-theme-' . $slug );
+
+		try {
+			$response = Http::get(
+				sprintf( 'https://downloads.wordpress.org/theme/%s.%s.zip', rawurlencode( $slug ), rawurlencode( $version ) ),
+				array_merge(
+					array(
+						'timeout'             => 20,
+						'headers'             => array( 'Accept' => 'application/zip' ),
+						'stream'              => true,
+						'filename'            => $archive,
+						'limit_response_size' => self::THEME_PACKAGE_MAX_BYTES,
+					),
+					$args,
+					array( 'filename' => $archive )
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				$status = (int) ( $response->get_error_data()['status'] ?? 0 );
+
+				if ( 404 === $status ) {
+					return new \WP_Error(
+						'bettershield_theme_not_published',
+						sprintf(
+							/* translators: 1: a theme's directory slug, 2: its version. */
+							__( 'WordPress.org has no package for %1$s version %2$s, so its files were compared with how they were when BetterShield first checked them.', 'bettershield' ),
+							$slug,
+							$version
+						),
+						array( 'reason' => self::REASON_NOT_PUBLISHED, 'status' => 404 )
+					);
+				}
+
+				return $unreachable( __( 'The theme’s published copy couldn’t be downloaded, so it was compared with how it was when BetterShield first checked it. It is tried again on the next check.', 'bettershield' ) );
+			}
+
+			$size = (int) @filesize( $archive ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- a missing file reads as zero, handled below.
+
+			// At the cap the transfer was cut off, and a cut archive can't be read.
+			if ( $size <= 0 || $size >= self::THEME_PACKAGE_MAX_BYTES ) {
+				return $unreachable( __( 'The theme’s published copy is larger than BetterShield downloads, so it was compared with how it was when BetterShield first checked it.', 'bettershield' ) );
+			}
+
+			return self::hash_theme_archive( $archive, $slug, $unreachable );
+		} finally {
+			if ( is_string( $archive ) && '' !== $archive && file_exists( $archive ) ) {
+				wp_delete_file( $archive );
+			}
+		}
+	}
+
+	/**
+	 * Hash the files that can run inside a theme package, by their path
+	 * inside the theme's own folder.
+	 *
+	 * @param callable(string): \WP_Error $unreachable
+	 * @return array<string, string>|\WP_Error
+	 */
+	public static function hash_theme_archive( string $archive, string $slug, callable $unreachable ) {
+		$zip = new \ZipArchive();
+
+		if ( true !== $zip->open( $archive ) ) {
+			return $unreachable( __( 'The theme’s published copy couldn’t be read, so it was compared with how it was when BetterShield first checked it. It is tried again on the next check.', 'bettershield' ) );
+		}
+
+		$files = array();
+
+		try {
+			$entries = min( (int) $zip->numFiles, self::THEME_PACKAGE_MAX_ENTRIES );
+
+			for ( $i = 0; $i < $entries; $i++ ) {
+				$stat = $zip->statIndex( $i );
+
+				if ( ! is_array( $stat ) ) {
+					continue;
+				}
+
+				$name = str_replace( '\\', '/', (string) $stat['name'] );
+
+				// Every file sits under the theme's own folder; anything else
+				// isn't the theme's, and a folder is not a file.
+				if ( 0 !== strpos( $name, $slug . '/' ) || str_ends_with( $name, '/' ) ) {
+					continue;
+				}
+
+				$relative = substr( $name, strlen( $slug ) + 1 );
+
+				if ( '' === $relative || ! self::is_safe_relative_path( $relative ) || ! Packages::can_run( basename( $relative ) ) ) {
+					continue;
+				}
+
+				// The walk never enters these, so a file listed in one would
+				// read as removed.
+				if ( array() !== array_intersect( explode( '/', dirname( $relative ) ), Unpublished::SKIP_BASELINE ) ) {
+					continue;
+				}
+
+				if ( (int) $stat['size'] > self::THEME_FILE_MAX_BYTES ) {
+					continue;
+				}
+
+				$stream = $zip->getStream( $name );
+
+				if ( false === $stream ) {
+					continue;
+				}
+
+				$context = hash_init( 'sha256' );
+				hash_update_stream( $context, $stream );
+				fclose( $stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- a stream inside an archive, not a file on disk.
+
+				$files[ $relative ] = hash_final( $context );
+			}
+		} finally {
+			$zip->close();
+		}
+
+		if ( array() === $files ) {
+			return $unreachable( __( 'The theme’s published copy couldn’t be read, so it was compared with how it was when BetterShield first checked it. It is tried again on the next check.', 'bettershield' ) );
+		}
+
+		ksort( $files );
+
+		return $files;
+	}
+
+	/**
 	 * Whether a plugin is one of WPDeveloper's own paid plugins, whose
 	 * checksums its publisher lists in place of the directory.
 	 */
@@ -583,9 +801,12 @@ final class Manifest {
 	 * report that it had.
 	 */
 	private static function cache_key( string $context, string $slug, string $version ): string {
-		return self::CONTEXT_CORE === $context
-			? 'core:' . $version . ':' . self::core_locale()
-			: 'plugin:' . $slug . ':' . $version;
+		if ( self::CONTEXT_CORE === $context ) {
+			return 'core:' . $version . ':' . self::core_locale();
+		}
+
+		// A theme and a plugin may share a slug and a version.
+		return ( Unpublished::CONTEXT_THEME === $context ? 'theme:' : 'plugin:' ) . $slug . ':' . $version;
 	}
 
 	/**

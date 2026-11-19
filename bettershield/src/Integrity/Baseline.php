@@ -104,6 +104,17 @@ final class Baseline {
 
 		$complete = $complete ?? true;
 
+		/*
+		 * The files its publisher shipped at this version, where the caller has
+		 * them (a directory theme's package, see `Unpublished::reference_due()`).
+		 * Then each file is held against what was published rather than
+		 * against what was recorded, first look and update included: an edit
+		 * made before this plugin ever looked is still an edit, and an update
+		 * that matches its package brings nothing to report. The baseline is
+		 * still recorded from the disk, so it carries on from here.
+		 */
+		$reference = isset( $target['reference'] ) && is_array( $target['reference'] ) ? $target['reference'] : null;
+
 		// Nothing was recorded for this location yet, or WordPress has
 		// installed a new version of it: what is on disk is recorded as it
 		// stands, and none of it is a finding.
@@ -162,10 +173,17 @@ final class Baseline {
 				}
 
 				// Listed by the walk, and gone before it was hashed.
-				if ( null !== $known ) {
+				if ( null !== $reference && isset( $reference[ $relative ] ) ) {
+					if ( null !== $known ) {
+						self::unrecord( $target, $relative );
+					}
+
+					$result['removed'][]           = $relative;
+					$result['hashes'][ $relative ] = self::absent( (string) $reference[ $relative ] );
+				} elseif ( null !== $known ) {
 					self::unrecord( $target, $relative );
 
-					if ( ! $quiet ) {
+					if ( ! $quiet && null === $reference ) {
 						$result['removed'][]           = $relative;
 						$result['hashes'][ $relative ] = self::absent( $known );
 					}
@@ -175,6 +193,23 @@ final class Baseline {
 			}
 
 			$size = (int) @filesize( $absolute ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- size is a detail, absence is handled above.
+
+			if ( null !== $reference ) {
+				$published = isset( $reference[ $relative ] ) ? (string) $reference[ $relative ] : null;
+
+				if ( null === $published || ! hash_equals( $published, $hash ) ) {
+					$change                        = null === $published ? 'added' : 'modified';
+					$result[ $change ][]           = $relative;
+					$result['hashes'][ $relative ] = array(
+						'before' => $published,
+						'after'  => $hash,
+						'size'   => $size,
+					);
+				}
+
+				self::record( $target, $relative, $hash, $size, $version );
+				continue;
+			}
 
 			if ( $quiet ) {
 				// An update, not a first look: what it brought is worth naming,
@@ -234,7 +269,13 @@ final class Baseline {
 		}
 
 		if ( $complete ) {
-			$result = self::sweep( $target, $recorded, $quiet, $result );
+			// With a published list, what is gone is what was published and
+			// isn't there; what was recorded and isn't is tidied in silence.
+			$result = self::sweep( $target, $recorded, $quiet || null !== $reference, $result );
+
+			if ( null !== $reference ) {
+				$result = self::sweep_published( $target, $reference, $result );
+			}
 		}
 
 		if ( $complete && $quiet ) {
@@ -298,6 +339,38 @@ final class Baseline {
 				$result['removed'][]           = $relative;
 				$result['hashes'][ $relative ] = self::absent( $known );
 			}
+		}
+
+		return $result;
+	}
+
+	/**
+	 * What the publisher shipped at this version and the location no longer
+	 * has. Left alone for a location the walk could not finish, for the
+	 * reason `sweep()` gives.
+	 *
+	 * @param array<string, mixed>  $target
+	 * @param array<string, string> $reference Path relative to the location => published hash.
+	 * @param array<string, mixed>  $result
+	 * @return array<string, mixed>
+	 */
+	private static function sweep_published( array $target, array $reference, array $result ): array {
+		if ( ! empty( $target['truncated'] ) ) {
+			return $result;
+		}
+
+		$walked = array_fill_keys( array_map( 'strval', (array) ( $target['files'] ?? array() ) ), true );
+		$said   = array_fill_keys( (array) $result['removed'], true );
+
+		foreach ( $reference as $relative => $published ) {
+			$relative = (string) $relative;
+
+			if ( isset( $walked[ $relative ] ) || isset( $said[ $relative ] ) || file_exists( $target['root'] . '/' . $relative ) ) {
+				continue;
+			}
+
+			$result['removed'][]           = $relative;
+			$result['hashes'][ $relative ] = self::absent( (string) $published );
 		}
 
 		return $result;

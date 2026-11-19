@@ -15,8 +15,9 @@
  * - **The active theme.** Verified 19 August 2026: wordpress.org publishes
  *   per-file checksums for plugins and for core and **none at all** for
  *   themes — the endpoint answers 404 for every theme and version, and the
- *   theme information API carries no checksum field. A baseline is the only
- *   way a theme can be watched.
+ *   theme information API carries no checksum field. A baseline is how a
+ *   theme is watched; a theme the directory lists is also compared once per
+ *   version with the package it published (see REFERENCE_OPTION).
  *
  * These are exactly where persistence hides, so the baseline watches them
  * wherever this plugin runs.
@@ -109,6 +110,17 @@ final class Unpublished {
 	 * it is walked. The same once-per-location silence as `vendor` above.
 	 */
 	public const NAMES_OPTION = 'bettershield_integrity_names_seen';
+
+	/**
+	 * Theme folder => the version last compared with its published package.
+	 *
+	 * A baseline answers "has this changed since we started", and a theme that
+	 * was already edited when the baseline was taken stays edited and silent.
+	 * So a theme the directory lists is compared once with the package
+	 * WordPress.org published for its version, the first time the check meets
+	 * that version, and the baseline carries on from there.
+	 */
+	public const REFERENCE_OPTION = 'bettershield_integrity_theme_reference';
 
 	/** The extensions the walk kept before it read `Packages::can_run()`. */
 	private const WALKED_BEFORE = array( 'php', 'js', 'phtml', 'inc', 'htaccess' );
@@ -784,6 +796,48 @@ final class Unpublished {
 	/** Record that a location has had that first look. */
 	public static function mark_names_seen( string $context, string $slug ): void {
 		self::mark_seen( self::NAMES_OPTION, $context, $slug );
+	}
+
+	/**
+	 * Whether a theme at this version is due its comparison with the package
+	 * WordPress.org published: the directory listed it at the installed
+	 * version, and it hasn't been compared at this version yet. A child theme
+	 * is never asked about, so it stays on the baseline; so does a theme whose
+	 * Update URI names somewhere else.
+	 *
+	 * @param array<string, mixed> $target
+	 */
+	public static function reference_due( array $target ): bool {
+		if ( self::CONTEXT_THEME !== ( $target['context'] ?? '' ) ) {
+			return false;
+		}
+
+		$slug    = (string) ( $target['slug'] ?? '' );
+		$version = (string) ( $target['version'] ?? '' );
+
+		if ( '' === $slug || '' === $version ) {
+			return false;
+		}
+
+		$known = \BetterShield\Vulnerabilities\ThemeDirectory::known()[ $slug ] ?? null;
+
+		if ( ! is_array( $known ) || \BetterShield\Vulnerabilities\ThemeDirectory::LISTED !== $known['status'] ) {
+			return false;
+		}
+
+		$done = get_option( self::REFERENCE_OPTION, array() );
+
+		return ! ( is_array( $done ) && isset( $done[ $slug ] ) && $version === (string) $done[ $slug ] );
+	}
+
+	/** Record that a theme has been compared with its package at this version. */
+	public static function mark_reference_done( string $slug, string $version ): void {
+		$done = get_option( self::REFERENCE_OPTION, array() );
+		$done = is_array( $done ) ? $done : array();
+
+		$done[ $slug ] = $version;
+
+		update_option( self::REFERENCE_OPTION, $done, false );
 	}
 
 	/** Whether a location is in one of the first-look options above. */

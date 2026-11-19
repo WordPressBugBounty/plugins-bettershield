@@ -223,6 +223,32 @@ final class LoginStep {
 	}
 
 	/**
+	 * Give the parked sign-in this browser holds its full time again, for a
+	 * screen an add-on draws between the password and the code that takes
+	 * several steps (enrollment, say). The time then runs from the last step
+	 * rather than the first: someone who installs an authenticator app and
+	 * prints their backup codes can take longer than one stretch, and the
+	 * setup they confirmed was lost with the park.
+	 *
+	 * Only a park that is still there is extended; a lapsed one stays lapsed.
+	 * Answers whether there was one.
+	 */
+	public function extend_for_request(): bool {
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- pending() refuses anything but the exact shape this plugin issues.
+		$token  = isset( $_COOKIE[ self::COOKIE ] ) ? (string) wp_unslash( $_COOKIE[ self::COOKIE ] ) : '';
+		$record = null === self::pending( $token ) ? null : get_transient( self::key( $token ) );
+
+		if ( ! is_array( $record ) ) {
+			return false;
+		}
+
+		set_transient( self::key( $token ), $record, self::TTL );
+		$this->set_cookie( $token, time() + self::TTL );
+
+		return true;
+	}
+
+	/**
 	 * The parked sign-in this browser holds, if any — for a screen an add-on
 	 * draws between the password and the code (enrollment, say), which needs
 	 * to know who it is drawing for without ever seeing the token's record.
@@ -570,15 +596,19 @@ final class LoginStep {
 	 * check on a network and any third-party gate come after it, and a
 	 * refusal from them is a refusal.
 	 *
+	 * What another plugin hooked before the step already passed on the
+	 * request that parked the sign-in, and is not asked again: a bot check
+	 * reads a token only the password form carried (#2988).
+	 *
 	 * @return \WP_User|\WP_Error
 	 */
 	private function finish( \WP_User $user, bool $password = true ) {
 		// Started from the account rather than from credentials, through the
 		// marked re-entry so the plugin's own gate stands aside by name;
-		// core's password handlers pass it straight through and everything
-		// hooked after runs exactly as it would have. It carries whether the
-		// sign-in began with a password, for a protection about passwords.
-		$verdict = Manager::instance()->reenter_chain( $user, $password );
+		// everything hooked after it runs exactly as it would have. It
+		// carries whether the sign-in began with a password, for a
+		// protection about passwords.
+		$verdict = Manager::instance()->finish_chain( $user, $password );
 
 		if ( $verdict instanceof \WP_User && (int) $verdict->ID === (int) $user->ID ) {
 			return $verdict;
@@ -630,6 +660,11 @@ final class LoginStep {
 
 		if ( null === $pending || 'bettershield_2fa_expired' === $errors->get_error_code() ) {
 			$this->render_expired( $redirect_to );
+			exit;
+		}
+
+		if ( $submitted && ! self::still_parked( $token ) ) {
+			$this->render_expired( $redirect_to, $errors );
 			exit;
 		}
 
@@ -804,8 +839,23 @@ final class LoginStep {
 		login_footer( self::FIELD );
 	}
 
-	private function render_expired( string $redirect_to ): void {
-		login_header( __( 'Authenticator app code or backup code', 'bettershield' ), '', self::expired() );
+	/**
+	 * Whether an attempt left the parked sign-in in place, so the code form
+	 * can still answer the next one. A wrong code, a lockout or a suspension
+	 * leaves it; a code that was accepted spends it, and when something after
+	 * the code then refused the sign-in, a code form could only answer
+	 * "already used" to whatever is typed next (#2989). That refusal is shown
+	 * with Sign in again instead.
+	 */
+	public static function still_parked( string $token ): bool {
+		return null !== self::pending( $token );
+	}
+
+	/**
+	 * @param \WP_Error|null $why What to say; that the sign-in expired when null.
+	 */
+	private function render_expired( string $redirect_to, ?\WP_Error $why = null ): void {
+		login_header( __( 'Authenticator app code or backup code', 'bettershield' ), '', $why && $why->has_errors() ? $why : self::expired() );
 		?>
 		<p id="nav">
 			<a href="<?php echo esc_url( wp_login_url( $redirect_to ) ); ?>"><?php esc_html_e( 'Sign in again', 'bettershield' ); ?></a>
@@ -862,7 +912,14 @@ final class LoginStep {
 			$args['customize-login'] = '1';
 		}
 
-		return add_query_arg( $args, site_url( 'wp-login.php', 'login' ) );
+		/*
+		 * The action goes on before site_url() runs, so a plugin that moves
+		 * the sign-in page sees an action it doesn't own. Theme My Login
+		 * reads a bare wp-login.php as its own sign-in and rewrote it to its
+		 * page, which draws its form again and never this screen (#3011).
+		 * A moved address that keeps the query still applies.
+		 */
+		return site_url( add_query_arg( $args, 'wp-login.php' ), 'login' );
 	}
 
 	/**

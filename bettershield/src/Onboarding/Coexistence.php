@@ -51,6 +51,9 @@ final class Coexistence {
 	 */
 	private const ADDRESS_ITEMS = array( 'login_url', 'admin_gate' );
 
+	/** The held rule for who must use two-factor, among a source's held items. */
+	public const HELD_RULE = 'two_factor_policy';
+
 	/**
 	 * Jobs that are stated rather than chosen. Not a firewall: the step is not
 	 * where this plugin tells an owner to keep another one (#2298). A plugin
@@ -312,6 +315,12 @@ final class Coexistence {
 				continue;
 			}
 
+			// Its own two-factor, off until it is switched on, and then for
+			// the roles it names (#3020).
+			if ( 'limit-login-attempts-reloaded/limit-login-attempts-reloaded.php' === $file && array() !== self::llar_mfa_roles() ) {
+				$jobs[] = 'two_factor';
+			}
+
 			if ( 'wp-hide-security-enhancer/wp-hide.php' === $file && ! self::wph_two_factor_on() ) {
 				$jobs = array_diff( $jobs, array( 'two_factor' ) );
 			}
@@ -429,11 +438,7 @@ final class Coexistence {
 
 		list( $option, $default ) = $switch;
 
-		$value = self::plugin_option( $option, null );
-
-		if ( null === $value && is_multisite() ) {
-			$value = get_site_option( $option, null );
-		}
+		$value = self::setting( $option );
 
 		$path = isset( $switch[2] ) ? (array) $switch[2] : array();
 
@@ -651,6 +656,32 @@ final class Coexistence {
 		return $default;
 	}
 
+	/**
+	 * Whether Wordfence's two-factor is switched on, from its sign-in
+	 * security settings table. A site that never saved the switch is read as
+	 * on, as Wordfence reads it for an install older than the switch.
+	 */
+	private static function wfls_two_factor_on(): bool {
+		global $wpdb;
+
+		$quiet = $wpdb->suppress_errors( true );
+
+		try {
+			// get_col(), not get_var(): get_var() answers null for an empty value,
+			// which is how Wordfence saves the switch off.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- another plugin's own settings table, read for one switch and never written.
+			$values = $wpdb->get_col( $wpdb->prepare( 'SELECT value FROM %i WHERE name = %s', $wpdb->base_prefix . 'wfls_settings', 'enable-2fa' ) );
+		} finally {
+			$wpdb->suppress_errors( $quiet );
+		}
+
+		if ( array() === $values ) {
+			return true;
+		}
+
+		return in_array( strtolower( trim( (string) $values[0] ) ), array( '1', 'true', 'yes', 'on' ), true );
+	}
+
 	private static function jetpack_protects(): bool {
 		$modules = get_option( 'jetpack_active_modules', array() );
 		$on      = ( is_array( $modules ) && in_array( 'protect', $modules, true ) ) || ( is_multisite() && get_site_option( 'jetpack_protect_active' ) );
@@ -705,6 +736,57 @@ final class Coexistence {
 		$saved = get_option( 'wph_settings', array() );
 
 		return is_array( $saved ) && is_array( $saved['module_settings'] ?? null ) ? $saved['module_settings'] : array();
+	}
+
+	/**
+	 * Another plugin's setting, read the way that plugin reads it: this
+	 * site's own, or the network's where the site holds none. Null where
+	 * neither does.
+	 *
+	 * @return mixed
+	 */
+	private static function setting( string $option ) {
+		$value = self::plugin_option( $option, null );
+
+		if ( null === $value && is_multisite() ) {
+			$value = get_site_option( $option, null );
+		}
+
+		return $value;
+	}
+
+	/**
+	 * The roles Limit Login Attempts Reloaded's own two-factor asks a code
+	 * of, or none while it is off (#3020). It runs inside core's password
+	 * check, before every gate of this plugin's, and signs the person in
+	 * itself, so for these roles it is the two-factor that happens. Its
+	 * roles default to administrators where none were saved.
+	 *
+	 * @return string[]
+	 */
+	private static function llar_mfa_roles(): array {
+		if ( ! self::switched_on( array( 'limit_login_mfa_enabled', false ) ) ) {
+			return array();
+		}
+
+		$roles = self::setting( 'limit_login_mfa_roles' );
+		$roles = null === $roles ? array( 'administrator' ) : $roles;
+
+		return is_array( $roles ) ? array_values( array_filter( $roles, 'is_string' ) ) : array();
+	}
+
+	/**
+	 * The roles a plugin asks two-factor of by role rather than by what each
+	 * account set up: everyone in them is covered. None for any other plugin.
+	 *
+	 * @return string[]
+	 */
+	private static function role_two_factor( string $file ): array {
+		if ( 'wp-hide-security-enhancer/wp-hide.php' === $file ) {
+			return self::wph_email_roles();
+		}
+
+		return 'limit-login-attempts-reloaded/limit-login-attempts-reloaded.php' === $file ? self::llar_mfa_roles() : array();
 	}
 
 	/**
@@ -980,7 +1062,9 @@ final class Coexistence {
 				// On at the very address that plugin answers at, as an import leaves it: both work there.
 				'ours_shared' => 'login_url' === $job && \BetterShield\Hardening\Item\LoginUrl::shares_its_address(),
 				// Whether choosing BetterShield keeps the address people use, for the card to say so.
-				'address_carried' => 'login_url' === $job && self::address_comes_over(),
+				'address_carried' => 'login_url' === $job && ( self::address_comes_over() || array() !== self::address_held() ),
+				// Carried only once the way back in is set up, later in the setup.
+				'address_waits'   => 'login_url' === $job && ! self::address_comes_over() && array() !== self::address_held(),
 			);
 		}
 
@@ -1019,6 +1103,9 @@ final class Coexistence {
 					// For the step's Turn It Back On, once it is off.
 					'activate_url'   => self::activate_url( (string) $file ),
 					'sign_in_path'   => self::path_of( $moved[ (string) $file ] ?? '' ),
+					// Its sign-in address waits for the way back in, so it
+					// stays on until the setup brings the address over.
+					'waits'          => in_array( (string) $file, self::held_files(), true ),
 				);
 			}
 		}
@@ -1247,7 +1334,9 @@ final class Coexistence {
 				'name'    => $source['name'],
 				'carried' => $source['carried'],
 				// Carried only while sign-in limits, or the address, are given to BetterShield.
-				'waits'   => array_fill_keys( $waits, 'login_limits' ) + array_fill_keys( array_values( array_intersect( $source['carried'], self::address_titles() ) ), 'login_url' ),
+				'waits'   => array_fill_keys( $waits, 'login_limits' ) + array_fill_keys( array_values( array_intersect( $source['carried'], self::address_titles() ) ), 'login_url' )
+					// Who must use two-factor comes over only with two-factor itself.
+					+ array_fill_keys( array_values( array_intersect( $source['carried'], array( __( 'Two-factor requirement', 'bettershield' ) ) ) ), 'two_factor' ),
 				'left'    => $kept[ $key ]['left'] ?? $source['left'],
 				/*
 				 * Its attempt-limit numbers, where it brings any: their place
@@ -1514,6 +1603,11 @@ final class Coexistence {
 			if ( 'bettershield' !== self::choice_of( 'login_url', QuickSetup::state()['coexistence'] ) ) {
 				$document = self::without_address( $document );
 			}
+
+			// And two-factor kept there keeps its rule for who must use it.
+			if ( 'bettershield' !== self::choice_of( 'two_factor', QuickSetup::state()['coexistence'] ) ) {
+				unset( $document['two_factor_policy'] );
+			}
 			$result   = SettingsDocument::apply( $document, false, 'dashboard' );
 
 			if ( is_wp_error( $result ) ) {
@@ -1538,7 +1632,7 @@ final class Coexistence {
 	 * each with the settings that wait for the way back in taken out of its
 	 * document and listed apart.
 	 *
-	 * @return array<int, array{key: string, name: string, document: array<string, mixed>, held: array<int, array{setting: string, reason: string}>, unmapped: array<int, array{setting: string, reason: string}>}>
+	 * @return array<int, array{key: string, name: string, document: array<string, mixed>, held: array<int, array{setting: string, reason: string}>, held_items: string[], unmapped: array<int, array{setting: string, reason: string}>}>
 	 */
 	private static function import_sources(): array {
 		$waiting = null !== Preflight::failure();
@@ -1552,15 +1646,33 @@ final class Coexistence {
 
 			$document = $source['document'];
 			$held     = array();
+			$items    = array();
 
 			foreach ( $waiting ? array_keys( (array) ( $document['hardening'] ?? array() ) ) : array() as $item ) {
 				if ( Permissions::needs_way_back( (string) $item ) ) {
 					unset( $document['hardening'][ $item ] );
-					$held[] = array(
+					$items[] = (string) $item;
+					$held[]  = array(
 						'setting' => (string) ( $titles[ $item ]['title'] ?? $item ),
 						'reason'  => __( 'This changes how people sign in, so it waits until your way back in is set up. Bring it over from Settings › General after setup.', 'bettershield' ),
 					);
 				}
+			}
+
+			/*
+			 * The rule for who must use two-factor changes how people sign in
+			 * too, and the import's gate refused the whole document over it on
+			 * a new install, where the way back in has never been checked: no
+			 * accounts, codes or limits came over (#2992). It waits with the
+			 * items above, and the setup brings it at its end.
+			 */
+			if ( $waiting && isset( $document['two_factor_policy'] ) ) {
+				unset( $document['two_factor_policy'] );
+				$items[] = self::HELD_RULE;
+				$held[]  = array(
+					'setting' => __( 'Two-factor requirement', 'bettershield' ),
+					'reason'  => __( 'This changes how people sign in, so it waits until your way back in is set up. Bring it over from Settings › General after setup.', 'bettershield' ),
+				);
 			}
 
 			$out[] = array(
@@ -1568,6 +1680,8 @@ final class Coexistence {
 				'name'     => (string) $source['name'],
 				'document' => $document,
 				'held'     => $held,
+				// The items held, by key, for the setup to bring once it can.
+				'held_items' => $items,
 				'unmapped' => $source['unmapped'],
 			);
 		}
@@ -1733,7 +1847,7 @@ final class Coexistence {
 	 *
 	 * @param array<string, string> $saved
 	 */
-	private static function choice_of( string $job, array $saved ): string {
+	public static function choice_of( string $job, array $saved ): string {
 		$choice = $saved[ $job ] ?? '';
 
 		if ( in_array( $choice, self::options_for( $job ), true ) ) {
@@ -1745,7 +1859,7 @@ final class Coexistence {
 		 * brings the one people use. Otherwise switching the other plugin
 		 * off would put the sign-in page back at WordPress's own address.
 		 */
-		if ( 'login_url' === $job && ! self::address_comes_over() ) {
+		if ( 'login_url' === $job && ! self::address_comes_over() && array() === self::address_held() ) {
 			return 'keep';
 		}
 
@@ -1764,6 +1878,125 @@ final class Coexistence {
 		}
 
 		return false;
+	}
+
+	/**
+	 * The active sources whose sign-in address the import holds until the
+	 * way back in is set up: on a new install, every one, since the
+	 * recovery check has not run when Coexistence is shown (#2968).
+	 *
+	 * @return string[] Source keys.
+	 */
+	public static function address_held(): array {
+		$keys = array();
+
+		foreach ( self::import_sources() as $source ) {
+			if ( in_array( 'login_url', $source['held_items'], true ) ) {
+				$keys[] = $source['key'];
+			}
+		}
+
+		return $keys;
+	}
+
+	/**
+	 * The rule for who must use two-factor that these sources' import held
+	 * for the way back in, as one rule: every role any of them requires and
+	 * the shortest wait. Kept by the setup itself rather than by source,
+	 * since the plugin it came from is switched off when the step finishes
+	 * and has nothing to bring by the time the way back in is set up.
+	 *
+	 * @param string[] $keys The sources being brought over, by key.
+	 * @return array{roles: string[], grace_days: int}|null
+	 */
+	public static function held_rule( array $keys ): ?array {
+		$held = array_column(
+			array_filter( self::import_sources(), static fn( array $source ): bool => in_array( $source['key'], $keys, true ) && in_array( self::HELD_RULE, $source['held_items'], true ) ),
+			'key'
+		);
+
+		$rule = null;
+
+		foreach ( Migrate::sources() as $source ) {
+			$policy = $source['document'][ self::HELD_RULE ] ?? null;
+
+			if ( ! in_array( $source['key'], $held, true ) || ! is_array( $policy ) ) {
+				continue;
+			}
+
+			$rule = null === $rule ? $policy : array(
+				'roles'      => array_values( array_unique( array_merge( $rule['roles'], $policy['roles'] ) ) ),
+				'grace_days' => min( (int) $rule['grace_days'], (int) $policy['grace_days'] ),
+			);
+		}
+
+		return $rule;
+	}
+
+	/** @return string[] The plugin files of the sources whose address is held. */
+	private static function held_files(): array {
+		$files = array();
+
+		foreach ( self::address_held() as $key ) {
+			$files = array_merge( $files, Migrate::files_of( $key ) );
+		}
+
+		return $files;
+	}
+
+	/**
+	 * Bring over what the import held for the way back in, from these
+	 * sources, once it is set up: the sign-in address and what comes with
+	 * it, and nothing the Coexistence step already brought. Still held, or
+	 * kept with the other plugin, nothing moves.
+	 *
+	 * @param string[] $keys Source keys, as `address_held()` gave them.
+	 * @return array<int, array{name: string, count: int, files: string[]}>|\WP_Error What each brought over.
+	 */
+	public static function import_held( array $keys ) {
+		if ( null !== Preflight::failure() || 'bettershield' !== self::choice_of( 'login_url', QuickSetup::state()['coexistence'] ) ) {
+			return array();
+		}
+
+		$done = array();
+
+		foreach ( self::import_sources() as $source ) {
+			if ( ! in_array( $source['key'], $keys, true ) ) {
+				continue;
+			}
+
+			$items = array_filter(
+				(array) ( $source['document']['hardening'] ?? array() ),
+				static fn( $item ): bool => Permissions::needs_way_back( (string) $item ),
+				ARRAY_FILTER_USE_KEY
+			);
+
+			if ( array() === $items ) {
+				continue;
+			}
+
+			$result = SettingsDocument::apply(
+				array(
+					'format'    => SettingsDocument::FORMAT,
+					'version'   => SettingsDocument::VERSION,
+					'hardening' => $items,
+				),
+				false,
+				'dashboard'
+			);
+
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			$done[] = array(
+				'name'  => $source['name'],
+				'count' => (int) ( $result['counts']['applied'] ?? 0 ) + (int) ( $result['counts']['settings'] ?? 0 ),
+				'files' => Migrate::files_of( $source['key'] ),
+			);
+		}
+
+		return $done;
 	}
 
 	/**
@@ -1931,6 +2164,32 @@ final class Coexistence {
 	 */
 	public static function two_factor_for_user( \WP_User $user ): string {
 		foreach ( self::active() as $file => $plugin ) {
+			if ( in_array( 'two_factor', $plugin['jobs'], true ) && self::two_factor_set_up( (string) $file, (int) $user->ID ) ) {
+				return (string) $plugin['name'];
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * The plugin whose own two-factor this sign-in's gate leaves the account
+	 * to, or '': as two_factor_for_user(), less a plugin that asks for its
+	 * code inside core's password check and stops the request there.
+	 *
+	 * Limit Login Attempts Reloaded is that kind. Reaching this plugin's gate
+	 * at all means it asked for nothing on this sign-in: its two-factor does
+	 * not cover the account's role, or it let the password through while its
+	 * service was out of reach, which it does unless the site opts out. So
+	 * the gate never stands aside for it, and this plugin's own code is still
+	 * asked of an account that has one.
+	 */
+	public static function two_factor_gate_owner( \WP_User $user ): string {
+		foreach ( self::active() as $file => $plugin ) {
+			if ( 'limit-login-attempts-reloaded/limit-login-attempts-reloaded.php' === $file ) {
+				continue;
+			}
+
 			if ( in_array( 'two_factor', $plugin['jobs'], true ) && self::two_factor_set_up( (string) $file, (int) $user->ID ) ) {
 				return (string) $plugin['name'];
 			}
@@ -2111,6 +2370,9 @@ final class Coexistence {
 			// Saved for every site at once, so the key carries no prefix.
 			'google-authenticator/google-authenticator.php'         => array( 'meta' => 'googleauthenticator_enabled', 'on' => 'enabled' ),
 			'wordfence-login-security/wordfence-login-security.php' => array( 'table' => 'wfls_2fa_secrets' ),
+			// Nothing kept per account: everyone in the roles it names is
+			// asked (role_two_factor()), so each account can still be read.
+			'limit-login-attempts-reloaded/limit-login-attempts-reloaded.php' => array( 'roles' => true ),
 		);
 
 		return $records[ $file ] ?? array();
@@ -2119,10 +2381,10 @@ final class Coexistence {
 	private static function two_factor_set_up( string $file, int $user_id ): bool {
 		$record = self::two_factor_record( $file );
 
-		if ( 'wp-hide-security-enhancer/wp-hide.php' === $file && array() !== self::wph_email_roles() ) {
+		if ( array() !== self::role_two_factor( $file ) ) {
 			$user = get_userdata( $user_id );
 
-			if ( $user && array() !== array_intersect( (array) $user->roles, self::wph_email_roles() ) ) {
+			if ( $user && array() !== array_intersect( (array) $user->roles, self::role_two_factor( $file ) ) ) {
 				return true;
 			}
 		}
@@ -2145,6 +2407,17 @@ final class Coexistence {
 		}
 
 		if ( isset( $record['table'] ) ) {
+			/*
+			 * Wordfence keeps an account's secret after its two-factor is
+			 * switched off, and asks for a code only while that switch is on
+			 * and the account's role may use it. A secret it won't ask for is
+			 * not two-factor set up there: counted, it let this plugin's gate
+			 * stand aside and the password alone sign in.
+			 */
+			if ( 'wfls_2fa_secrets' === $record['table'] && ( ! self::wfls_two_factor_on() || ! user_can( $user_id, 'wf2fa_activate_2fa_self' ) ) ) {
+				return false;
+			}
+
 			return self::two_factor_rows( $record['table'], $user_id ) > 0;
 		}
 
@@ -2201,10 +2474,10 @@ final class Coexistence {
 		$record = self::two_factor_record( $file );
 
 		// Every account in the roles it emails codes to, whether or not it set up the app too.
-		if ( 'wp-hide-security-enhancer/wp-hide.php' === $file && array() !== self::wph_email_roles() ) {
+		if ( array() !== self::role_two_factor( $file ) ) {
 			$query = new \WP_User_Query(
 				array(
-					'role__in'    => self::wph_email_roles(),
+					'role__in'    => self::role_two_factor( $file ),
 					'fields'      => 'ID',
 					'number'      => 1,
 					'count_total' => true,
@@ -2236,10 +2509,10 @@ final class Coexistence {
 		$record = self::two_factor_record( $file );
 
 		// Every account in the roles it emails codes to, whether or not it set up the app too.
-		if ( 'wp-hide-security-enhancer/wp-hide.php' === $file && array() !== self::wph_email_roles() ) {
+		if ( array() !== self::role_two_factor( $file ) ) {
 			$query = new \WP_User_Query(
 				array(
-					'role__in'    => self::wph_email_roles(),
+					'role__in'    => self::role_two_factor( $file ),
 					'fields'      => 'ID',
 					'orderby'     => 'ID',
 					'order'       => 'ASC',

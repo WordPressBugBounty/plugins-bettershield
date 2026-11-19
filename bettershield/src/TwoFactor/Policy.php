@@ -599,8 +599,10 @@ final class Policy {
 			return $none;
 		}
 
-		// Already done, and nothing more is owed.
-		if ( Manager::instance()->enabled( (int) $user->ID ) ) {
+		// Already done, and nothing more is owed: here, or by another
+		// security plugin's two-factor, which this plugin's gate leaves the
+		// account to (#3022) and whose enrollment it no longer offers.
+		if ( Manager::instance()->enabled( (int) $user->ID ) || '' !== \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user ) ) {
 			return $none;
 		}
 

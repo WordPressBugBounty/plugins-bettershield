@@ -1,11 +1,11 @@
 {
     "schema": "bettershield.abilities-manifest/1",
     "plugin": "bettershield",
-    "plugin_version": "1.1.9",
+    "plugin_version": "1.1.10",
     "locale": "en_US",
     "catalog_hashes": {
         "read": "sha256:3625a765918754340f72167f8996c883615e8c5b4acdc1ffba3aad471b9dc2bf",
-        "write": "sha256:d08a3eb1488bb5bacbece8faf2f8f154e7d5a09f13295250c80f61efd14bf60f"
+        "write": "sha256:da9d84518cc2e696de9bf36327ff706b30809c232bd7620a329b268249dab1d0"
     },
     "limits": {
         "write_per_hour": 5,
@@ -6820,6 +6820,7 @@
                                 "certificate_expiring",
                                 "disk_space_low",
                                 "php_end_of_life",
+                                "php_security_fix_missing",
                                 "default_table_prefix",
                                 "admin_user_id_one",
                                 "backup_plugin_not_visible",

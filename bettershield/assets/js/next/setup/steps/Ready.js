@@ -176,8 +176,13 @@ export default function Ready() {
 	// moves on; how many, for its label.
 	const install = useRef( null );
 	const [ chosen, setChosen ] = useState( 0 );
+	// Which plugin of how many is installing, while the Continue installs them.
+	const [ progress, setProgress ] = useState( null );
 	const summary = state.summary;
 	const fixesRef = useRef( null );
+	// With plugins to offer, the step is the design's "fill the gaps" list.
+	const offered = Boolean( ( state.ecosystem?.recommended || [] ).length || ( state.ecosystem?.more || [] ).length );
+	const heading = offered ? __( 'Fill the gaps we found', 'bettershield' ) : __( 'Ecosystem', 'bettershield' );
 	const [ said, setSaid ] = useState( '' );
 	// Fixes switched off here stay on the list, so they can be switched back.
 	const [ offHere, setOffHere ] = useState( [] );
@@ -295,7 +300,7 @@ export default function Ready() {
 		return (
 			// Nothing is known yet about what setup turned on, so the heading
 			// claims nothing either way.
-			<Frame title={ __( 'Ecosystem', 'bettershield' ) } subtitle={ __( 'Reading what is in place on this site…', 'bettershield' ) }>
+			<Frame title={ heading } subtitle={ __( 'Reading what is in place on this site…', 'bettershield' ) }>
 				<Skeleton label={ __( 'Reading what is in place on this site…', 'bettershield' ) }>
 					<CardBone rows={ [ '40%', '65%', '55%', '70%' ] } />
 				</Skeleton>
@@ -539,10 +544,28 @@ export default function Ready() {
 		subtitle = __( 'See the Overview for your score and next steps.', 'bettershield' );
 	}
 
+	// Otherwise the design's line on what the list is.
+	if ( ! subtitle && offered ) {
+		subtitle = sprintf(
+			/* translators: %s: the plugin maker's name. */
+			__( 'Free %s plugins for what your site is missing. Nothing installs until you switch it on.', 'bettershield' ),
+			'WPDeveloper'
+		);
+	}
+
 	return (
 		<Frame
-			title={ __( 'Ecosystem', 'bettershield' ) }
+			title={ heading }
 			subtitle={ subtitle }
+			note={
+				changedCount > 0
+					? sprintf(
+							/* translators: %d: how many things the setup changed. */
+							_n( 'Setup made %d change to protect your site.', 'Setup made %d changes to protect your site.', changedCount, 'bettershield' ),
+							changedCount
+					  )
+					: null
+			}
 			aside={
 				<span className="bs-ds-setup-ready__grade">
 					{ scanning ? (
@@ -567,7 +590,14 @@ export default function Ready() {
 					primary={
 						toHub
 							? {
-									label: chosen ? __( 'Install & Continue', 'bettershield' ) : __( 'Continue', 'bettershield' ),
+									label: progress
+										? sprintf(
+												/* translators: 1: the plugin being installed, counted from 1, 2: how many are being installed. */
+												__( 'Installing %1$d of %2$d…', 'bettershield' ),
+												progress.at,
+												progress.total
+										  )
+										: chosen ? __( 'Install & Continue', 'bettershield' ) : __( 'Continue', 'bettershield' ),
 									onClick: () => ( install.current ? install.current() : Promise.resolve( true ) ).then( ( done ) => done && next() ),
 									busy: 'ecosystem' === busy,
 							  }
@@ -582,6 +612,19 @@ export default function Ready() {
 				</Footer>
 			}
 		>
+			{ /* The list first, as the design opens the step; what Setup changed under it. */ }
+			<RecommendedPlugins
+				register={ ( installChosen ) => {
+					install.current = installChosen;
+				} }
+				onChosen={ setChosen }
+				onProgress={ setProgress }
+			/>
+
+			<p className="screen-reader-text" role="status">
+				{ said }
+			</p>
+
 			<Card as="div" className="bs-ds-setup-ready__block">
 				<Disclosure
 					className="bs-ds-setup-ready__changes"
@@ -590,7 +633,6 @@ export default function Ready() {
 						__( 'What Setup changed (%d)', 'bettershield' ),
 						changedCount
 					) }
-					summary={ changedCount > 0 ? __( 'Each can be undone', 'bettershield' ) : undefined }
 					open={ changesOpen }
 					onToggle={ setChangesOpen }
 				>
@@ -621,17 +663,6 @@ export default function Ready() {
 					</p>
 				</Disclosure>
 			</Card>
-
-			<p className="screen-reader-text" role="status">
-				{ said }
-			</p>
-
-			<RecommendedPlugins
-				register={ ( installChosen ) => {
-					install.current = installChosen;
-				} }
-				onChosen={ setChosen }
-			/>
 		</Frame>
 	);
 }

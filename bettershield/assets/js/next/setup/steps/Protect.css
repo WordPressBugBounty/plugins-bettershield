@@ -1,6 +1,8 @@
 /**
- * Protect: the score at the heading's other end, the grade's move and a
- * short note beside it, and the parts a row opens, drawn only when open.
+ * Protect: the score's move (read out; the picture draws it), the parts a
+ * row opens, drawn only when open, and More settings as the card's last
+ * row, as the design draws it: its name over its summary, the chevron at
+ * the row's end, and no card of its own.
  */
 
 .bs-ds-setup-protect__score {
@@ -29,4 +31,44 @@
 
 .bs-ds-setup-protect__proxy:focus {
 	outline: none;
+}
+
+.bs-ds-app .bs-ds-setup-rec__row.bs-ds-setup-rec__more {
+	padding: 0;
+}
+
+.bs-ds-setup-rec__more .bs-ds-setup-fold {
+	border: 0;
+	border-radius: 0;
+	background: none;
+}
+
+.bs-ds-app .bs-ds-setup-rec__more .bs-ds-setup-fold__toggle {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-radius: 0 0 12px 12px;
+}
+
+.bs-ds-setup-rec__more .bs-ds-setup-fold__label {
+	grid-column: 1;
+	grid-row: 1;
+}
+
+.bs-ds-app .bs-ds-setup-rec__more .bs-ds-setup-fold__summary {
+	grid-column: 1;
+	grid-row: 2;
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setup-rec__more .bs-ds-setup-fold__chevron {
+	grid-column: 2;
+	grid-row: 1 / span 2;
+}
+
+.bs-ds-setup-rec__more .bs-ds-setup-fold__body {
+	padding-inline: var(--bs-ds-space-md);
 }

@@ -34,6 +34,7 @@ final class Guidance {
 		'certificate_expiring',
 		'disk_space_low',
 		'php_end_of_life',
+		'php_security_fix_missing',
 		'default_table_prefix',
 		'admin_user_id_one',
 		'backup_plugin_not_visible',

@@ -110,8 +110,46 @@
    a long plugin name in "Keep …" never squeezes the answer beside it. */
 @container bs-ds-setup (max-width: 520px) {
 
-	.bs-ds-choice__options {
+	.bs-ds-choice:not(.is-inline) .bs-ds-choice__options {
 		flex-direction: column;
+	}
+}
+
+/*
+ * Answers on one line (the inline layout): the design's coexistence card,
+ * "Use BetterShield" and "Keep theirs" side by side at any width, and the
+ * chosen answer's note under them, fading in as the choice changes.
+ */
+.bs-ds-choice.is-inline .bs-ds-choice__options {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--bs-ds-space-xs) var(--bs-ds-space-lg);
+}
+
+.bs-ds-app .bs-ds-choice__chosen {
+	margin: var(--bs-ds-space-xs) 0 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+	animation: bs-ds-choice-note 0.2s ease both;
+}
+
+/* Under the first answer's words: past its 16 radio and the 8 beside it. */
+.bs-ds-app .bs-ds-choice__chosen.is-first {
+	padding-inline-start: calc(16px + var(--bs-ds-space-xs));
+}
+
+@keyframes bs-ds-choice-note {
+
+	from {
+		opacity: 0;
+		transform: translateY(-2px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
 	}
 }
 
@@ -119,6 +157,10 @@
 
 	.bs-ds-app .bs-ds-choice .bs-ds-choice__input[type="radio"]::before {
 		transition: none;
+	}
+
+	.bs-ds-app .bs-ds-choice__chosen {
+		animation: none;
 	}
 }
 

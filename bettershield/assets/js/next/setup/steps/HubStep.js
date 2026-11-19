@@ -13,11 +13,14 @@
  * dialog saying the setup is done; closing it opens the Dashboard.
  */
 
+import './HubStep.css';
+
 import { createInterpolateElement, useEffect, useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import Button from '../../ui/Button';
 import { openInNewTab, useOnReturn } from '../../ui/newTab';
-import { SettingsCard } from '../../ui/Setting';
+import Icon from '../../ui/Icon';
+import Benefits from '../Benefits';
 import Frame, { Footer } from '../Frame';
 import { HubLink, SetupDoneDialog } from '../HubConnected';
 import { useSetup } from '../context';
@@ -67,6 +70,9 @@ export default function HubStep() {
 	const leaveDialog = leavingTo ? (
 		<SetupDoneDialog
 			connected={ false }
+			summary={ state.summary }
+			findings={ links.findings }
+			doneLabel={ leavingTo === links.hub ? sprintf( /* translators: %s: the plugin's name. */ __( 'Open %s Hub', 'bettershield' ), brand() ) : '' }
 			onClose={ () => {
 				setLeavingTo( null );
 				leave( leavingTo );
@@ -108,24 +114,35 @@ export default function HubStep() {
 		wasConnected.current = hub.connected;
 	}, [ hub.connected, hub.returning ] );
 
-	// The card both versions of the step show; `why` is the reason the site can't connect yet.
+	// What both versions of the step show: what the hub gives, then what
+	// connecting does in a quiet box; `why` is the reason the site can't connect yet.
 	const whatConnectingDoes = ( why = '' ) => (
-		<SettingsCard icon="network" title={ __( 'What connecting does', 'bettershield' ) }>
-			<div className="bs-ds-setup-card__body">
-				<p className="bs-ds-setup__note">
-					{ createInterpolateElement(
-						__( 'Connecting turns on “Let AI assistants see security info” and “Let AI assistants fix things”. Change them under <a>Agents<new /></a>.', 'bettershield' ),
-						{
-							// In a new tab, as the other in-step links: this step has
-							// no Back, and the same tab left the setup (#2632).
-							a: links.agents ? <a href={ links.agents } target="_blank" rel="noopener noreferrer" /> : <span />,
-							new: links.agents ? <span className="screen-reader-text">{ __( '(opens in a new tab)', 'bettershield' ) }</span> : <span />,
-						}
-					) }
-				</p>
-				{ why ? <p className="bs-ds-setup__note">{ why }</p> : <p className="bs-ds-setup__note">{ __( 'You sign in to the hub, approve the connection, and come back here.', 'bettershield' ) }</p> }
-			</div>
-		</SettingsCard>
+		<>
+			<Benefits
+				items={ [
+					[ 'layout-grid', __( 'Every site’s score and findings side by side', 'bettershield' ) ],
+					[ 'bell', __( 'An email when a site stops answering', 'bettershield' ) ],
+					[ 'bot', __( 'One AI connection for Claude, ChatGPT or Cursor', 'bettershield' ) ],
+				] }
+			/>
+			<section className="bs-ds-setup-hub__box" aria-label={ __( 'What connecting does', 'bettershield' ) }>
+				<Icon name="info" size={ 16 } tone="3" />
+				<div className="bs-ds-setup-hub__box-text">
+					<p className="bs-ds-setup__note">
+						{ createInterpolateElement(
+							__( 'Connecting turns on “Let AI assistants see security info” and “Let AI assistants fix things”. Change them under <a>Agents<new /></a>.', 'bettershield' ),
+							{
+								// In a new tab, as the other in-step links: this step has
+								// no Back, and the same tab left the setup (#2632).
+								a: links.agents ? <a href={ links.agents } target="_blank" rel="noopener noreferrer" /> : <span />,
+								new: links.agents ? <span className="screen-reader-text">{ __( '(opens in a new tab)', 'bettershield' ) }</span> : <span />,
+							}
+						) }
+					</p>
+					{ why ? <p className="bs-ds-setup__note">{ why }</p> : null }
+				</div>
+			</section>
+		</>
 	);
 
 	if ( hub.connected ) {
@@ -149,6 +166,8 @@ export default function HubStep() {
 				{ celebrating ? (
 					<SetupDoneDialog
 						already={ Boolean( hub.again ) }
+						summary={ state.summary }
+						findings={ links.findings }
 						onClose={ () => {
 							setCelebrating( false );
 
@@ -176,7 +195,7 @@ export default function HubStep() {
 				title={ sprintf( /* translators: %s: the plugin's name. */ __( 'Connect to %s Hub', 'bettershield' ), brand() ) }
 				subtitle={ __( 'Manage all your sites in one place, with downtime emails and one AI assistant.', 'bettershield' ) }
 				footer={
-					<Footer noSkip primary={ { label: sprintf( /* translators: %s: the plugin's name. */ __( 'Connect to %s Hub', 'bettershield' ), brand() ), onClick: () => setLeavingTo( links.hub ) } }>
+					<Footer noSkip primary={ { label: sprintf( /* translators: %s: the plugin's name. */ __( 'Connect to %s Hub', 'bettershield' ), brand() ), onClick: () => setLeavingTo( links.hub ), icon: 'arrow-out' } }>
 						<Button type="secondary" size="md" onClick={ () => setLeavingTo( links.dashboard ) }>
 							{ __( 'I’ll Connect Later', 'bettershield' ) }
 						</Button>
@@ -194,8 +213,10 @@ export default function HubStep() {
 			variant="wide"
 			title={ sprintf( /* translators: %s: the plugin's name. */ __( 'Connect to %s Hub', 'bettershield' ), brand() ) }
 			subtitle={ __( 'Manage all your sites in one place, with downtime emails and one AI assistant.', 'bettershield' ) }
+			// What happens after Connect, in the strip under the card.
+			note={ __( 'You sign in to the hub, approve the connection, and come back here.', 'bettershield' ) }
 			footer={
-				<Footer noSkip primary={ { label: sprintf( /* translators: %s: the plugin's name. */ __( 'Connect to %s Hub', 'bettershield' ), brand() ), onClick: connect, busy: connecting } }>
+				<Footer noSkip primary={ { label: sprintf( /* translators: %s: the plugin's name. */ __( 'Connect to %s Hub', 'bettershield' ), brand() ), onClick: connect, busy: connecting, icon: 'arrow-out' } }>
 					{ /* Filled, so the way out of the step reads as a button (#2531). */ }
 					<Button type="secondary" size="md" disabled={ connecting } onClick={ () => setLeavingTo( links.dashboard ) }>
 						{ __( 'I’ll Connect Later', 'bettershield' ) }

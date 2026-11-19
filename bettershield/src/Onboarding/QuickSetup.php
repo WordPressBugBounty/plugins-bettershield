@@ -30,7 +30,10 @@ use BetterShield\Events\Writer;
 use BetterShield\Integrity\FirstScan;
 use BetterShield\Login\Protection;
 use BetterShield\Network\Policies as NetworkPolicies;
+use BetterShield\Operator\SettingsDocument;
 use BetterShield\Recovery\OfflineCodes;
+use BetterShield\Recovery\Preflight;
+use BetterShield\Recovery\Readiness;
 use BetterShield\Recovery\RecoveryLink;
 use BetterShield\Support\ClientIp;
 use BetterShield\TwoFactor\Manager as TwoFactor;
@@ -180,6 +183,15 @@ final class QuickSetup {
 					static fn( $row ): bool => is_array( $row ) && is_string( $row['file'] ?? null ) && is_string( $row['name'] ?? null )
 				)
 			),
+			// The plugins whose sign-in address Coexistence held for the way
+			// back in, by import source, for the end of Protect to bring over.
+			'held_import'          => array_values( array_filter( (array) ( $stored['held_import'] ?? array() ), 'is_string' ) ),
+			// The imported rule for who must use two-factor that Coexistence
+			// held for the way back in, for the setup's end to bring (#2992).
+			'held_rule'            => self::rule_of( $stored['held_rule'] ?? null ),
+			// The plugins whose address came over that way, by file, for the
+			// setup to switch off through WordPress's own Deactivate.
+			'switch_off'           => array_values( array_filter( (array) ( $stored['switch_off'] ?? array() ), 'is_string' ) ),
 		);
 	}
 
@@ -564,6 +576,12 @@ final class QuickSetup {
 		// The welcome panel this setup replaces is owed no longer either.
 		FirstRun::complete( false );
 
+		// The sign-in address Coexistence held, now the way back in can be
+		// read; a Back and finish again still brings one that was waiting.
+		if ( ! $skipped ) {
+			self::bring_held();
+		}
+
 		// Finished again after Back from its last steps: the same run, whose
 		// first scan began and whose end was recorded the first time.
 		if ( $resumed ) {
@@ -574,6 +592,157 @@ final class QuickSetup {
 		FirstScan::begin();
 
 		Writer::instance()->record( $skipped ? 'quick_setup_skipped' : 'quick_setup_completed' );
+	}
+
+	/**
+	 * Bring over the sign-in address Coexistence held for the way back in,
+	 * now that the run reached its end, and mark the plugins it came from
+	 * for the setup to switch off. A recovery check never run yet is run
+	 * now; with still no way back in, the address stays with the other
+	 * plugin, which stays on, and is offered again from Settings › General.
+	 */
+	public static function bring_held(): void {
+		$keys = self::state()['held_import'];
+		$rule = self::state()['held_rule'];
+
+		if ( array() === $keys && null === $rule ) {
+			return;
+		}
+
+		$failure = Preflight::failure();
+
+		if ( null !== $failure && $failure['can_check_now'] ) {
+			Readiness::run();
+		}
+
+		if ( null !== Preflight::failure() ) {
+			return;
+		}
+
+		if ( null !== $rule ) {
+			self::bring_held_rule( $rule );
+		}
+
+		if ( array() === $keys ) {
+			return;
+		}
+
+		$done = Coexistence::import_held( $keys );
+
+		if ( is_wp_error( $done ) ) {
+			return;
+		}
+
+		$imported = array_column( self::state()['imported'], 'count', 'name' );
+		$off      = array();
+
+		foreach ( $done as $row ) {
+			if ( $row['count'] > 0 ) {
+				$imported[ $row['name'] ] = (int) ( $imported[ $row['name'] ] ?? 0 ) + $row['count'];
+			}
+
+			$off = array_merge( $off, $row['files'] );
+		}
+
+		self::save(
+			array(
+				'held_import' => array(),
+				'switch_off'  => array_values( array_unique( $off ) ),
+				'imported'    => array_map(
+					static fn( string $name, int $count ): array => array(
+						'name'  => $name,
+						'count' => $count,
+					),
+					array_keys( $imported ),
+					array_values( $imported )
+				),
+			)
+		);
+	}
+
+	/**
+	 * Bring over the rule for who must use two-factor that Coexistence held,
+	 * added to this site's own as the import adds it (#2984), while
+	 * two-factor is still BetterShield's. Forgotten once applied, or once
+	 * two-factor went to another plugin.
+	 *
+	 * @param array{roles: string[], grace_days: int} $rule
+	 */
+	private static function bring_held_rule( array $rule ): void {
+		if ( 'bettershield' === Coexistence::choice_of( 'two_factor', self::state()['coexistence'] ) ) {
+			$result = SettingsDocument::apply(
+				array(
+					'format'            => SettingsDocument::FORMAT,
+					'version'           => SettingsDocument::VERSION,
+					// Added to the site's requirement as it stands now, which may
+					// have changed since the rule was held (#2984).
+					'two_factor_policy' => \BetterShield\Operator\Migrate::added_to_current( $rule ),
+				),
+				false,
+				'dashboard'
+			);
+
+			if ( is_wp_error( $result ) ) {
+				return;
+			}
+		}
+
+		self::save( array( 'held_rule' => null ) );
+	}
+
+	/**
+	 * A stored rule for who must use two-factor, or null.
+	 *
+	 * @param mixed $stored
+	 * @return array{roles: string[], grace_days: int}|null
+	 */
+	private static function rule_of( $stored ): ?array {
+		if ( ! is_array( $stored ) || ! is_array( $stored['roles'] ?? null ) || array() === $stored['roles'] ) {
+			return null;
+		}
+
+		return array(
+			'roles'      => array_values( array_filter( array_map( 'strval', $stored['roles'] ) ) ),
+			'grace_days' => max( 0, min( 90, (int) ( $stored['grace_days'] ?? 0 ) ) ),
+		);
+	}
+
+	/**
+	 * The plugins whose held address came over and that are still on, each
+	 * with WordPress's own Deactivate, for the setup to follow. None where
+	 * the setup may not switch another plugin off, as by default: that
+	 * plugin then stays on beside this one at the same address, as the
+	 * Coexistence step leaves it, and the owner switches it off.
+	 *
+	 * @return array<int, array{file: string, name: string, deactivate_url: string}>
+	 */
+	private static function to_switch_off(): array {
+		if ( ! Coexistence::deactivation_enabled() ) {
+			return array();
+		}
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$out = array();
+
+		foreach ( self::state()['switch_off'] as $file ) {
+			$url = Coexistence::deactivate_url( $file );
+
+			if ( ! is_plugin_active( $file ) || '' === $url ) {
+				continue;
+			}
+
+			$data  = get_plugins()[ $file ] ?? array();
+			$out[] = array(
+				'file'           => $file,
+				'name'           => wp_strip_all_tags( (string) ( $data['Name'] ?? $file ) ),
+				'deactivate_url' => $url,
+			);
+		}
+
+		return $out;
 	}
 
 	/* ---- the way back in ---------------------------------------------- */
@@ -1220,6 +1389,13 @@ final class QuickSetup {
 				'coexistence'          => $choices,
 				'coexistence_saved'    => true,
 				'coexistence_limiters' => $limiters,
+				/*
+				 * The address chosen for BetterShield but held until the way
+				 * back in is set up, which on a new install is always: Protect's
+				 * end brings it over, and the other plugin stays on until then,
+				 * so the address people use keeps working in between (#2968).
+				 */
+				'held_import'          => 'bettershield' === ( $choices['login_url'] ?? '' ) ? Coexistence::address_held() : array(),
 			)
 		);
 
@@ -1237,10 +1413,18 @@ final class QuickSetup {
 			return true;
 		}
 
+		// Read before the import: the plugins it came from are switched off
+		// once the step finishes, and the setup's end brings it from here.
+		$rule = 'bettershield' === ( $choices['two_factor'] ?? '' ) ? Coexistence::held_rule( $keys ) : null;
+
 		$done = Coexistence::import( $keys );
 
 		if ( is_wp_error( $done ) ) {
 			return $done;
+		}
+
+		if ( null !== $rule ) {
+			self::save( array( 'held_rule' => $rule ) );
 		}
 
 		// Added to what an earlier save brought over, by plugin.
@@ -1344,6 +1528,9 @@ final class QuickSetup {
 				// What a save here already brought over, by plugin, so a
 				// Deactivate that takes the import card away still says so.
 				'imported'   => $state['imported'],
+				// Plugins whose held address came over at Protect's end, for
+				// the setup to switch off as Coexistence would have (#2968).
+				'switch_off' => self::to_switch_off(),
 				// Whether the step may switch the other plugin off itself;
 				// off, as by default, it points to the Plugins screen instead.
 				'deactivation' => Coexistence::deactivation_enabled(),

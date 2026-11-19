@@ -23,6 +23,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import Alert from '../../ui/Alert';
 import Badge from '../../ui/Badge';
+import Button from '../../ui/Button';
 import { Toggle } from '../../ui/Setting';
 import { useSetup } from '../context';
 import { failureMessage, request, ROUTES } from '../api';
@@ -39,6 +40,9 @@ import { initials } from '../../../setup/format';
  * @param {boolean}  props.locked   Whether the switches are held.
  * @param {Function} props.onToggle Called with the switch's new state.
  */
+/** How many of the longer list show before it is opened. */
+const MORE_SHOWN = 3;
+
 function PluginRow( { plugin, chosen, result, working, locked, onToggle } ) {
 	const done = Boolean( result ) && 'error' !== result.status;
 	const failed = Boolean( result ) && 'error' === result.status;
@@ -120,41 +124,46 @@ function PluginRow( { plugin, chosen, result, working, locked, onToggle } ) {
 }
 
 /**
- * One list of plugins: a plain head with its name and a quiet note at the
- * other end, then the tiles in a grid with a hairline between rows.
+ * One group of plugins in the list: its name in a tinted band, as the design
+ * draws a group, then a row per plugin. The note (the switches start off, how
+ * many there are) is read out with the name; the step's own lines say it on
+ * screen.
  *
  * @param {Object}                    props
  * @param {string}                    props.id       The heading's id.
- * @param {string}                    props.title    The list's name.
- * @param {string}                    props.note     The quiet note at the head's end.
- * @param {import('react').ReactNode} props.children The tiles.
+ * @param {string}                    props.title    The group's name.
+ * @param {string}                    props.note     Read out after the name.
+ * @param {import('react').ReactNode} props.children The rows.
  */
 function PluginList( { id, title, note, children } ) {
 	return (
-		<section className="bs-ds-setup-eco" aria-labelledby={ id }>
+		<div className="bs-ds-setup-eco__group" role="group" aria-labelledby={ id }>
 			<div className="bs-ds-setup-eco__head">
 				<h2 className="bs-ds-setup-eco__heading" id={ id }>
 					{ title }
 				</h2>
-				{ note ? <span className="bs-ds-setup-eco__note">{ note }</span> : null }
+				{ note ? <span className="bs-ds-setup-eco__note screen-reader-text">{ note }</span> : null }
 			</div>
 			<ul className="bs-ds-setup-eco__list">{ children }</ul>
-		</section>
+		</div>
 	);
 }
 
 /**
  * @param {Object}   props
  * @param {Function} props.register Given the install the step's Continue runs, which resolves whether every chosen plugin is in.
- * @param {Function} props.onChosen Told how many switches are on, for the Continue's label.
+ * @param {Function} props.onChosen   Told how many switches are on, for the Continue's label.
+ * @param {Function} props.onProgress Told which plugin of how many is installing, then null, for the Continue's label.
  */
-export default function RecommendedPlugins( { register, onChosen } ) {
+export default function RecommendedPlugins( { register, onChosen, onProgress } ) {
 	const { state, busy, hold, setError } = useSetup();
 	const lists = state.ecosystem || { recommended: [], more: [] };
 	const [ chosen, setChosen ] = useState( [] );
 	const [ results, setResults ] = useState( {} );
 	const [ working, setWorking ] = useState( null );
 	const [ said, setSaid ] = useState( '' );
+	// The longer list opens a few rows at a time, so the step's Continue stays near.
+	const [ allMore, setAllMore ] = useState( false );
 
 	const waiting = chosen.filter( ( slug ) => ! results[ slug ] || 'error' === results[ slug ].status );
 	const installing = null !== working;
@@ -182,8 +191,9 @@ export default function RecommendedPlugins( { register, onChosen } ) {
 		setError( null );
 
 		await hold( 'ecosystem', async () => {
-			for ( const slug of order ) {
+			for ( const [ index, slug ] of order.entries() ) {
 				setWorking( slug );
+				onProgress?.( { at: index + 1, total: order.length } );
 
 				try {
 					const answer = await request( ROUTES.install, { slug } );
@@ -199,6 +209,7 @@ export default function RecommendedPlugins( { register, onChosen } ) {
 		} );
 
 		setWorking( null );
+		onProgress?.( null );
 
 		if ( failures ) {
 			// Switched back off, so Continue goes on without them as the
@@ -246,6 +257,10 @@ export default function RecommendedPlugins( { register, onChosen } ) {
 			/>
 		) );
 
+	// A few of the longer list, and any already switched on or tried, until it is opened.
+	const moreShown = allMore ? lists.more : lists.more.filter( ( plugin, index ) => index < MORE_SHOWN || chosen.includes( plugin.slug ) || results[ plugin.slug ] );
+	const moreHidden = lists.more.length - moreShown.length;
+
 	const offNote = __( 'Off until you switch one on', 'bettershield' );
 	const count = sprintf(
 		/* translators: %d: number of plugins in the list. */
@@ -255,17 +270,31 @@ export default function RecommendedPlugins( { register, onChosen } ) {
 
 	return (
 		<>
-			{ lists.recommended.length ? (
-				<PluginList id="bs-setup-eco-recommended" title={ __( 'Recommended for your site', 'bettershield' ) } note={ offNote }>
-					{ rows( lists.recommended ) }
-				</PluginList>
-			) : null }
+			<section className="bs-ds-setup-eco" aria-label={ __( 'Plugins', 'bettershield' ) }>
+				{ lists.recommended.length ? (
+					<PluginList id="bs-setup-eco-recommended" title={ __( 'Recommended for your site', 'bettershield' ) } note={ offNote }>
+						{ rows( lists.recommended ) }
+					</PluginList>
+				) : null }
 
-			{ lists.more.length ? (
-				<PluginList id="bs-setup-eco-more" title={ __( 'More from WPDeveloper', 'bettershield' ) } note={ lists.recommended.length ? count : `${ offNote } · ${ count }` }>
-					{ rows( lists.more ) }
-				</PluginList>
-			) : null }
+				{ lists.more.length ? (
+					<PluginList id="bs-setup-eco-more" title={ __( 'More from WPDeveloper', 'bettershield' ) } note={ lists.recommended.length ? count : `${ offNote } · ${ count }` }>
+						{ rows( moreShown ) }
+					</PluginList>
+				) : null }
+
+				{ moreHidden > 0 || allMore ? (
+					<Button type="link" size="sm" className="bs-ds-setup-eco__more" aria-expanded={ allMore } onClick={ () => setAllMore( ! allMore ) }>
+						{ allMore
+							? __( 'Show fewer', 'bettershield' )
+							: sprintf(
+									/* translators: %d: how many more plugins the list holds. */
+									_n( 'Show %d more plugin', 'Show %d more plugins', moreHidden, 'bettershield' ),
+									moreHidden
+							  ) }
+					</Button>
+				) : null }
+			</section>
 
 			<div className="screen-reader-text" role="status" aria-live="polite">
 				{ said }

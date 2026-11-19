@@ -1,31 +1,23 @@
 /**
  * What the setup's hub step shows once the site is connected: this site and
- * the hub joined by a tick, and the dialog that says the setup is done.
+ * the hub joined by a tick, and the dialog that says the setup is done, under
+ * the design's shield picture.
  *
- * Drawn from the token layer rather than shipped as images, so both turn over
- * with the scheme. The pictures are decorative: the words beside them say
- * everything they show.
+ * The pictures are decorative: the words beside them say everything they
+ * show. Closing the dialog, or its one button, opens the dashboard.
  */
 
 import './HubConnected.css';
 
 import { Modal } from '@wordpress/components';
 import { useId } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
+import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import brand from './brand';
-
-/** Each piece of confetti: x, y, its turn, and which token paints it. */
-const CONFETTI = [
-	[ 112, 8, 20, 'brand' ],
-	[ 146, 2, -24, 'info' ],
-	[ 176, 26, 38, 'warning' ],
-	[ 190, 62, -16, 'brand' ],
-	[ 174, 98, 28, 'info' ],
-	[ 92, 28, -36, 'warning' ],
-	[ 68, 14, 12, 'success' ],
-	[ 158, 44, -40, 'success' ],
-];
+import { pageModel } from './api';
+import leave from './leave';
+import { listOf } from '../../setup/format';
 
 export function HubLink() {
 	return (
@@ -46,39 +38,88 @@ export function HubLink() {
 	);
 }
 
-function Popper() {
-	return (
-		<svg className="bs-ds-setup-done__art" viewBox="0 0 210 170" width="210" height="170" aria-hidden="true" focusable="false">
-			<circle className="bs-ds-setup-done__halo" cx="118" cy="80" r="66" />
-			<path className="bs-ds-setup-done__cone" d="M28 156 90 56l58 56Z" />
-			<path className="bs-ds-setup-done__stripe" d="m74 82 32 31-20 9-24-23Zm-24 39 22 21-17 7-15-14Z" />
-			<ellipse className="bs-ds-setup-done__mouth" cx="119" cy="84" rx="40" ry="14" transform="rotate(44 119 84)" />
-			{ CONFETTI.map( ( [ x, y, turn, tone ], index ) => (
-				<rect
-					key={ `${ x }-${ y }` }
-					className={ `bs-ds-setup-done__bit bs-ds-setup-done__bit--${ tone }` }
-					style={ { '--bs-ds-bit-order': index } }
-					x={ x }
-					y={ y }
-					width="7"
-					height="11"
-					rx="1.5"
-					transform={ `rotate(${ turn } ${ x + 3.5 } ${ y + 5.5 })` }
-				/>
-			) ) }
-			<circle className="bs-ds-setup-done__seal" cx="119" cy="78" r="26" />
-			<path className="bs-ds-setup-done__tick" d="m107 78 9 9 16-18" />
-		</svg>
-	);
+/**
+ * What the setup changed, as the dialog's rows: the protections that are on,
+ * the safe fixes Setup applied, and the first scan. A row is left out where
+ * the page was not given what it says (a reload on the hub step).
+ *
+ * @param {?Object} summary The setup's summary, as Ready reads it.
+ * @return {Array<{icon: string, title: string, about: string}>} The rows.
+ */
+function changedRows( summary ) {
+	if ( ! summary ) {
+		return [];
+	}
+
+	const rows = [];
+	const fixes = summary.fixes || {};
+	const on = ( fixes.items || [] ).filter( ( fix ) => fix.on );
+	const applied = ( fixes.applied || [] ).length;
+
+	if ( on.length ) {
+		const names = on.slice( 0, 2 ).map( ( fix ) => fix.title );
+
+		rows.push( {
+			icon: 'shield-check',
+			title: sprintf(
+				/* translators: %d: how many protections are on. */
+				_n( '%d protection switched on', '%d protections switched on', on.length, 'bettershield' ),
+				on.length
+			),
+			about:
+				on.length > 2
+					? sprintf(
+							/* translators: 1: two protections' names, 2: how many more there are. */
+							_n( '%1$s and %2$d more', '%1$s and %2$d more', on.length - 2, 'bettershield' ),
+							names.join( ', ' ),
+							on.length - 2
+					  )
+					: listOf( names ),
+		} );
+	}
+
+	if ( applied ) {
+		rows.push( {
+			icon: 'undo-2',
+			title: sprintf(
+				/* translators: %d: how many safe fixes Setup applied. */
+				_n( '%d safe fix applied', '%d safe fixes applied', applied, 'bettershield' ),
+				applied
+			),
+			about: _n( 'It can be undone from Protection', 'Each one can be undone from Protection', applied, 'bettershield' ),
+		} );
+	}
+
+	if ( summary.first_scan ) {
+		const running = Boolean( summary.first_scan.running );
+
+		rows.push( {
+			icon: 'list-checks',
+			title: running ? __( 'First scan running', 'bettershield' ) : __( 'First scan finished', 'bettershield' ),
+			about: running
+				? __( 'Your score appears when it finishes.', 'bettershield' )
+				: sprintf(
+						/* translators: 1: a score out of 100, 2: a letter grade. */
+						__( 'Score %1$d, grade %2$s', 'bettershield' ),
+						summary.score,
+						summary.grade
+				  ),
+		} );
+	}
+
+	return rows;
 }
 
 /**
  * @param {Object}   props
- * @param {Function} props.onClose   Closes it.
+ * @param {Function} props.onClose   Closes it, and goes where the setup goes next.
+ * @param {string}   props.doneLabel The button that does the same, named for where it goes.
+ * @param {string}   props.findings  The Findings screen, for Review Findings; none to leave it out.
+ * @param {?Object}  props.summary   What the setup changed, for the rows.
  * @param {boolean}  props.connected Whether the site has just connected to the hub.
  * @param {boolean}  props.already   Whether it was connected before Connect was pressed.
  */
-export function SetupDoneDialog( { onClose, connected = true, already = false } ) {
+export function SetupDoneDialog( { onClose, doneLabel = '', findings = '', summary = null, connected = true, already = false } ) {
 	let text = __( 'Quick Setup is done. You can connect this site to the hub at any time.', 'bettershield' );
 
 	if ( already ) {
@@ -90,15 +131,58 @@ export function SetupDoneDialog( { onClose, connected = true, already = false } 
 	}
 
 	const titleId = useId();
+	const assets = window.bettershield?.assetsUrl || '';
+	const rows = changedRows( summary );
+	const host = pageModel().host || window.location.host;
 
 	return (
 		<Modal className="bs-ds-setup-done" aria={ { labelledby: titleId } } onRequestClose={ onClose } size="medium">
+			<div
+				className="bs-ds-setup-done__hero"
+				style={ assets ? { backgroundImage: `url("${ assets }setup/hero.webp")` } : undefined }
+				aria-hidden="true"
+			/>
 			<div className="bs-ds-setup-done__body">
-				<Popper />
-				<h2 id={ titleId } className="bs-ds-setup-done__title">
-					{ __( 'Congratulations', 'bettershield' ) }
-				</h2>
-				<p className="bs-ds-setup-done__text">{ text }</p>
+				<div className="bs-ds-setup-done__heading">
+					<h2 id={ titleId } className="bs-ds-setup-done__title">
+						{ __( 'Quick setup complete', 'bettershield' ) }
+					</h2>
+					{ rows.length ? (
+						<p className="bs-ds-setup-done__text">
+							{ sprintf(
+								/* translators: %s: the site's address. */
+								__( '%s is protected. Here’s what setup changed on your site.', 'bettershield' ),
+								host
+							) }
+						</p>
+					) : null }
+					{ /* The hub's part, where the rows do not already say the setup is done. */ }
+					{ ! rows.length || connected || already ? <p className="bs-ds-setup-done__text">{ text }</p> : null }
+				</div>
+
+				{ rows.length ? (
+					<ul className="bs-ds-setup-done__changes">
+						{ rows.map( ( row ) => (
+							<li key={ row.icon }>
+								<Icon name={ row.icon } size={ 16 } tone="brand" />
+								<span className="bs-ds-setup-done__change">
+									<span className="bs-ds-setup-done__change-title">{ row.title }</span>
+									{ row.about ? <span className="bs-ds-setup-done__change-about">{ row.about }</span> : null }
+								</span>
+							</li>
+						) ) }
+					</ul>
+				) : null }
+			</div>
+			<div className="bs-ds-app bs-ds-setup-done__actions">
+				{ findings ? (
+					<Button type="secondary" size="md" className="bs-ds-setup-done__review" onClick={ () => leave( findings ) }>
+						{ __( 'Review findings', 'bettershield' ) }
+					</Button>
+				) : null }
+				<Button type="primary" size="md" className="bs-ds-setup-done__go" onClick={ onClose }>
+					{ doneLabel || __( 'Go to dashboard', 'bettershield' ) }
+				</Button>
 			</div>
 		</Modal>
 	);

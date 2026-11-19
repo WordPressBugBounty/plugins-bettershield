@@ -21,30 +21,43 @@
  * is asked. A site administrator gets the welcome without the question, and
  * Get Started only moves on.
  *
- * Drawn as the setup's hero: the picture, the heading, then the question in a
- * card of its own: the sentence, ending in a "What We Collect" link that opens
- * the full list of what is sent under it, and the two answers centered at the
- * card's foot.
+ * Drawn as the design's first card: the heading, three lines on what the
+ * setup does, then the question in a box of its own — the sentence, ending
+ * in a "What We Collect" link that opens the full list of what is sent under
+ * it. Allow & Continue is the step's one Primary at the column's foot, and
+ * Skip, the no, sits at the end of the strip under the card, where every
+ * step's Skip is. The picture is beside it.
  */
 
 import './Welcome.css';
 
 import { useId, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import Button from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { Answer } from '../../ui/Topics';
 import { usageSummary } from '../../data/usage';
-import Frame from '../Frame';
-import Illustration from '../Illustration';
+import Frame, { Footer } from '../Frame';
+import Benefits from '../Benefits';
 import { useSetup } from '../context';
 import { ROUTES } from '../api';
 import brand from '../brand';
 
+/** What the setup does, in three lines, as the design opens with. */
+function WelcomeBenefits() {
+	return (
+		<Benefits
+			items={ [
+				[ 'shield-check', __( 'Turn on the protections most sites need', 'bettershield' ) ],
+				[ 'list-checks', __( 'Get your first security score in minutes', 'bettershield' ) ],
+				[ 'undo-2', __( 'Undo any change, any time', 'bettershield' ) ],
+			] }
+		/>
+	);
+}
+
 export default function Welcome() {
 	const { state, run, busy, advance, skip } = useSetup();
 	const consent = state.consent || {};
-	const working = null !== busy;
 	// Which answer is on its way, so only its button shows it.
 	const [ answering, setAnswering ] = useState( '' );
 	// The list of what is sent, opened from the link that ends the sentence.
@@ -69,14 +82,9 @@ export default function Welcome() {
 				variant="hero"
 				title={ sprintf( /* translators: %s: the plugin's name. */ __( 'Welcome to %s', 'bettershield' ), brand() ) }
 				subtitle={ __( 'Set up your site’s security basics in under 2 minutes.', 'bettershield' ) }
+				footer={ <Footer noSkip primary={ { label: __( 'Get Started', 'bettershield' ), onClick: advance } } /> }
 			>
-				<Illustration />
-
-				<div className="bs-ds-setup-consent__actions">
-					<Button type="primary" size="lg" className="bs-ds-setup-consent__start" onClick={ advance }>
-						{ __( 'Get Started', 'bettershield' ) }
-					</Button>
-				</div>
+				<WelcomeBenefits />
 			</Frame>
 		);
 	}
@@ -86,8 +94,15 @@ export default function Welcome() {
 			variant="hero"
 			title={ sprintf( /* translators: %s: the plugin's name. */ __( 'Welcome to %s', 'bettershield' ), brand() ) }
 			subtitle={ __( 'Set up your site’s security basics in under 2 minutes.', 'bettershield' ) }
+			footer={
+				/* The yes is the step's one Primary; Skip, the no, is quieter, at the strip's end. */
+				<Footer
+					primary={ { label: __( 'Allow & Continue', 'bettershield' ), onClick: () => answer( 'yes' ), busy: 'consent' === busy && 'yes' === answering } }
+					skip={ { label: __( 'Skip', 'bettershield' ), onClick: () => answer( 'skip' ) } }
+				/>
+			}
 		>
-			<Illustration />
+			<WelcomeBenefits />
 
 			{ /* A short question rather than a settings card: no header, as in
 			     the shared onboarding design. Still a named region. */ }
@@ -124,23 +139,6 @@ export default function Welcome() {
 						</div>
 					) : null }
 
-					{ /* The yes is the step's one Primary; Skip is quieter beside it. */ }
-					<div className="bs-ds-setup-consent__actions bs-ds-setup-consent__answers">
-						<Button
-							type="primary"
-							size="lg"
-							className="bs-ds-setup-consent__start"
-							isBusy={ 'consent' === busy && 'yes' === answering }
-							disabled={ working }
-							onClick={ () => answer( 'yes' ) }
-						>
-							{ __( 'Allow & Continue', 'bettershield' ) }
-						</Button>
-
-						<Button type="ghost" size="lg" isBusy={ 'consent' === busy && 'skip' === answering } disabled={ working } onClick={ () => answer( 'skip' ) }>
-							{ __( 'Skip', 'bettershield' ) }
-						</Button>
-					</div>
 				</div>
 			</Card>
 		</Frame>

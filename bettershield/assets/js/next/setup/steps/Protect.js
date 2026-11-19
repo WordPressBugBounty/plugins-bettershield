@@ -24,7 +24,7 @@
 
 import './Protect.css';
 
-import { useRef, useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { listOf } from '../../../setup/format';
 import Badge from '../../ui/Badge';
@@ -113,7 +113,7 @@ function ScorePreview( { score, after } ) {
 }
 
 export default function Protect() {
-	const { state, run, busy, advance, links } = useSetup();
+	const { state, run, busy, advance, links, setDraft = () => {} } = useSetup();
 	const checks = state.vulnerabilities || { available: false, on: false, label: '' };
 	// The first file check can still move the score, so the figure waits.
 	const scanning = Boolean( state.first_scan && state.first_scan.running );
@@ -163,6 +163,13 @@ export default function Protect() {
 	// Only the safe fixes are choices the preview can count now.
 	const chosen = ( choice ) => fixes.includes( choice );
 	const after = score ? projectedScore( score, chosen ) : null;
+
+	// The picture beside the step draws the score after Apply.
+	useEffect( () => {
+		setDraft( { protect: { after } } );
+	}, [ after?.score, after?.grade ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	useEffect( () => () => setDraft( null ), [] ); // eslint-disable-line react-hooks/exhaustive-deps
 	const unsure = proxyUnsure( state );
 	// While visits cannot be told apart, lockouts cannot run, so Apply cannot
 	// earn the sign-in points: the row says when its points come (#2573).
@@ -229,6 +236,10 @@ export default function Protect() {
 		<Frame
 			inline={ [ 'site' ] }
 			title={ __( 'Protect your site', 'bettershield' ) }
+			subtitle={ __( 'We picked protections that are safe for almost every site. Change any of them later.', 'bettershield' ) }
+			// The score's move is drawn in the picture beside the step, as the
+			// design draws it; here it is read out.
+			quietAside
 			aside={
 				scanning ? (
 					<span className="bs-ds-setup-protect__score" role="status">
@@ -315,23 +326,27 @@ export default function Protect() {
 						/>
 					</div>
 				</ScoreRow>
+
+				{ /* More settings, the card's last row, as the design draws it. */ }
+				<li className="bs-ds-setup-rec__row bs-ds-setup-rec__more">
+					<Disclosure
+						label={ __( 'More settings', 'bettershield' ) }
+						summary={ more ? `${ __( 'No effect on your score', 'bettershield' ) } · ${ more }` : __( 'No effect on your score', 'bettershield' ) }
+						open={ moreOpen || site.attention }
+						onToggle={ setMoreOpen }
+					>
+						<div className="bs-ds-setup-pair">
+							{ site.who }
+							<div id="bs-ds-setup-protect-proxy" ref={ proxyRef } tabIndex={ -1 } className="bs-ds-setup-protect__proxy">
+								{ site.proxy }
+							</div>
+						</div>
+						{ site.alerts }
+						{ checks.available ? <VulnerabilityChecks checks={ checks } on={ checking } onChange={ setChecking } /> : null }
+					</Disclosure>
+				</li>
 			</Recommended>
 
-			<Disclosure
-				label={ __( 'More settings', 'bettershield' ) }
-				summary={ more ? `${ __( 'No effect on your score', 'bettershield' ) } · ${ more }` : __( 'No effect on your score', 'bettershield' ) }
-				open={ moreOpen || site.attention }
-				onToggle={ setMoreOpen }
-			>
-				<div className="bs-ds-setup-pair">
-					{ site.who }
-					<div id="bs-ds-setup-protect-proxy" ref={ proxyRef } tabIndex={ -1 } className="bs-ds-setup-protect__proxy">
-						{ site.proxy }
-					</div>
-				</div>
-				{ site.alerts }
-				{ checks.available ? <VulnerabilityChecks checks={ checks } on={ checking } onChange={ setChecking } /> : null }
-			</Disclosure>
 			{ site.refusal }
 
 			<p className="screen-reader-text" role="status">

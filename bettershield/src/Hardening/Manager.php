@@ -831,6 +831,27 @@ final class Manager {
 			'file_tokens' => array_values( $file_tokens ),
 			'notes'       => array_values( $notes ),
 		) + array_intersect_key( $state[ $item ] ?? array(), array( self::WITH_ADDRESS => true ) );
+
+		/*
+		 * The headers the server was last seen sending stay the server's
+		 * from the first response after the click: a revert drops them from
+		 * the item, and until the next daily check this sent its own beside
+		 * them. Read from the stored answer, so the click opens no
+		 * connection, and asked again in the background once this request
+		 * ends, so an old answer does not stand for a day.
+		 */
+		if ( 'security_headers' === $item && array() !== self::server_sends_headers() ) {
+			$state[ $item ]['server_sends'] = self::server_sends_headers();
+		}
+
+		if ( 'hsts' === $item && self::server_sends_hsts() ) {
+			$state[ $item ]['server_sends'] = true;
+		}
+
+		if ( in_array( $item, array( 'security_headers', 'hsts' ), true ) ) {
+			add_action( 'shutdown', array( self::class, 'ask_server_headers' ) );
+		}
+
 		if ( ! update_option( self::OPTION, $state, true ) && $this->item_state( $item ) !== $state[ $item ] ) {
 			return new \WP_Error( 'bettershield_state_write_failed', __( 'This could not be saved. Check any recorded file changes before retrying.', 'bettershield' ), array( 'status' => 503 ) );
 		}
@@ -2028,6 +2049,7 @@ final class Manager {
 					'checked_at' => gmdate( 'c' ),
 					'reliable'   => false,
 					'sends'      => array(),
+					'hsts'       => false,
 				),
 				false
 			);
@@ -2066,6 +2088,8 @@ final class Manager {
 				'checked_at' => gmdate( 'c' ),
 				'reliable'   => true,
 				'sends'      => $sent,
+				// Kept apart from the four: the HSTS item reads it on its own.
+				'hsts'       => $hsts,
 			),
 			false
 		);
@@ -2105,6 +2129,24 @@ final class Manager {
 		}
 
 		return array_values( array_map( 'strtolower', array_map( 'strval', (array) ( $stored['sends'] ?? array() ) ) ) );
+	}
+
+	/**
+	 * Whether the server was last seen sending Strict-Transport-Security on
+	 * its own; false when it was never asked or the asking failed.
+	 */
+	public static function server_sends_hsts(): bool {
+		$stored = get_option( self::SERVER_HEADERS_OPTION, null );
+
+		return is_array( $stored ) && ! empty( $stored['reliable'] ) && ! empty( $stored['hsts'] );
+	}
+
+	/**
+	 * Ask the server which headers it sends, as an early run of the daily
+	 * check: after the request that switched a header item on, never in it.
+	 */
+	public static function ask_server_headers(): void {
+		\BetterShield\Cron\Runner::instance()->request_run( 'bettershield_server_headers', get_current_user_id() );
 	}
 
 	/**

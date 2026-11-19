@@ -1,168 +1,59 @@
 /**
- * A step's heading, body and footer inside the panel.
+ * One step's page (Frame.js): a card in two columns on a tinted tray, with a
+ * strip along the tray's foot.
  *
- * The heading is the step's page title, in the top bar's type (18 medium)
- * over one 14 line; the first step's is its hero (24) over a 16 line, both
- * centered. The body is 24 in from the panel's edges with 16 between its
- * cards, and the footer is a bar along the panel's foot, 64 tall like the
- * dashboard's top bar, with a rule over it.
+ * The tray is the design's "Setup card": the tertiary surface, 912 wide, 8
+ * below the card for the strip. The card is the primary surface: the step's
+ * column, 400 wide with 40 around it, and the picture beside it (Visual.css),
+ * which takes the rest. The column is a container of its own, so a step's
+ * cards lay themselves out against the column's width, not the window's.
  */
+
+.bs-ds-setup__stage {
+	container: bs-ds-setup-stage / inline-size;
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	width: 100%;
+	max-width: 912px;
+	margin-inline: auto;
+	padding-bottom: var(--bs-ds-space-xs);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 16px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-setup__card {
+	display: flex;
+	align-items: stretch;
+	min-height: 520px;
+	margin: -1px -1px 0;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 16px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-setup__content {
+	container: bs-ds-setup bs-ds-content / inline-size;
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	gap: var(--bs-ds-space-lg);
+	width: 400px;
+	min-width: 0;
+	padding: calc(var(--bs-ds-space-lg) + var(--bs-ds-space-md));
+}
+
+/* ---- the heading -------------------------------------------------------- */
 
 .bs-ds-setup__head {
 	display: flex;
 	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--bs-ds-space-xs);
-	padding: var(--bs-ds-space-lg) var(--bs-ds-space-lg) 0;
-}
-
-.bs-ds-app .bs-ds-setup__title {
-	margin: 0;
-	padding: 0;
-	font-size: var(--bs-ds-size-large);
-	font-weight: 500;
-	line-height: 1.3;
-	letter-spacing: -0.005em;
-	color: var(--bs-ds-color-text-primary);
-}
-
-/* A heading takes focus only so that arriving at a step is announced; it is
-   not a control, and a ring around it would read as one. */
-.bs-ds-app .bs-ds-setup__title:focus {
-	outline: none;
-}
-
-.bs-ds-app .bs-ds-setup__subtitle {
-	max-width: 72ch;
-	font-size: var(--bs-ds-size-small);
-	line-height: 1.4;
-	letter-spacing: -0.02em;
-	color: var(--bs-ds-color-text-secondary);
-}
-
-/* The first step is an introduction rather than a form. */
-.bs-ds-setup__head--hero {
-	align-items: center;
-	padding-top: calc(var(--bs-ds-space-md) * 2);
-	text-align: center;
-}
-
-.bs-ds-app .bs-ds-setup__head--hero .bs-ds-setup__title {
-	font-size: var(--bs-ds-size-heading-xlarge);
-	font-weight: 600;
-	line-height: 1.25;
-	letter-spacing: -0.02em;
-}
-
-.bs-ds-app .bs-ds-setup__head--wide .bs-ds-setup__subtitle {
-	max-width: none;
-}
-
-.bs-ds-app .bs-ds-setup__head--hero .bs-ds-setup__subtitle {
-	font-size: var(--bs-ds-size-medium);
-}
-
-.bs-ds-setup__body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--bs-ds-space-md);
+	gap: var(--bs-ds-space-sm);
 	min-width: 0;
-	padding: var(--bs-ds-space-lg);
 }
 
-.bs-ds-setup__body--hero {
-	align-items: center;
-}
-
-/* ---- the footer --------------------------------------------------------- */
-
-.bs-ds-setup__foot {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--bs-ds-space-xs);
-	min-height: 64px;
-	padding: var(--bs-ds-space-md) var(--bs-ds-space-lg);
-	border-top: 1px solid var(--bs-ds-color-border-primary);
-}
-
-.bs-ds-setup__foot-start,
-.bs-ds-setup__foot-end {
-	display: flex;
-	align-items: center;
-	gap: var(--bs-ds-space-xs);
-}
-
-.bs-ds-setup__foot-end {
-	flex-wrap: wrap;
-	justify-content: flex-end;
-	margin-inline-start: auto;
-}
-
-/* The way to reach us, as quiet as a link can be and still be found. */
-.bs-ds-setup__help {
-	padding: 0 var(--bs-ds-space-xs);
-	color: var(--bs-ds-color-text-secondary);
-	font-size: var(--bs-ds-size-small);
-	text-decoration: underline;
-	text-underline-offset: 2px;
-}
-
-.bs-ds-setup__help:hover,
-.bs-ds-setup__help:focus {
-	color: var(--bs-ds-color-text-primary);
-}
-
-/* On a step with no footer bar, the link sits at the panel's foot. */
-.bs-ds-setup__help-line {
-	display: flex;
-	justify-content: center;
-	padding: 0 var(--bs-ds-space-lg) var(--bs-ds-space-md);
-}
-
-/*
- * Narrow: the way forward goes first and full width, where a thumb reaches
- * it; Skip under it, then Back, and Need help? last.
- */
-@container bs-ds-setup (max-width: 600px) {
-
-	.bs-ds-setup__head {
-		padding: var(--bs-ds-space-md) var(--bs-ds-space-md) 0;
-	}
-
-	.bs-ds-setup__body {
-		padding: var(--bs-ds-space-md);
-	}
-
-	.bs-ds-setup__foot {
-		flex-direction: column-reverse;
-		align-items: stretch;
-		padding: var(--bs-ds-space-md);
-	}
-
-	.bs-ds-setup__foot-start,
-	.bs-ds-setup__foot-end {
-		flex-direction: column-reverse;
-		align-items: stretch;
-		margin-inline-start: 0;
-	}
-
-	.bs-ds-setup__foot-start:empty {
-		display: none;
-	}
-
-	/* Need help? goes last, under Back, and centered like the rest. */
-	.bs-ds-setup__help {
-		order: -1;
-		align-self: center;
-	}
-
-	.bs-ds-app .bs-ds-setup__foot .components-button.bs-ds-btn {
-		width: 100%;
-	}
-}
-
-/* The heading's words as one column, whatever sits at its other end. */
 .bs-ds-setup__head-text {
 	display: flex;
 	flex-direction: column;
@@ -171,20 +62,38 @@
 	min-width: 0;
 }
 
-.bs-ds-setup__head--hero .bs-ds-setup__head-text {
-	align-items: center;
+.bs-ds-app .bs-ds-setup__count {
+	margin: 0 0 var(--bs-ds-space-xxs);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-tertiary);
+	font-variant-numeric: tabular-nums;
 }
 
-/* Something at the heading's other end, such as where the score goes: on
-   the same line on a wide panel, under the words on a narrow one. */
-.bs-ds-setup__head.is-aside {
-	flex-direction: row;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+.bs-ds-app .bs-ds-setup__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-heading-xlarge);
+	font-weight: 600;
+	line-height: 1.25;
+	letter-spacing: -0.015em;
+	color: var(--bs-ds-color-text-primary);
+	overflow-wrap: anywhere;
 }
 
+.bs-ds-app .bs-ds-setup__title:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-setup__subtitle {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The score or a count beside the heading goes under it in a column this narrow. */
 .bs-ds-setup__head-aside {
 	display: flex;
 	flex-wrap: wrap;
@@ -198,4 +107,165 @@
 	line-height: 1.4;
 	letter-spacing: -0.02em;
 	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- the body ----------------------------------------------------------- */
+
+.bs-ds-setup__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	min-width: 0;
+}
+
+/* A body with nothing in it takes no room above the way on. */
+.bs-ds-setup__body:empty {
+	display: none;
+}
+
+/* ---- the way on --------------------------------------------------------- */
+
+/* At the column's foot however short the step is: Back, then the Primary,
+   which takes the room that is left. */
+.bs-ds-setup__foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin-top: auto;
+	padding-top: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .components-button.bs-ds-btn.bs-ds-setup__primary {
+	flex: 1 1 auto;
+	justify-content: center;
+}
+
+/* The hub step's two buttons don't fit one row: when they stack, the main
+   one (Connect) is the top one. */
+.bs-ds-setup__stage--wide .bs-ds-setup__foot {
+	flex-wrap: wrap-reverse;
+}
+
+/* A step's other button (I'll Connect Later) takes its row too when the two
+   wrap, rather than standing half a row wide. */
+.bs-ds-app .bs-ds-setup__foot > .components-button.bs-ds-btn:not(.bs-ds-setup__back, .bs-ds-setup__primary) {
+	flex: 1 1 auto;
+	justify-content: center;
+}
+
+/* ---- the strip ---------------------------------------------------------- */
+
+/* The first scan's line: a small turning ring while it runs, a link once it is done. */
+.bs-ds-setup__scan-spin {
+	flex: none;
+	width: 12px;
+	height: 12px;
+	border: 2px solid var(--bs-ds-color-surface-tertiary-em);
+	border-top-color: var(--bs-ds-color-icon-secondary);
+	border-radius: 50%;
+	animation: bs-ds-setup-scan-spin 0.8s linear infinite;
+}
+
+@keyframes bs-ds-setup-scan-spin {
+
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-setup__scan-spin {
+		animation-duration: 2.4s;
+	}
+}
+
+.bs-ds-app .bs-ds-setup__strip-link {
+	font-weight: 500;
+	color: var(--bs-ds-color-tag-brand-text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.bs-ds-setup__strip {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-height: 28px;
+	padding-inline: var(--bs-ds-space-md) var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-setup__strip-note {
+	display: flex;
+	flex: 1 1 0;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-setup__strip-note .bs-ds-icon {
+	flex: none;
+}
+
+.bs-ds-setup__foot-start {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin-inline-start: auto;
+}
+
+.bs-ds-app .bs-ds-setup__help {
+	padding-inline: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 28px;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+	text-decoration: none;
+	border-radius: 8px;
+}
+
+.bs-ds-app .bs-ds-setup__help:hover,
+.bs-ds-app .bs-ds-setup__help:focus {
+	color: var(--bs-ds-color-text-primary);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.bs-ds-app .components-button.bs-ds-btn.bs-ds-setup__skip {
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* ---- narrow ------------------------------------------------------------- */
+
+/* No room for the picture: the column takes the card. */
+@container bs-ds-setup-stage (max-width: 760px) {
+
+	.bs-ds-setup__content {
+		flex: 1 1 auto;
+		width: auto;
+	}
+}
+
+@container bs-ds-setup-stage (max-width: 480px) {
+
+	.bs-ds-setup__card {
+		min-height: 0;
+	}
+
+	.bs-ds-setup__content {
+		padding: var(--bs-ds-space-lg) var(--bs-ds-space-md);
+	}
+
+	.bs-ds-setup__strip {
+		padding-block: var(--bs-ds-space-xxs);
+	}
 }

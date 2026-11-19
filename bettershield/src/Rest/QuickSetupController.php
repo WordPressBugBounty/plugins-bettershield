@@ -177,7 +177,10 @@ final class QuickSetupController {
 			'/quick-setup',
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
-				'callback'            => static fn(): \WP_REST_Response => self::state( QuickSetup::is_done() && 'ready' === QuickSetup::state()['step'] ),
+				// With the summary where the page loads it: Ready draws it, and
+				// the hub step's closing dialog lists it, so a read again after
+				// the first scan ends keeps the dialog's rows.
+				'callback'            => static fn(): \WP_REST_Response => self::state( QuickSetup::is_done() && in_array( QuickSetup::state()['step'], array( 'ready', 'hub' ), true ) ),
 				'permission_callback' => $manage,
 			)
 		);

@@ -1,0 +1,57 @@
+/**
+ * The setup page's corners (Shell.js): the logo at the top and the line
+ * naming the site at the foot.
+ */
+
+.bs-ds-setup__logo {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xxs);
+	height: 28px;
+	border-radius: 6px;
+	text-decoration: none;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app a.bs-ds-setup__logo:focus-visible {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 4px;
+	box-shadow: none;
+}
+
+.bs-ds-setup__logo-mark {
+	display: block;
+	width: auto;
+	height: 28px;
+}
+
+.bs-ds-setup__logo-word {
+	display: block;
+	width: auto;
+	height: 12px;
+}
+
+.bs-ds-app .bs-ds-setup__logo-name {
+	font-size: var(--bs-ds-size-medium);
+	font-weight: 600;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-app .bs-ds-setup__context {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1;
+	letter-spacing: -0.02em;
+}
+
+.bs-ds-setup__context-label {
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-setup__context-site {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}

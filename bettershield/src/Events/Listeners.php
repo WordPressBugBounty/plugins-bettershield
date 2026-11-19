@@ -120,7 +120,9 @@ final class Listeners {
 
 	public function register(): void {
 		add_action( 'wp_login', array( $this, 'on_login' ), 10, 2 );
-		add_action( 'wp_login_failed', array( $this, 'on_login_failed' ), 10, 1 );
+		// First, as the attempt limit counts it: a listener that ends the
+		// request on a failure must not keep it out of Activity (#3009).
+		add_action( 'wp_login_failed', array( $this, 'on_login_failed' ), PHP_INT_MIN, 1 );
 		add_action( 'wp_logout', array( $this, 'on_logout' ), 10, 1 );
 		add_action( 'retrieve_password', array( $this, 'on_password_reset_requested' ), 10, 1 );
 

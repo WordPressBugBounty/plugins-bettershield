@@ -36,6 +36,14 @@ final class BackupCodes {
 	private const IMPORTED_COST = 4;
 
 	/**
+	 * The mark on a hash another plugin made with `wp_hash_password()` and
+	 * that is kept as it was: those are checked with `wp_check_password()`,
+	 * which reads both WordPress's own formats, where this plugin's own are
+	 * checked with `password_verify()`, which reads neither.
+	 */
+	private const FOREIGN = 'wp:';
+
+	/**
 	 * Generate a set for an enrollment that has not armed yet. The hashes
 	 * are held aside; whatever set is in force stays in force. Returns the
 	 * plaintext codes — the only moment they exist in the clear.
@@ -138,14 +146,25 @@ final class BackupCodes {
 	 * request that deactivates the other plugin. Never use this cost for
 	 * anything a person chooses.
 	 *
-	 * @param string[] $codes The codes, as `imported_code()` reduces them.
+	 * A plugin that keeps only hashes of its codes, made with WordPress's own
+	 * `wp_hash_password()`, hands those over instead, and they are kept as
+	 * they are, marked as another plugin's: the code itself was never kept
+	 * anywhere, and a hash is enough to check one.
+	 *
+	 * @param string[] $codes  The codes, as `imported_code()` reduces them.
+	 * @param string[] $hashes Another plugin's `wp_hash_password()` hashes of its codes.
 	 * @return int How many were put in force.
 	 */
-	public static function bring_over( int $user_id, array $codes ): int {
-		$hashes = array();
+	public static function bring_over( int $user_id, array $codes, array $hashes = array() ): int {
+		$foreign = array_values( array_filter( $hashes, array( self::class, 'is_wordpress_hash' ) ) );
+		$hashes  = array();
 
 		foreach ( $codes as $code ) {
 			$hashes[] = password_hash( $code, PASSWORD_BCRYPT, array( 'cost' => self::IMPORTED_COST ) );
+		}
+
+		foreach ( $foreign as $hash ) {
+			$hashes[] = self::FOREIGN . $hash;
 		}
 
 		if ( array() === $hashes ) {
@@ -155,6 +174,16 @@ final class BackupCodes {
 		update_user_meta( $user_id, self::META, $hashes );
 
 		return count( $hashes );
+	}
+
+	/**
+	 * Whether a value is a hash `wp_hash_password()` makes: `$wp$` since
+	 * WordPress 6.8, bcrypt, or the portable `$P$` before.
+	 *
+	 * @param mixed $hash
+	 */
+	public static function is_wordpress_hash( $hash ): bool {
+		return is_string( $hash ) && 1 === preg_match( '/^(?:\$wp\$2y\$|\$2y\$|\$P\$)[.\/0-9A-Za-z$]{20,}$/D', $hash );
 	}
 
 	/**
@@ -219,7 +248,7 @@ final class BackupCodes {
 		}
 
 		foreach ( $hashes as $index => $hash ) {
-			if ( ! is_string( $hash ) || ! password_verify( $submitted, $hash ) ) {
+			if ( ! is_string( $hash ) || ! self::matches( $submitted, $hash ) ) {
 				continue;
 			}
 
@@ -233,6 +262,19 @@ final class BackupCodes {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Whether a code matches one stored hash. Another plugin's is checked
+	 * with no account given, so core's rehash, which writes to the account's
+	 * password, never runs on it.
+	 */
+	private static function matches( string $submitted, string $hash ): bool {
+		if ( str_starts_with( $hash, self::FOREIGN ) ) {
+			return wp_check_password( $submitted, substr( $hash, strlen( self::FOREIGN ) ) );
+		}
+
+		return password_verify( $submitted, $hash );
 	}
 
 	public static function remaining( int $user_id ): int {

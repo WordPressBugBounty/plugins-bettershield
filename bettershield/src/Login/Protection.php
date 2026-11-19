@@ -1163,8 +1163,11 @@ final class Protection {
 		// judged where sessions are, in Sessions.
 		add_action( 'wp_authenticate_application_password_errors', array( $this, 'refuse_blocked_app_password' ), 10, 3 );
 
-		// Recording, after the outcome is known.
-		add_action( 'wp_login_failed', array( $this, 'record_failure' ), 10, 2 );
+		// Recording, after the outcome is known. First on the failure, before
+		// any other plugin's listener: one that redirects and exits there
+		// (LoginWP's failed-sign-in redirect, on by default) left every wrong
+		// password uncounted, so the attempt limit never fired (#3009).
+		add_action( 'wp_login_failed', array( $this, 'record_failure' ), PHP_INT_MIN, 2 );
 		add_action( 'wp_login', array( $this, 'record_success' ), 10, 2 );
 
 		// A place reserved before the password check is given back when the

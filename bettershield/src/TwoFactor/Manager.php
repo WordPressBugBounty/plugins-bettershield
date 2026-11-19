@@ -49,6 +49,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Manager {
 
+	/**
+	 * Where the gate sits on `authenticate`. Finishing a parked sign-in skips
+	 * other plugins' callbacks at or before it (`finish_chain()`), so the two
+	 * move together.
+	 */
+	public const GATE_PRIORITY = 40;
+
 	private const META_SECRET    = 'bettershield_totp_secret';
 	private const META_PENDING   = 'bettershield_totp_pending';
 	private const META_CONFIRMED = 'bettershield_totp_confirmed';
@@ -136,9 +143,9 @@ final class Manager {
 		// XML-RPC multicall) says nothing about this one.
 		add_filter( 'authenticate', array( $this, 'begin_chain' ), 1, 1 );
 
-		// Priority 40: after the password (20), the honeypot (25) and the
-		// lockout gate (30) have all had their say.
-		add_filter( 'authenticate', array( $this, 'gate' ), 40, 3 );
+		// After the password (20), the honeypot (25) and the lockout gate
+		// (30) have all had their say.
+		add_filter( 'authenticate', array( $this, 'gate' ), self::GATE_PRIORITY, 3 );
 
 		// Last: whoever the whole chain resolved, two-factor or not.
 		add_filter( 'authenticate', array( $this, 'note_authenticated' ), PHP_INT_MAX, 1 );
@@ -204,6 +211,17 @@ final class Manager {
 	 * @return array{secret: string, uri: string}|\WP_Error
 	 */
 	public function start( \WP_User $user, string $current_code = '' ) {
+		// Another plugin's two-factor already covers this account, and the
+		// gate stands aside for it: a second one here would never be asked
+		// for (#3022).
+		if ( ! $this->enabled( $user->ID ) && '' !== \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user ) ) {
+			return new \WP_Error(
+				'bettershield_2fa_elsewhere',
+				__( 'Another security plugin handles two-factor for this account here. Use it there, or ask your administrator.', 'bettershield' ),
+				array( 'status' => 409 )
+			);
+		}
+
 		// Re-enrolling replaces the secret and the backup codes. On an
 		// account that already has a working factor, that is exactly what an
 		// intruder holding a session would want to do — so it needs the
@@ -675,6 +693,56 @@ final class Manager {
 	}
 
 	/**
+	 * Other plugins' account checks on `wp_authenticate_user`, which core
+	 * fires inside its password handler: an approval plugin's denied or
+	 * pending member, a membership lock. A passkey sign-in never reaches that
+	 * handler, so a member another plugin had blocked walked in with a
+	 * passkey (#3010).
+	 *
+	 * This plugin's own callbacks there are left out: they guard the password
+	 * POST (a reserved attempt, proof of work), and their checks on the
+	 * account already ran on `authenticate` (the lockout, a suspension).
+	 *
+	 * @return \WP_User|\WP_Error|mixed What the checks answer.
+	 */
+	private static function account_checks( \WP_User $user ) {
+		global $wp_filter, $wp_current_filter;
+
+		$hook = $wp_filter['wp_authenticate_user'] ?? null;
+
+		if ( ! $hook instanceof \WP_Hook ) {
+			return $user;
+		}
+
+		$wp_current_filter[] = 'wp_authenticate_user'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- the hook is run by hand, so current_filter() says what core's own run would.
+
+		try {
+			$value = $user;
+			$hooks = $hook->callbacks;
+
+			ksort( $hooks );
+
+			foreach ( $hooks as $callbacks ) {
+				foreach ( $callbacks as $callback ) {
+					$owner = is_array( $callback['function'] ) ? ( $callback['function'][0] ?? null ) : null;
+					$class = is_object( $owner ) ? get_class( $owner ) : ( is_string( $owner ) ? $owner : '' );
+
+					if ( 0 === strpos( ltrim( $class, '\\' ), 'BetterShield\\' ) ) {
+						continue;
+					}
+
+					$args  = array( $value, '' );
+					$value = call_user_func_array( $callback['function'], array_slice( $args, 0, max( 1, (int) $callback['accepted_args'] ) ) );
+				}
+			}
+
+			return $value;
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
 	 * Run the `authenticate` chain from an already-verified account, with
 	 * this plugin's own gates standing aside for that account — everything
 	 * hooked after them runs exactly as it would have. The only way to be
@@ -684,16 +752,100 @@ final class Manager {
 	 *
 	 * @return \WP_User|\WP_Error|mixed Whatever the chain answers.
 	 */
-	public function reenter_chain( \WP_User $user, bool $with_password = false ) {
+	public function reenter_chain( \WP_User $user, bool $with_password = false, bool $account_checks = false ) {
 		$this->reentered_for           = (int) $user->ID;
 		$this->reentered_with_password = $with_password;
 
 		try {
-			return apply_filters( 'authenticate', $user, $user->user_login, '' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- core's own filter.
+			$verdict = apply_filters( 'authenticate', $user, $user->user_login, '' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- core's own filter.
+
+			// A sign-in that never went through core's password handler (a
+			// passkey's) has not had the account checks core runs there.
+			if ( $account_checks && $verdict instanceof \WP_User ) {
+				$verdict = self::account_checks( $verdict );
+			}
+
+			return $verdict;
 		} finally {
 			$this->reentered_for           = null;
 			$this->reentered_with_password = false;
 		}
+	}
+
+	/**
+	 * Finish a sign-in the second screen parked: the `authenticate` chain
+	 * again from the verified account, without what other plugins hooked at
+	 * or before this plugin's gate.
+	 *
+	 * Those already ran, and passed, on the request that parked the sign-in,
+	 * with whatever proof only that request carried: a bot check's token is
+	 * in the password form's POST and not in the code screen's, so asked
+	 * again it refused every sign-in after a right code. Everything hooked
+	 * after the gate runs as it always did, and so does this plugin's own
+	 * gates before it, which stand aside or have their say by
+	 * `reentering()` and `finishing_a_password()` and read state that can
+	 * change between the two screens: a lockdown, a password hold.
+	 *
+	 * A passkey sign-in has run no chain before it parks, so it re-enters
+	 * the whole one through `reenter_chain()`.
+	 *
+	 * @return \WP_User|\WP_Error|mixed Whatever the chain answers.
+	 */
+	public function finish_chain( \WP_User $user, bool $with_password = false ) {
+		global $wp_filter, $wp_current_filter;
+
+		$hook = $wp_filter['authenticate'] ?? null;
+
+		if ( ! $hook instanceof \WP_Hook ) {
+			return $this->reenter_chain( $user, $with_password );
+		}
+
+		$this->reentered_for           = (int) $user->ID;
+		$this->reentered_with_password = $with_password;
+		$wp_current_filter[]           = 'authenticate'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- the hook is run by hand, so current_filter() says what core's own run would.
+
+		try {
+			$value = $user;
+			$hooks = $hook->callbacks;
+
+			ksort( $hooks );
+
+			foreach ( $hooks as $priority => $callbacks ) {
+				foreach ( $callbacks as $callback ) {
+					if ( (int) $priority <= self::GATE_PRIORITY && ! self::is_own( $callback['function'] ) ) {
+						continue;
+					}
+
+					$args  = array( $value, $user->user_login, '' );
+					$value = call_user_func_array( $callback['function'], array_slice( $args, 0, max( 1, (int) $callback['accepted_args'] ) ) );
+				}
+			}
+
+			// The gate itself was not asked, so the sign-in it finishes is
+			// marked as through it here; a session made without that mark is
+			// recorded as one that skipped two-factor (#2932).
+			if ( $value instanceof \WP_User && (int) $value->ID === (int) $user->ID ) {
+				$this->passed_gate = (int) $user->ID;
+			}
+
+			return $value;
+		} finally {
+			array_pop( $wp_current_filter );
+			$this->reentered_for           = null;
+			$this->reentered_with_password = false;
+		}
+	}
+
+	/**
+	 * Whether a callback is one of this plugin's own.
+	 *
+	 * @param mixed $callback
+	 */
+	private static function is_own( $callback ): bool {
+		$owner = is_array( $callback ) ? ( $callback[0] ?? null ) : null;
+		$class = is_object( $owner ) ? get_class( $owner ) : ( is_string( $owner ) ? $owner : '' );
+
+		return 0 === strpos( ltrim( $class, '\\' ), 'BetterShield\\' );
 	}
 
 	/**
@@ -731,6 +883,20 @@ final class Manager {
 	 */
 	public function gate( $user, $username = '', $password = '' ) {
 		if ( ! $user instanceof \WP_User || ! $this->enabled( $user->ID ) || SafeMode::is_active() ) {
+			return $user;
+		}
+
+		/*
+		 * Another security plugin has two-factor set up for this account too.
+		 * Its flow asks for its own code, and ours on top of it either locked
+		 * the account out (its check refused at our code screen) or, finishing
+		 * past it, let our code alone sign in (#3022). One two-factor at a
+		 * time: that plugin's, which runs untouched. The sign-in it completes
+		 * is not recorded as a skip (`note_session_past_gate()`).
+		 */
+		if ( '' !== \BetterShield\Onboarding\Coexistence::two_factor_gate_owner( $user ) ) {
+			$this->passed_gate = (int) $user->ID;
+
 			return $user;
 		}
 

@@ -15,9 +15,9 @@
  * held with the footer, and a step the owner has left can neither move them
  * on nor show its error on the step they are on now.
  *
- * Drawn as the design's main panel on the page's own background: the steps
- * along its top as a tab row, the open step under them, and its way on in a
- * bar along the foot.
+ * Drawn on the page's own background, over the whole screen: the logo in
+ * one top corner and the progress dots in the other, the open step as a card
+ * in the middle, and who is setting up which site in the foot's corner.
  */
 
 import './Wizard.css';
@@ -30,8 +30,10 @@ import ConfirmPassword from './ConfirmPassword';
 import { focusIfLost } from '../ui/focus';
 import { useFirstScan } from '../data/firstScan';
 import Stepper from './Stepper';
+import { Context, SetupLogo } from './Shell';
 import { SetupContext } from './context';
 import { failureMessage, needsPassword, pageModel, request, ROUTES } from './api';
+import viaCore, { marked } from './core';
 import { canVisit, nextStep, previousStep, resumeAt, visibleSteps } from './steps';
 import Welcome from './steps/Welcome';
 import Coexistence from './steps/Coexistence';
@@ -81,6 +83,8 @@ export default function Wizard() {
 	// step that went away because of it (the last other security plugin
 	// switched off) hands the sentence to the one that opens next.
 	const [ notice, setNotice ] = useState( null );
+	// What a step has chosen but not saved yet, for the picture beside it.
+	const [ draft, setDraft ] = useState( null );
 	// An action done on the step can take away the control that was pressed
 	// (Unmute alerts, Unblock, Deactivate), which drops focus on the page.
 	// Once the step has redrawn, its heading takes it (#2108).
@@ -127,6 +131,43 @@ export default function Wizard() {
 
 						if ( needsPassword( failure ) ) {
 							setHeld( { key, attempt, resolve } );
+
+							return;
+						}
+
+						/*
+						 * The way back in is not proved, or nobody checked it
+						 * yet, as on every new install. Said with Check Now,
+						 * which runs the check and sends the same request again,
+						 * so the step carries on from its own answer without
+						 * leaving the setup (#2992).
+						 */
+						if ( failure && 'bettershield_recovery_preflight' === failure.code ) {
+							const preflight = ( failure.data && failure.data.preflight ) || {};
+
+							setBusy( null );
+							setError( {
+								key,
+								message: failureMessage( failure ),
+								code: String( failure.code ),
+								params: null,
+								url: preflight.can_check_now ? '' : String( preflight.url || '' ),
+								checkNow: preflight.can_check_now
+									? () => {
+											setBusy( key );
+											setError( null );
+
+											return request( '/bettershield/v1/recovery/readiness/check', {} )
+												.then( () => attempt() )
+												.then( ( answer ) => resolve( answer ) )
+												.catch( ( again ) => {
+													setError( { key, message: failureMessage( again ), code: again && again.code ? String( again.code ) : '', params: null } );
+													resolve( null );
+												} )
+												.finally( () => setBusy( null ) );
+									  }
+									: null,
+							} );
 
 							return;
 						}
@@ -218,12 +259,31 @@ export default function Wizard() {
 	const finish = useCallback( ( skipped = false ) => {
 		const from = shown.current;
 
-		run( 'complete', ROUTES.complete, { skipped: false } ).then( ( answer ) => {
-			if ( answer && shown.current === from ) {
-				go( 'ready', { step: from, skipped: true === skipped } );
-			}
-		} );
-	}, [ run, go ] );
+		run( 'complete', ROUTES.complete, { skipped: false } )
+			.then( ( answer ) => {
+				/*
+				 * A sign-in address Coexistence held for the way back in came
+				 * over just now, so the plugin it came from is switched off as
+				 * that step would have, through WordPress's own Deactivate:
+				 * left on, its address and this one would both answer (#2968).
+				 */
+				const off = answer?.state?.coexistence?.switch_off || [];
+
+				if ( ! off.length ) {
+					return answer;
+				}
+
+				return off
+					.reduce( ( done, plugin ) => done.then( () => viaCore( marked( plugin.deactivate_url ) ) ), Promise.resolve() )
+					.then( () => refresh() )
+					.then( () => answer );
+			} )
+			.then( ( answer ) => {
+				if ( answer && shown.current === from ) {
+					go( 'ready', { step: from, skipped: true === skipped } );
+				}
+			} );
+	}, [ run, go, refresh ] );
 
 	// Only from the step that is open: a step's answer that arrives after
 	// the owner went back somewhere else moves nobody.
@@ -282,6 +342,9 @@ export default function Wizard() {
 	if ( ! state ) {
 		return (
 			<div className="bs-ds-setup__frame">
+				<header className="bs-ds-setup__top">
+					<SetupLogo href={ links.dashboard } />
+				</header>
 				<div className="bs-ds-setup__panel bs-ds-setup__panel--error" role="alert">
 					<Alert
 						layout="default"
@@ -312,6 +375,8 @@ export default function Wizard() {
 		setError,
 		notice,
 		setNotice,
+		draft,
+		setDraft,
 		keepFocus,
 		stayOnStep: setStay,
 		run,
@@ -333,8 +398,8 @@ export default function Wizard() {
 	return (
 		<SetupContext.Provider value={ context }>
 			<div className="bs-ds-setup__frame">
-				{ /* A named region inside WordPress's own main landmark, not a second one. */ }
-				<section className="bs-ds-setup__panel" aria-labelledby="bs-setup-title">
+				<header className="bs-ds-setup__top">
+					<SetupLogo href={ links.dashboard } />
 					<Stepper
 						steps={ steps }
 						current={ current }
@@ -343,8 +408,14 @@ export default function Wizard() {
 						onVisit={ go }
 						locked={ null !== busy }
 					/>
+				</header>
+
+				{ /* A named region inside WordPress's own main landmark, not a second one. */ }
+				<section className="bs-ds-setup__panel" aria-labelledby="bs-setup-title">
 					<View key={ current } />
 				</section>
+
+				<Context />
 
 				<div className="screen-reader-text" role="status" aria-live="polite">
 					{ announcement }

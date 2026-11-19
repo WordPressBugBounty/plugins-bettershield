@@ -49,6 +49,9 @@ final class LoginForm {
 	/** The most a sign-in body is read to: an assertion is a few kilobytes. */
 	private const MAX_BODY_BYTES = 65536;
 
+	/** How many of the sign-in form's other fields come with the answer. */
+	private const MAX_FIELDS = 50;
+
 	/** Where to land, as the password form carries it. */
 	private const FLAGS = array( 'remember', 'interim', 'customize' );
 
@@ -181,12 +184,52 @@ final class LoginForm {
 			$body['handle'] = sanitize_text_field( (string) $body['handle'] );
 		}
 
+		self::carry_form_fields( $body['fields'] ?? null );
+
 		$result = \BetterShield\Rest\PasskeyController::complete_login( $body );
 
 		return is_wp_error( $result ) ? self::refusal( $result ) : array(
 			'status' => 200,
 			'body'   => $result,
 		);
+	}
+
+	/**
+	 * The sign-in form's other fields, sent with the passkey's answer, put
+	 * where the password form would have put them, so every sign-in check
+	 * reads them as it would from that form (#3002).
+	 *
+	 * The answer comes as JSON, and the `authenticate` chain the sign-in runs
+	 * includes other plugins' bot checks, which read their token from the
+	 * form's POST: finding none, each refused every passkey sign-in on a page
+	 * where it showed as solved.
+	 *
+	 * Never the username or password, which a passkey has no use for; text
+	 * only, at most MAX_FIELDS, and never over a value already posted. This
+	 * plugin's own fields stay out: its checks have always met a passkey
+	 * sign-in without them, and go on doing so.
+	 *
+	 * @param mixed $fields Name => value, as the form held them.
+	 */
+	private static function carry_form_fields( $fields ): void {
+		if ( ! is_array( $fields ) ) {
+			return;
+		}
+
+		foreach ( array_slice( $fields, 0, self::MAX_FIELDS, true ) as $name => $value ) {
+			if ( ! is_string( $name ) || ! is_string( $value ) || '' === $name || in_array( $name, array( 'log', 'pwd' ), true ) || 0 === strpos( $name, 'bettershield_' ) ) {
+				continue;
+			}
+
+			// phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- the sign-in form carries no nonce; these are what it posted, for the checks that read it.
+			if ( isset( $_POST[ $name ] ) || isset( $_REQUEST[ $name ] ) ) {
+				continue;
+			}
+
+			$_POST[ $name ]    = wp_slash( $value );
+			$_REQUEST[ $name ] = wp_slash( $value );
+			// phpcs:enable
+		}
 	}
 
 	/** Both actions take a POST only: a link must never start a sign-in. */
@@ -309,6 +352,67 @@ final class LoginForm {
 				};
 			}
 
+			/* The form's other fields, as the password form would post them:
+			   another plugin's bot check reads its token from there. Not the
+			   username or password, and not this plugin's own. */
+			function formFields() {
+				var out = {};
+				if ( ! form || 'function' !== typeof window.FormData ) {
+					return out;
+				}
+				new window.FormData( form ).forEach( function ( value, name ) {
+					if ( 'string' === typeof value && 'log' !== name && 'pwd' !== name && 0 !== name.indexOf( 'bettershield_' ) ) {
+						out[ name ] = value;
+					}
+				} );
+				return out;
+			}
+
+			/* A bot check that makes its token only when Log In is pressed
+			   leaves none on a page where nobody pressed it, so a passkey
+			   used straight from the page was refused (#3021). Wordfence's
+			   reCAPTCHA is one: its token is asked for here as its own script
+			   asks for it on Log In, and written where that script writes it,
+			   for formFields() to carry. Without its script or key, or with a
+			   token already there, nothing is asked. Bounded, so a check that
+			   never answers cannot hold the sign-in; the server then decides,
+			   as it did before. */
+			function botCheckToken() {
+				var vars = window.WFLSVars;
+				var captcha = window.grecaptcha;
+				var existing = field( 'wfls-captcha-token' );
+
+				if ( ! form || ! vars || ! vars.recaptchasitekey || ! captcha || 'function' !== typeof captcha.execute || 'function' !== typeof captcha.ready || ( existing && existing.value ) ) {
+					return Promise.resolve();
+				}
+
+				var asked = new Promise( function ( resolve ) {
+					captcha.ready( function () {
+						Promise.resolve( captcha.execute( vars.recaptchasitekey, { action: 'login' } ) ).then( function ( token ) {
+							var target = field( 'wfls-captcha-token' );
+
+							if ( 'string' === typeof token && token ) {
+								if ( ! target ) {
+									target = document.createElement( 'input' );
+									target.type = 'hidden';
+									target.name = 'wfls-captcha-token';
+									target.id = 'wfls-captcha-token';
+									form.appendChild( target );
+								}
+								target.value = token;
+							}
+							resolve();
+						}, function () {
+							resolve();
+						} );
+					} );
+				} );
+
+				return Promise.race( [ asked, new Promise( function ( resolve ) {
+					window.setTimeout( resolve, 8000 );
+				} ) ] );
+			}
+
 			function fromBase64Url( value ) {
 				var padded = value.replace( /-/g, '+' ).replace( /_/g, '/' );
 				var raw = window.atob( padded );
@@ -340,17 +444,20 @@ final class LoginForm {
 			   and the next page followed. The same for the button and for a
 			   passkey picked from the username field's list. */
 			function verify( options, credential ) {
-				return window.fetch( cfg.verify, {
-					method: 'POST',
-					credentials: 'same-origin',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify( Object.assign( landing(), {
-						handle: options.handle,
-						id: credential.id,
-						clientDataJSON: toBase64Url( credential.response.clientDataJSON ),
-						authenticatorData: toBase64Url( credential.response.authenticatorData ),
-						signature: toBase64Url( credential.response.signature )
-					} ) )
+				return botCheckToken().then( function () {
+					return window.fetch( cfg.verify, {
+						method: 'POST',
+						credentials: 'same-origin',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify( Object.assign( landing(), {
+							handle: options.handle,
+							id: credential.id,
+							clientDataJSON: toBase64Url( credential.response.clientDataJSON ),
+							authenticatorData: toBase64Url( credential.response.authenticatorData ),
+							signature: toBase64Url( credential.response.signature ),
+							fields: formFields()
+						} ) )
+					} );
 				} )
 					/* This plugin answers in JSON. A page in its place is
 					   another plugin that took the sign-in over. */

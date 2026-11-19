@@ -1,24 +1,34 @@
 /**
- * Getting Started: the usage-data question under the picture, in a card no
- * wider than its sentence reads well. The sentence ends in a "What we
- * collect" link that opens the list under it. The two answers sit centered at
- * the card's foot: Allow & Continue the step's one Primary, at the large size
- * a call to action stands alone at, and Skip a quieter Ghost beside it. A site
- * administrator on a network, who is not asked, gets Get Started alone as the
- * Primary.
+ * Getting Started: the usage-data question in a quiet box under the heading,
+ * as the design's consent box is drawn: the secondary surface, 12 around, the
+ * sentence at 12. The sentence ends in a "What We Collect" link that opens the
+ * list under it. Above it, three lines on what the setup does (Benefits.js).
  */
 
-.bs-ds-setup-consent {
+.bs-ds-app .bs-ds-card.bs-ds-setup-consent {
 	width: 100%;
-	max-width: 640px;
+	margin-top: var(--bs-ds-space-ml);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-secondary);
+	box-shadow: none;
 }
 
-.bs-ds-setup-consent__actions {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: center;
+/* With the sharing note, the button follows it rather than sitting at the
+   column's foot: the picture beside it sets the card's height, and the
+   spare height otherwise opened between the note and the button. */
+.bs-ds-app .bs-ds-setup__content:has(.bs-ds-setup-consent) .bs-ds-setup__foot {
+	margin-top: 0;
+}
+
+.bs-ds-app .bs-ds-setup-consent .bs-ds-setup-card__body {
 	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-setup-consent .bs-ds-setup__text {
+	margin-top: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
 }
 
 .bs-ds-app .bs-ds-setup-consent__collect {
@@ -27,6 +37,7 @@
 	border: 0;
 	background: none;
 	font: inherit;
+	font-weight: 500;
 	/* A link in the brand's text ink (#2287), underlined in that same ink
 	   like every other text link, not in the green fill (#2322). */
 	color: var(--bs-ds-color-tag-brand-text);
@@ -49,25 +60,5 @@
 	padding: 0;
 	border: 0;
 	background: none;
-}
-
-.bs-ds-setup-consent__answers {
-	padding-top: var(--bs-ds-space-xs);
-}
-
-.bs-ds-app .components-button.bs-ds-setup-consent__start {
-	min-width: 160px;
-}
-
-@container bs-ds-setup (max-width: 600px) {
-
-	.bs-ds-setup-consent__actions {
-		flex-direction: column;
-		align-items: stretch;
-		width: 100%;
-	}
-
-	.bs-ds-app .bs-ds-setup-consent__actions .components-button.bs-ds-btn {
-		width: 100%;
-	}
+	font-size: var(--bs-ds-size-xsmall);
 }

@@ -19,6 +19,7 @@ export const SERVER_GUIDANCE = [
 	'certificate_expiring',
 	'disk_space_low',
 	'php_end_of_life',
+	'php_security_fix_missing',
 	'default_table_prefix',
 	'admin_user_id_one',
 	'backup_plugin_not_visible',
@@ -119,6 +120,29 @@ export const GUIDES = {
 			__( 'Hello. My site %1$s runs PHP %2$s, which no longer receives security fixes. Could you move it to a supported version, or tell me how? Thank you.', 'bettershield' ),
 			address,
 			evidence.branch
+		),
+	} ),
+
+	php_security_fix_missing: ( evidence, address ) => ( {
+		what: sprintf(
+			/* translators: 1: the PHP release this site runs, e.g. 8.3.20; 2: the release with the fix, e.g. 8.3.36; 3: a date. */
+			__( 'This site runs PHP %1$s. PHP %2$s, released on %3$s, fixes a serious security flaw this release still has.', 'bettershield' ),
+			evidence.version,
+			evidence.fixed_in,
+			dayText( evidence.since )
+		),
+		where: __( 'PHP is the software on the server that runs WordPress. Your hosting provider updates it.', 'bettershield' ),
+		steps: [
+			__( 'Ask your hosting provider to update PHP to the newest release of the same version. The message below says it for you.', 'bettershield' ),
+			__( 'If your host says the fix is already in their own build, ask where their security notice says so, then mark this finding not applicable.', 'bettershield' ),
+			thenCheck(),
+		],
+		message: sprintf(
+			/* translators: 1: the site's address, e.g. shop.example.com; 2: a PHP release, e.g. 8.3.20; 3: a PHP release, e.g. 8.3.36. */
+			__( 'Hello. My site %1$s runs PHP %2$s. PHP %3$s fixes a serious security flaw in that version. Could you update PHP to %3$s or newer? Thank you.', 'bettershield' ),
+			address,
+			evidence.version,
+			evidence.fixed_in
 		),
 	} ),
 

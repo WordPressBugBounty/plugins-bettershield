@@ -79,6 +79,26 @@ final class LoginForms {
 	}
 
 	/**
+	 * Hooks that fire while a lost-password form is being rendered.
+	 *
+	 * @return string[]
+	 */
+	public static function reset_hooks(): array {
+		/**
+		 * Filters where a lost-password form's bot checks are rendered.
+		 *
+		 * @param string[] $hooks Action hooks fired while a lost-password form renders.
+		 */
+		return array_values( array_unique( array_filter( array_map(
+			'strval',
+			(array) apply_filters(
+				'bettershield_reset_form_hooks',
+				array( 'lostpassword_form', 'woocommerce_lostpassword_form' )
+			)
+		) ) ) );
+	}
+
+	/**
 	 * Whether this request is a submission to the sign-in page WordPress ships.
 	 *
 	 * Used to tell a form this plugin rendered on from one it could not reach.

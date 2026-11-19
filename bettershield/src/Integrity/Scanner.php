@@ -977,9 +977,20 @@ final class Scanner {
 			$state['baseline_updated'] = $status['updated'];
 			$state['baseline_moved']   = $status['moved'];
 			$state['update_code']      = self::update_code_start( $target, $status );
+			$state                     = self::decide_reference( $state, $target );
 
 			if ( ! empty( $target['truncated'] ) ) {
 				$state = self::note_truncated( $state, $target );
+			}
+		}
+
+		// The published list, read from its cache for each slice. A theme whose
+		// list can't be had any more is compared with its baseline alone.
+		if ( ! empty( $state['baseline_reference'] ) ) {
+			$published = Manifest::theme( (string) $target['slug'], (string) $target['version'] );
+
+			if ( is_array( $published ) ) {
+				$target['reference'] = $published['files'];
 			}
 		}
 
@@ -1010,6 +1021,10 @@ final class Scanner {
 
 		if ( $complete ) {
 			Baseline::release_hold( $target );
+		}
+
+		if ( $complete && isset( $target['reference'] ) ) {
+			Unpublished::mark_reference_done( (string) $target['slug'], (string) $target['version'] );
 		}
 
 		if ( is_array( $state['update_code'] ?? null ) ) {
@@ -1079,10 +1094,11 @@ final class Scanner {
 		// the next target it would skip every path sorting below it.
 		$state['cursor'] = '';
 		// Both are answers about the location just finished.
-		$state['baseline_first']   = null;
-		$state['baseline_updated'] = null;
-		$state['baseline_moved']   = null;
-		$state['update_code']      = null;
+		$state['baseline_first']     = null;
+		$state['baseline_updated']   = null;
+		$state['baseline_moved']     = null;
+		$state['baseline_reference'] = null;
+		$state['update_code']        = null;
 
 		if ( self::SCOPE_ALL === (string) ( $state['scope'] ?? self::SCOPE_ALL ) ) {
 			self::forget_walk();
@@ -1292,6 +1308,54 @@ final class Scanner {
 		$name = trim( (string) ( $target['name'] ?? '' ) );
 
 		return '' !== $name ? $name : (string) $target['slug'];
+	}
+
+	/**
+	 * Whether this pass compares a theme with the package WordPress.org
+	 * published for its version (`Unpublished::reference_due()`), decided once
+	 * per location like the baseline's own answers.
+	 *
+	 * A package that can't be had leaves the theme on its baseline, as before,
+	 * and the report says it couldn't be compared rather than that it passed;
+	 * the next pass asks again. A theme the directory has no package for is
+	 * the baseline's alone and nothing to say.
+	 *
+	 * @param array<string, mixed> $state
+	 * @param array<string, mixed> $target
+	 * @return array<string, mixed>
+	 */
+	private static function decide_reference( array $state, array $target ): array {
+		$state['baseline_reference'] = false;
+
+		if ( ! Unpublished::reference_due( $target ) ) {
+			return $state;
+		}
+
+		$published = Manifest::theme( (string) $target['slug'], (string) $target['version'] );
+
+		if ( is_array( $published ) ) {
+			$state['baseline_reference'] = true;
+
+			return $state;
+		}
+
+		$reason = (string) ( $published->get_error_data()['reason'] ?? Manifest::REASON_UNREACHABLE );
+
+		if ( Manifest::REASON_UNREACHABLE === $reason ) {
+			$theme = wp_get_theme( (string) $target['slug'] );
+
+			$state['unverifiable'][] = array(
+				'context' => Unpublished::CONTEXT_THEME,
+				'slug'    => (string) $target['slug'],
+				'name'    => $theme->exists() ? wp_strip_all_tags( (string) $theme->get( 'Name' ) ) : (string) $target['slug'],
+				'version' => (string) $target['version'],
+				'reason'  => $reason,
+				'message' => $published->get_error_message(),
+			);
+			++$state['stats']['unverifiable'];
+		}
+
+		return $state;
 	}
 
 	/**

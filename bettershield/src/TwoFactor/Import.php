@@ -19,10 +19,10 @@
  * What cannot come over is said, never skipped quietly: an account whose
  * factor there is not an authenticator app (an email code, a security key),
  * or whose secret cannot be read, is named to the owner before the switch
- * and told by email after it. Wordfence's unused recovery codes come over
- * with the secret, hashed the moment they are read. Two Factor and WP 2FA
- * keep only hashes of theirs, so those accounts, and any with no code left,
- * are told to make a new set.
+ * and told by email after it. Unused backup codes come over with the
+ * secret: Wordfence's hashed the moment they are read, and the hashes Two
+ * Factor and WP 2FA keep of theirs as they are, since a hash is enough to
+ * check a code. An account with no code left is told to make a new set.
  *
  * The whole copy is one undo: the ledger keeps which accounts got a secret
  * and a SHA-256 digest of each, never the secret, and taking it back removes
@@ -244,13 +244,14 @@ final class Import {
 		$with    = 0;
 		$manager = Manager::instance();
 		$codes   = self::codes_of( $file );
+		$hashes  = self::hashes_of( $file );
 
 		foreach ( self::accounts( $file ) as $user_id => $secret ) {
 			if ( $manager->enabled( $user_id ) ) {
 				++$already;
 			} elseif ( '' !== $secret ) {
 				++$moving;
-				$with += array() === ( $codes[ $user_id ] ?? array() ) ? 0 : 1;
+				$with += array() === ( $codes[ $user_id ] ?? array() ) && array() === ( $hashes[ $user_id ] ?? array() ) ? 0 : 1;
 			} else {
 				++$staying;
 
@@ -344,13 +345,14 @@ final class Import {
 			}
 		}
 
-		$moved = 0;
-		$codes = self::codes_of( $file );
+		$moved  = 0;
+		$codes  = self::codes_of( $file );
+		$hashes = self::hashes_of( $file );
 
 		foreach ( $moving as $user_id => $secret ) {
 			if ( $manager->adopt( $user_id, $secret ) ) {
 				++$moved;
-				self::record( 'two_factor_moved', $user_id, $name, BackupCodes::bring_over( $user_id, $codes[ $user_id ] ?? array() ) );
+				self::record( 'two_factor_moved', $user_id, $name, BackupCodes::bring_over( $user_id, $codes[ $user_id ] ?? array(), $hashes[ $user_id ] ?? array() ) );
 			} else {
 				$staying[] = $user_id;
 			}
@@ -667,6 +669,37 @@ final class Import {
 	 */
 	private static function codes_of( string $file ): array {
 		return 'wordfence' === ( self::SOURCES[ $file ] ?? '' ) ? self::wordfence_codes() : array();
+	}
+
+	/**
+	 * The hashes Two Factor and WP 2FA keep of each account's unused backup
+	 * codes, made with `wp_hash_password()`; anything else in the list is
+	 * left out.
+	 *
+	 * @return array<int, string[]> User ID => hashes.
+	 */
+	private static function hashes_of( string $file ): array {
+		$key = array(
+			'two_factor' => '_two_factor_backup_codes',
+			'wp_2fa'     => 'wp_2fa_backup_codes',
+		)[ self::SOURCES[ $file ] ?? '' ] ?? '';
+
+		if ( '' === $key ) {
+			return array();
+		}
+
+		$out = array();
+
+		foreach ( array_keys( self::accounts( $file ) ) as $user_id ) {
+			$stored = get_user_meta( (int) $user_id, $key, true );
+			$kept   = array_values( array_filter( is_array( $stored ) ? $stored : array(), array( BackupCodes::class, 'is_wordpress_hash' ) ) );
+
+			if ( array() !== $kept ) {
+				$out[ (int) $user_id ] = $kept;
+			}
+		}
+
+		return $out;
 	}
 
 	/**

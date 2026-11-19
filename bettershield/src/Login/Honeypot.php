@@ -15,6 +15,16 @@
  * login form, an app password or an XML-RPC client is never rejected for
  * lacking a field nobody gave it.
  *
+ * The forms this plugin always draws the fields into are the exceptions.
+ * Once this site's comment form has been drawn with the fields, a guest
+ * comment sent to wp-comments-post.php without them had them taken out, so it
+ * goes to Spam: not refused, since a page cached before the switch was on has
+ * no fields and a person on it would lose what they wrote. The same holds for
+ * a guest submission to a contact form once that plugin's form has been drawn
+ * with them, which is marked spam in that plugin's own way, and for a
+ * signed-out lost-password request from the sign-in page's own form or the
+ * store's, which is refused like a caught one.
+ *
  * @package BetterShield
  */
 
@@ -52,6 +62,19 @@ final class Honeypot {
 	 */
 	private const MIN_SECONDS = 2;
 
+	/**
+	 * Set once this site's comment form has been drawn with the fields, so a
+	 * guest comment without them is known to have had them taken out.
+	 */
+	public const COMMENT_FIELDS_SEEN = 'bettershield_hp_comment_form';
+
+	/**
+	 * Contact-form plugin => when this site first drew its form with the
+	 * fields, so a guest submission to it without them is known to have had
+	 * them taken out.
+	 */
+	public const FORM_FIELDS_SEEN = 'bettershield_hp_forms_seen';
+
 	/** Whether the last check caught only the clock: sent too soon, nothing else wrong. */
 	private bool $too_fast = false;
 
@@ -77,7 +100,24 @@ final class Honeypot {
 			add_action( $hook, array( $this, 'render' ) );
 		}
 
-		add_action( 'comment_form', array( $this, 'render' ) );
+		add_action( 'comment_form', array( $this, 'render_comment' ) );
+
+		// The lost-password forms too: a script could otherwise make the site
+		// mail reset links to real accounts until the reset limit tripped.
+		foreach ( LoginForms::reset_hooks() as $hook ) {
+			add_action( $hook, array( $this, 'render' ) );
+		}
+
+		// Contact forms, through each plugin's own hooks. Nothing is added
+		// while the plugin is not there: its hooks never fire.
+		add_filter( 'wpcf7_form_elements', array( $this, 'render_cf7' ) );
+		add_filter( 'wpcf7_spam', array( $this, 'check_cf7' ), 10, 2 );
+		add_filter( 'wpcf7_posted_data', array( $this, 'without_fields' ) );
+		add_action( 'wpforms_display_submit_before', array( $this, 'render_wpforms' ) );
+		add_filter( 'wpforms_process_honeypot', array( $this, 'check_wpforms' ), 10, 4 );
+		add_action( 'fluentform/form_element_start', array( $this, 'render_fluentform' ) );
+		add_filter( 'fluentform/validation_errors', array( $this, 'check_fluentform' ), 10, 2 );
+		add_filter( 'fluentform/insert_response_data', array( $this, 'without_fields' ) );
 
 		// Priority 25: after core has resolved credentials (20), before
 		// anything acts on the signed-in user. A wrong password fails on its
@@ -90,6 +130,12 @@ final class Honeypot {
 		// WP_Error first, as core's does.
 		add_filter( 'woocommerce_registration_errors', array( $this, 'check_registration' ), 10, 3 );
 		add_filter( 'preprocess_comment', array( $this, 'check_comment' ), 5, 1 );
+		// Priority 30: after the comment limit's own hold at 20, so a comment
+		// without the fields goes to Spam whatever that one decided.
+		add_filter( 'pre_comment_approved', array( $this, 'spam_without_fields' ), 30, 2 );
+		// Priority 5: before the reset limit at 10, so a caught bot is not
+		// counted toward it.
+		add_action( 'lostpassword_post', array( $this, 'check_reset' ), 5, 1 );
 	}
 
 	private function enabled(): bool {
@@ -113,8 +159,62 @@ final class Honeypot {
 	/* ---- render ------------------------------------------------------------- */
 
 	public function render(): void {
+		echo $this->fields(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts in fields().
+	}
+
+	/** The comment form's fields, noting once that this site's form carries them. */
+	public function render_comment(): void {
+		$fields = $this->fields();
+
+		if ( '' !== $fields && ! get_option( self::COMMENT_FIELDS_SEEN ) ) {
+			update_option( self::COMMENT_FIELDS_SEEN, time(), true );
+		}
+
+		echo $fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts in fields().
+	}
+
+	/**
+	 * Contact Form 7's form, with the fields inside it: its hidden-fields
+	 * filter takes only hidden inputs, so it could not carry the trap.
+	 *
+	 * @param mixed $elements The form's markup.
+	 * @return mixed
+	 */
+	public function render_cf7( $elements ) {
+		return is_string( $elements ) ? $elements . $this->form_fields( 'cf7' ) : $elements;
+	}
+
+	/** WPForms' form, with the fields before its submit button. */
+	public function render_wpforms(): void {
+		echo $this->form_fields( 'wpforms' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts in fields().
+	}
+
+	/** Fluent Forms' form, with the fields at its start. */
+	public function render_fluentform(): void {
+		echo $this->form_fields( 'fluentform' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts in fields().
+	}
+
+	/** A contact form's fields, noting once that this site's form of that kind carries them. */
+	private function form_fields( string $surface ): string {
+		$fields = $this->fields();
+
+		if ( '' !== $fields ) {
+			$seen = get_option( self::FORM_FIELDS_SEEN, array() );
+			$seen = is_array( $seen ) ? $seen : array();
+
+			if ( ! isset( $seen[ $surface ] ) ) {
+				$seen[ $surface ] = time();
+				update_option( self::FORM_FIELDS_SEEN, $seen, false );
+			}
+		}
+
+		return $fields;
+	}
+
+	/** The two fields' markup, or '' where none is drawn. */
+	private function fields(): string {
 		if ( ! $this->enabled() ) {
-			return;
+			return '';
 		}
 
 		/*
@@ -125,7 +225,7 @@ final class Honeypot {
 		 * hands to every shopper.
 		 */
 		if ( Checkout::is_store_path() ) {
-			return;
+			return '';
 		}
 
 		$time = (string) time();
@@ -135,7 +235,7 @@ final class Honeypot {
 		// DOM for anything that parses fields mechanically. Clipped where it
 		// stands rather than pushed off the page, because an offset to the left
 		// is where a right-to-left page scrolls to.
-		printf(
+		return sprintf(
 			'<div style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%%);white-space:nowrap;" aria-hidden="true"><label>%1$s<input type="text" name="%2$s" value="" tabindex="-1" autocomplete="off"></label></div><input type="hidden" name="%3$s" value="%4$s">',
 			esc_html__( 'Leave this field empty', 'bettershield' ),
 			esc_attr( self::FIELD ),
@@ -210,23 +310,301 @@ final class Honeypot {
 		);
 	}
 
+	/**
+	 * A guest comment sent to wp-comments-post.php without either field, on
+	 * a site whose comment form carries them, goes to Spam. Spam rather than
+	 * refused: a page cached before the switch was on has no fields, and in
+	 * Spam a real comment waits for Not Spam, with no moderation email per
+	 * bot as Pending would send.
+	 *
+	 * Signed-in commenters, REST and XML-RPC comments, and a site whose theme
+	 * never draws the comment form's hook are left as they are.
+	 *
+	 * @param int|string|\WP_Error $approved
+	 * @param array<string, mixed> $comment
+	 * @return int|string|\WP_Error
+	 */
+	public function spam_without_fields( $approved, $comment = array() ) {
+		if ( is_wp_error( $approved ) || 'trash' === $approved || 'spam' === $approved || is_user_logged_in() || $this->submitted() || ! $this->enabled() ) {
+			return $approved;
+		}
+
+		// Only a submission through the comment form's own handler: REST and
+		// XML-RPC create comments without running it.
+		if ( ! did_action( 'pre_comment_on_post' ) || ! get_option( self::COMMENT_FIELDS_SEEN ) ) {
+			return $approved;
+		}
+
+		/*
+		 * A comment form drawn somewhere this plugin cannot reach, such as one
+		 * served in a frame from another service, posts without the fields
+		 * through no fault of its own.
+		 */
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- presence check only.
+		$framed = isset( $_POST['hc_post_as'] );
+
+		/**
+		 * Filters whether a guest comment that arrived without the bot check's
+		 * fields owes them.
+		 *
+		 * @param bool                 $owes    Whether it goes to Spam.
+		 * @param array<string, mixed> $comment The comment.
+		 */
+		if ( ! (bool) apply_filters( 'bettershield_honeypot_comment_owes_fields', ! $framed, is_array( $comment ) ? $comment : array() ) ) {
+			return $approved;
+		}
+
+		$this->record( 'comment' );
+
+		return 'spam';
+	}
+
+	/**
+	 * A lost-password request with the fields, caught: no reset email, an
+	 * error on the form, and the same answer whether the account exists.
+	 *
+	 * Without them, a signed-out request from the sign-in page's own form or
+	 * the store's is caught too: both always carry the fields, so they were
+	 * taken out. Anything else without them is not judged: Send Reset Link on
+	 * a profile or the Users screen fires the same action for a signed-in
+	 * administrator, and another plugin's reset form never had them.
+	 *
+	 * @param mixed $errors
+	 */
+	public function check_reset( $errors = null ): void {
+		if ( ! $errors instanceof \WP_Error || ! $this->enabled() ) {
+			return;
+		}
+
+		if ( $this->submitted() ? ! $this->caught() : ! $this->reset_owes_fields() ) {
+			return;
+		}
+
+		$this->record( 'reset' );
+
+		// Core's "no such account" beside it would tell the two apart.
+		$errors->remove( 'invalid_email' );
+		$errors->add(
+			'bettershield_honeypot',
+			$this->too_fast
+				? __( 'That was sent too soon after the page opened. Wait a second, then try again.', 'bettershield' )
+				: __( 'That did not go through. Please try again.', 'bettershield' )
+		);
+	}
+
+	/**
+	 * Contact Form 7: a caught submission is spam, so it shows its own spam
+	 * message and sends no mail.
+	 *
+	 * @param mixed $spam
+	 * @param mixed $submission
+	 * @return mixed
+	 */
+	public function check_cf7( $spam, $submission = null ) {
+		if ( $spam || ! $this->enabled() ) {
+			return $spam;
+		}
+
+		$missing = ! $this->submitted();
+
+		if ( $missing ? ! $this->form_owes_fields( 'cf7' ) : ! $this->caught() ) {
+			return $spam;
+		}
+
+		$this->record( 'cf7' );
+
+		if ( is_object( $submission ) && method_exists( $submission, 'add_spam_log' ) ) {
+			$submission->add_spam_log(
+				array(
+					'agent'  => 'bettershield',
+					'reason' => $this->spam_reason( $missing ),
+				)
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * WPForms: a reason marks the submission as spam, which WPForms logs and
+	 * answers without an email, as with its own honeypot.
+	 *
+	 * @param mixed $honeypot A reason already given, or empty.
+	 * @return mixed
+	 */
+	public function check_wpforms( $honeypot ) {
+		if ( ! empty( $honeypot ) || ! $this->enabled() ) {
+			return $honeypot;
+		}
+
+		$missing = ! $this->submitted();
+
+		if ( $missing ? ! $this->form_owes_fields( 'wpforms' ) : ! $this->caught() ) {
+			return $honeypot;
+		}
+
+		$this->record( 'wpforms' );
+
+		return $this->spam_reason( $missing );
+	}
+
+	/**
+	 * Fluent Forms: its fields come serialized in the request. The data it
+	 * hands over keeps only the form's own fields, so the two are read from
+	 * that serialized form as well.
+	 *
+	 * @param mixed $errors
+	 * @param mixed $data The submitted form data.
+	 * @return mixed
+	 */
+	public function check_fluentform( $errors, $data = array() ) {
+		$data = array_merge( is_array( $data ) ? $data : array(), $this->fluentform_fields() );
+
+		if ( ! is_array( $errors ) || ! $this->enabled() ) {
+			return $errors;
+		}
+
+		if ( $this->submitted( $data ) ? ! $this->caught( $data ) : ! $this->form_owes_fields( 'fluentform' ) ) {
+			return $errors;
+		}
+
+		$this->record( 'fluentform' );
+		$errors['bettershield_hp'] = array(
+			$this->too_fast
+				? __( 'That was sent too soon after the page opened. Wait a second, then try again.', 'bettershield' )
+				: __( 'That did not go through. Please try again.', 'bettershield' ),
+		);
+
+		return $errors;
+	}
+
+	/**
+	 * The two fields from the serialized form Fluent Forms posts as `data`.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function fluentform_fields(): array {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Fluent Forms verifies its own nonce; only this plugin's two fields are kept, and caught() sanitizes them.
+		$raw = isset( $_POST['data'] ) && is_string( $_POST['data'] ) ? wp_unslash( $_POST['data'] ) : '';
+
+		if ( '' === $raw ) {
+			return array();
+		}
+
+		parse_str( $raw, $parsed );
+
+		return array_intersect_key( $parsed, array( self::FIELD => true, self::STAMP => true ) );
+	}
+
+	/**
+	 * A form plugin's submitted data without the two fields, so they are not
+	 * mailed or stored with an entry.
+	 *
+	 * @param mixed $data
+	 * @return mixed
+	 */
+	public function without_fields( $data ) {
+		if ( is_array( $data ) ) {
+			unset( $data[ self::FIELD ], $data[ self::STAMP ] );
+		}
+
+		return $data;
+	}
+
 	/* ---- internals ------------------------------------------------------------- */
 
 	/**
-	 * Whether this submission carries our fields at all — the architecture
-	 * exemption for forms we never rendered.
+	 * Whether a lost-password request without the fields had them taken out:
+	 * signed out, and sent from a form this plugin always draws them into,
+	 * the sign-in page's own or the store's My Account one.
 	 */
-	private function submitted(): bool {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- presence check only; each consuming flow verifies its own credentials.
-		return isset( $_POST[ self::STAMP ] );
+	private function reset_owes_fields(): bool {
+		$this->too_fast = false;
+
+		if ( is_user_logged_in() ) {
+			return false;
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification -- presence checks only; core and the store verify their own forms.
+		$core  = LoginForms::is_core_sign_in_request() && in_array( isset( $_REQUEST['action'] ) && is_string( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '', array( 'lostpassword', 'retrievepassword' ), true );
+		$store = isset( $_POST['wc_reset_password'] ) && in_array( 'woocommerce_lostpassword_form', LoginForms::reset_hooks(), true );
+		// phpcs:enable
+
+		if ( ! $core && ! $store ) {
+			return false;
+		}
+
+		/**
+		 * Filters whether a signed-out lost-password request that arrived
+		 * without the bot check's fields owes them.
+		 *
+		 * @param bool   $owes Whether it is refused like a caught one.
+		 * @param string $form 'core' for the sign-in page, 'store' for My Account.
+		 */
+		return (bool) apply_filters( 'bettershield_honeypot_reset_owes_fields', true, $core ? 'core' : 'store' );
 	}
 
-	private function caught(): bool {
+	/**
+	 * Whether a contact-form submission without the fields had them taken
+	 * out: from a guest, to a plugin whose form this site has drawn with them.
+	 * A signed-in person is left alone, as on the comment form.
+	 */
+	private function form_owes_fields( string $surface ): bool {
+		$this->too_fast = false;
+
+		if ( is_user_logged_in() ) {
+			return false;
+		}
+
+		$seen = get_option( self::FORM_FIELDS_SEEN, array() );
+
+		if ( ! is_array( $seen ) || ! isset( $seen[ $surface ] ) ) {
+			return false;
+		}
+
+		/**
+		 * Filters whether a guest contact-form submission that arrived without
+		 * the bot check's fields owes them, for a form drawn somewhere this
+		 * plugin can't reach.
+		 *
+		 * @param bool   $owes    Whether it is marked spam.
+		 * @param string $surface 'cf7', 'wpforms' or 'fluentform'.
+		 */
+		return (bool) apply_filters( 'bettershield_honeypot_form_owes_fields', true, $surface );
+	}
+
+	/** Why a contact-form submission was marked spam, in its plugin's log. */
+	private function spam_reason( bool $missing ): string {
+		return $missing
+			? __( 'Bot check: the hidden fields were left out.', 'bettershield' )
+			: __( 'Bot check: hidden field filled, or sent too fast.', 'bettershield' );
+	}
+
+	/**
+	 * Whether this submission carries our fields at all — the architecture
+	 * exemption for forms we never rendered. Either one: a filled trap sent
+	 * without the clock is still read.
+	 *
+	 * @param array<string, mixed>|null $data The submitted data; the request's own when null.
+	 */
+	private function submitted( ?array $data = null ): bool {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- presence check only; each consuming flow verifies its own credentials.
+		$data = $data ?? $_POST;
+
+		return isset( $data[ self::STAMP ] ) || isset( $data[ self::FIELD ] );
+	}
+
+	/**
+	 * @param array<string, mixed>|null $data The submitted data; the request's own when null.
+	 */
+	private function caught( ?array $data = null ): bool {
 		$this->too_fast = false;
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- these fields are this plugin's own bot check; the surrounding flow (login, registration, comment) carries its own verification.
-		$trap  = isset( $_POST[ self::FIELD ] ) ? (string) wp_unslash( $_POST[ self::FIELD ] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- compared to empty, never stored.
-		$stamp = isset( $_POST[ self::STAMP ] ) ? sanitize_text_field( (string) wp_unslash( $_POST[ self::STAMP ] ) ) : '';
+		$from  = null === $data;
+		$data  = $data ?? $_POST;
+		$trap  = isset( $data[ self::FIELD ] ) && is_scalar( $data[ self::FIELD ] ) ? (string) ( $from ? wp_unslash( $data[ self::FIELD ] ) : $data[ self::FIELD ] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- compared to empty, never stored.
+		$stamp = isset( $data[ self::STAMP ] ) && is_scalar( $data[ self::STAMP ] ) ? sanitize_text_field( (string) ( $from ? wp_unslash( $data[ self::STAMP ] ) : $data[ self::STAMP ] ) ) : '';
 		// phpcs:enable
 
 		if ( '' !== $trap ) {

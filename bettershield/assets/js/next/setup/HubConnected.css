@@ -52,13 +52,43 @@
 }
 
 /* Core's Modal draws this at the end of the document, where only the tokens on
-   the body reach it. Its header holds just the close button, over the picture. */
+   the body reach it. Its header holds just the close button, a round white
+   button over the picture, as the design draws it. */
 .bs-ds-setup-done.components-modal__frame {
+	width: 480px;
+	max-width: calc(100vw - var(--bs-ds-space-lg));
 	border: 1px solid var(--bs-ds-color-border-primary);
-	border-radius: 12px;
+	border-radius: 16px;
 	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-setup-modal-shadow);
 	font-family: var(--bs-ds-font);
 	color: var(--bs-ds-color-text-primary);
+}
+
+/* Core caps a medium dialog at 70% of the window and scrolls inside it,
+   which put the buttons under the fold. The dialog takes what the window
+   has, and only its middle scrolls: the picture and the buttons stay. */
+.bs-ds-setup-done.components-modal__frame {
+	max-height: calc(100vh - var(--bs-ds-space-lg) * 2);
+}
+
+.bs-ds-setup-done .components-modal__content {
+	display: flex;
+	flex-direction: column;
+	margin-top: 0;
+	padding: 0;
+	overflow: hidden;
+}
+
+.bs-ds-setup-done__hero,
+.bs-ds-app.bs-ds-setup-done__actions {
+	flex: none;
+}
+
+.bs-ds-setup-done__body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
 }
 
 .bs-ds-setup-done .components-modal__header {
@@ -66,6 +96,7 @@
 	top: 0;
 	right: 0;
 	left: auto;
+	z-index: 1;
 	width: auto;
 	height: auto;
 	padding: var(--bs-ds-space-sm);
@@ -74,92 +105,140 @@
 }
 
 .bs-ds-setup-done .components-modal__header .components-button {
-	color: var(--bs-ds-color-icon-secondary);
+	width: 28px;
+	min-width: 28px;
+	height: 28px;
+	padding: 0;
+	justify-content: center;
+	border-radius: 14px;
+	background: var(--bs-ds-setup-close-bg);
+	color: var(--bs-ds-setup-close-ink);
+}
+
+.bs-ds-setup-done .components-modal__header .components-button:hover,
+.bs-ds-setup-done .components-modal__header .components-button:focus {
+	background: var(--bs-ds-setup-close-bg);
+	color: var(--bs-ds-setup-close-ink);
+}
+
+.bs-ds-setup-done .components-modal__header .components-button svg {
+	width: 16px;
+	height: 16px;
+}
+
+.bs-ds-setup-done__hero {
+	height: 168px;
+	background-color: var(--bs-ds-setup-hero-end);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: cover;
 }
 
 .bs-ds-setup-done__body {
 	display: flex;
 	flex-direction: column;
+	gap: var(--bs-ds-space-xl);
+	padding: var(--bs-ds-space-lg);
+}
+
+.bs-ds-setup-done__heading {
+	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: var(--bs-ds-space-sm);
-	padding: var(--bs-ds-space-lg) var(--bs-ds-space-md) var(--bs-ds-space-md);
+	gap: var(--bs-ds-space-xs);
 	text-align: center;
 }
 
-.bs-ds-setup-done__art {
-	display: block;
-	max-width: 100%;
-	height: auto;
+/* What the setup changed: a quiet card of rows, each its icon, then its
+   name over one short line. */
+.bs-ds-setup-done__changes {
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-secondary);
+	list-style: none;
 }
 
-.bs-ds-setup-done__halo {
-	fill: color-mix(in srgb, var(--bs-ds-color-surface-brand) 14%, transparent);
+.bs-ds-setup-done__changes li {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-md);
+	margin: 0;
+	padding: var(--bs-ds-space-md) var(--bs-ds-space-lg);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
 }
 
-.bs-ds-setup-done__cone {
-	fill: var(--bs-ds-color-surface-brand);
+.bs-ds-setup-done__changes li:first-child {
+	border-top: 0;
 }
 
-.bs-ds-setup-done__stripe {
-	fill: var(--bs-ds-color-surface-primary);
-	opacity: 0.55;
+.bs-ds-setup-done__changes .bs-ds-icon {
+	flex: none;
 }
 
-.bs-ds-setup-done__mouth {
-	fill: var(--bs-ds-color-surface-brand-hover);
+.bs-ds-setup-done__change {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-2);
+	min-width: 0;
+	font-family: var(--bs-ds-font);
+	letter-spacing: -0.02em;
 }
 
-.bs-ds-setup-done__seal {
-	fill: var(--bs-ds-color-icon-success);
-	stroke: var(--bs-ds-color-surface-primary);
-	stroke-width: 3;
+.bs-ds-setup-done__change-title {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.2;
+	color: var(--bs-ds-color-text-primary);
 }
 
-.bs-ds-setup-done__tick {
-	fill: none;
-	stroke: var(--bs-ds-color-surface-primary);
-	stroke-width: 5;
-	stroke-linecap: round;
-	stroke-linejoin: round;
-}
-
-.bs-ds-setup-done__bit {
-	animation: bs-ds-setup-done-pop 0.32s ease both;
-	animation-delay: calc(var(--bs-ds-bit-order) * 40ms);
-}
-
-.bs-ds-setup-done__bit--brand {
-	fill: var(--bs-ds-color-icon-brand);
-}
-
-.bs-ds-setup-done__bit--info {
-	fill: var(--bs-ds-color-icon-info);
-}
-
-.bs-ds-setup-done__bit--warning {
-	fill: var(--bs-ds-color-icon-warning);
-}
-
-.bs-ds-setup-done__bit--success {
-	fill: var(--bs-ds-color-icon-success);
+.bs-ds-setup-done__change-about {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.3;
+	color: var(--bs-ds-color-text-secondary);
 }
 
 /* Above core's own rule for a heading in a modal, which fixes its ink. */
 .components-modal__frame .bs-ds-setup-done__title {
 	margin: 0;
 	font-family: var(--bs-ds-font);
-	font-size: var(--bs-ds-size-heading-xlarge);
-	font-weight: 600;
+	font-size: var(--bs-ds-size-heading-medium);
+	font-weight: 500;
 	line-height: 1.25;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.01em;
 	color: var(--bs-ds-color-text-primary);
 }
 
 .bs-ds-setup-done__text {
 	margin: 0;
-	font-size: var(--bs-ds-size-medium);
+	font-size: var(--bs-ds-size-small);
 	line-height: 1.4;
+	letter-spacing: -0.02em;
 	color: var(--bs-ds-color-text-secondary);
+}
+
+/*
+ * A row at every width. The app's narrow-screen rule turns each
+ * `.bs-ds-app` into a column, and in a column the buttons' zero flex
+ * basis left them two pixels tall.
+ */
+.bs-ds-app.bs-ds-setup-done__actions {
+	display: flex;
+	flex-flow: row wrap;
+	min-height: 0;
+	margin-inline-start: 0;
+	background: none;
+	gap: var(--bs-ds-space-md);
+	padding: var(--bs-ds-space-lg);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .components-button.bs-ds-btn.bs-ds-setup-done__go,
+.bs-ds-app .components-button.bs-ds-btn.bs-ds-setup-done__review {
+	flex: 1 1 0;
+	justify-content: center;
 }
 
 @keyframes bs-ds-setup-done-pop {
@@ -177,8 +256,7 @@
 
 @media (prefers-reduced-motion: reduce) {
 
-	.bs-ds-setup-link__seal,
-	.bs-ds-setup-done__bit {
+	.bs-ds-setup-link__seal {
 		animation: none;
 	}
 }

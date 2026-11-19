@@ -219,6 +219,14 @@ final class ProfilePanel {
 			return;
 		}
 
+		// Another plugin's two-factor covers this account: setting ours up as
+		// well would never be asked for at sign-in (#3022).
+		if ( '' !== \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user ) ) {
+			echo '<p class="description bs-profile-2fa-elsewhere">' . esc_html__( 'Another security plugin handles two-factor for this account here, so it isn’t set up again in BetterShield. Use that plugin’s settings to change it.', 'bettershield' ) . '</p>';
+
+			return;
+		}
+
 		echo '<p class="description">' . esc_html( $this->intro_for( $user ) ) . '</p>';
 
 		// The enrollment steps are drawn and driven by assets/js/profile.js

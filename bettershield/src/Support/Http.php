@@ -64,8 +64,10 @@ final class Http {
 		// The published checksums for a WordPress release, so core files can be
 		// compared against what WordPress shipped.
 		'api.wordpress.org'       => 'core checksums',
-		// The published checksums for a directory plugin at an exact version.
-		'downloads.wordpress.org' => 'plugin checksums',
+		// The published checksums for a directory plugin at an exact version,
+		// and a directory theme's published package at an exact version, which
+		// is hashed and deleted: the directory publishes no theme checksums.
+		'downloads.wordpress.org' => 'plugin checksums and theme packages',
 		// The checksums WPDeveloper publishes for its own paid plugins, which
 		// the directory never lists. Asked only for the slugs fixed in
 		// Integrity\Manifest, and the same public question the directory is
