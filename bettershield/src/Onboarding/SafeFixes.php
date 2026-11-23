@@ -31,6 +31,7 @@ use BetterShield\Audit\Auditor;
 use BetterShield\Audit\Checks;
 use BetterShield\Hardening\Item\DirectoryBrowsing;
 use BetterShield\Hardening\Manager;
+use BetterShield\Rest\Permissions;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -384,6 +385,15 @@ final class SafeFixes {
 				continue;
 			}
 
+			// Files every site of a network shares are a network
+			// administrator's, here as on the Hardening tab (#3053).
+			$shared = Permissions::shared_files( $item );
+
+			if ( true !== $shared ) {
+				$failed[ $item ] = $shared->get_error_message();
+				continue;
+			}
+
 			$probe = $manager->dry_run( $item );
 
 			if ( ! is_wp_error( $probe ) && empty( $probe['available'] ) ) {
@@ -561,6 +571,15 @@ final class SafeFixes {
 				continue;
 			}
 
+			// Still the set's, for a network administrator to take back.
+			$shared = Permissions::shared_files( $entry['item'] );
+
+			if ( true !== $shared ) {
+				$skipped[ $entry['item'] ] = $shared->get_error_message();
+				$kept[]                    = $entry;
+				continue;
+			}
+
 			$result = $manager->revert_if_token( $entry['item'], $entry['token'] );
 
 			if ( is_wp_error( $result ) ) {
@@ -649,6 +668,12 @@ final class SafeFixes {
 
 		if ( ! Manager::instance()->is_active( $item ) ) {
 			return new \WP_Error( 'bettershield_not_applied', __( 'That fix is not applied, so there is nothing to undo.', 'bettershield' ), array( 'status' => 409 ) );
+		}
+
+		$shared = Permissions::shared_files( $item );
+
+		if ( true !== $shared ) {
+			return $shared;
 		}
 
 		$result = Manager::instance()->revert( $item );

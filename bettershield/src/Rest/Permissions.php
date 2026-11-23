@@ -157,6 +157,22 @@ final class Permissions {
 	}
 
 	/**
+	 * Changing an item that, on a network's main site, writes files every
+	 * site shares (`Items::shared_files()`): only a network administrator may,
+	 * as with every other shared file (#2994). Any other item, a subsite, or
+	 * a single site answers true.
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function shared_files( string $item ) {
+		if ( ! is_multisite() || ! is_main_site() || ! in_array( $item, Items::shared_files(), true ) ) {
+			return true;
+		}
+
+		return self::shared_code( false );
+	}
+
+	/**
 	 * Reading something that belongs to the network rather than to a site.
 	 *
 	 * `manage_network` is what the network screens have always asked for, and
@@ -216,6 +232,12 @@ final class Permissions {
 	public static function apply_hardening_item( \WP_REST_Request $request ) {
 		if ( ! current_user_can( Capabilities::MANAGE ) ) {
 			return false;
+		}
+
+		$shared = self::shared_files( (string) $request['item'] );
+
+		if ( true !== $shared ) {
+			return $shared;
 		}
 
 		return self::needs_way_back( (string) $request['item'] )

@@ -93,6 +93,7 @@ export const STATUSES = {
 	withdrawn: { kind: 'muted', label: () => __( 'Approval canceled', 'bettershield' ) },
 	declined: { kind: 'muted', label: () => __( 'Declined', 'bettershield' ) },
 	expired: { kind: 'muted', label: () => __( 'Expired', 'bettershield' ) },
+	done_elsewhere: { kind: 'muted', label: () => __( 'Already done', 'bettershield' ) },
 };
 
 /**

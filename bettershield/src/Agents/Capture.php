@@ -476,12 +476,26 @@ final class Capture {
 	/**
 	 * A callback's refusal of input its schema could not express, such as a
 	 * call naming neither of an ability's two shapes, is input rejected like
-	 * the schema's own refusals. Everything else it returns is a failure.
+	 * the schema's own refusals. A refusal by the site's own rules (403: it
+	 * needs a person, a confirmation, a network administrator; 429: the
+	 * hourly limit) is a refusal, as the permission check's is, and was
+	 * counted under Failed (#2998). So is one of this plugin's own answers
+	 * that the site's rules said no, whatever its status: a sign-in change
+	 * that needs a person, a change that cannot be undone, a plan the site
+	 * moved past (#3052). Everything else it returns is a failure.
 	 */
 	private static function failure_outcome( \WP_Error $error ): string {
 		$data = $error->get_error_data();
 
-		return is_array( $data ) && ! empty( $data['input_invalid'] ) ? 'input_invalid' : 'failed';
+		if ( is_array( $data ) && ! empty( $data['input_invalid'] ) ) {
+			return 'input_invalid';
+		}
+
+		$status = is_array( $data ) ? (int) ( $data['status'] ?? 0 ) : 0;
+		$code   = (string) $error->get_error_code();
+		$ruled  = 0 === strpos( $code, 'bettershield_' ) && ( '_refused' === substr( $code, -8 ) || 'bettershield_state_moved' === $code );
+
+		return $ruled || in_array( $status, array( 401, 403, 429 ), true ) ? 'permission_denied' : 'failed';
 	}
 
 	/**

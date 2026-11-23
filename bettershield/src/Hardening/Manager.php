@@ -882,6 +882,9 @@ final class Manager {
 			)
 		);
 
+		// An assistant's proposal to apply what is now on is done.
+		\BetterShield\Abilities\Proposals::close_done( 'bettershield/apply-hardening', $item );
+
 		if ( $hide_dashboard ) {
 			$notes = array_merge( $notes, $this->hide_dashboard_with_address() );
 		}
@@ -1066,6 +1069,9 @@ final class Manager {
 				'context'     => $context,
 			)
 		);
+
+		// And one to take off what is now off.
+		\BetterShield\Abilities\Proposals::close_done( 'bettershield/revert-hardening', $item );
 
 		// The redirect sends plain HTTP to the HTTPS address; with the address
 		// back on http it would keep sending visitors to the HTTPS that just
@@ -2147,6 +2153,35 @@ final class Manager {
 	 */
 	public static function ask_server_headers(): void {
 		\BetterShield\Cron\Runner::instance()->request_run( 'bettershield_server_headers', get_current_user_id() );
+	}
+
+	/**
+	 * Ask again soon when the server is credited with a header this plugin
+	 * would otherwise send. Left to the daily asking, a header the host
+	 * stopped sending went out from nobody until the next day while its row
+	 * still read on, or Confirmed (#2998, #3001). Queued for the task
+	 * runner, never asked inside the request that noticed, and at most once
+	 * in ten minutes.
+	 */
+	public static function recheck_credited_headers(): void {
+		$stored = get_option( self::SERVER_HEADERS_OPTION, null );
+
+		if ( ! is_array( $stored ) || empty( $stored['reliable'] ) || ( array() === (array) ( $stored['sends'] ?? array() ) && empty( $stored['hsts'] ) ) ) {
+			return;
+		}
+
+		$checked = strtotime( (string) ( $stored['checked_at'] ?? '' ) );
+
+		if ( false !== $checked && time() - $checked < 10 * MINUTE_IN_SECONDS ) {
+			return;
+		}
+
+		if ( false !== get_transient( 'bettershield_server_headers_rechecked' ) ) {
+			return;
+		}
+
+		set_transient( 'bettershield_server_headers_rechecked', 1, 10 * MINUTE_IN_SECONDS );
+		self::ask_server_headers();
 	}
 
 	/**

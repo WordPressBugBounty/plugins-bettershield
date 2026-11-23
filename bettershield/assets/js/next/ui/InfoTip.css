@@ -34,7 +34,8 @@
 
 .bs-ds-app .bs-ds-infotip__pop .components-popover__content,
 .bs-ds-infotip__pop .components-popover__content {
-	width: 280px;
+	/* Never wider than the screen less a gutter each side. */
+	width: min(280px, calc(100vw - 32px));
 	min-width: 0;
 	padding: 0;
 	border: 0;

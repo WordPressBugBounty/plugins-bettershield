@@ -132,6 +132,7 @@ final class Manager {
 		$this->application_password_user = 0;
 		$this->passed_gate               = 0;
 		$this->authenticated             = array();
+		$this->owed                      = 0;
 		LoginStep::instance()->reset_request_state();
 	}
 
@@ -153,6 +154,10 @@ final class Manager {
 		// A session made some other way than through that gate.
 		add_action( 'set_logged_in_cookie', array( $this, 'note_session_past_gate' ), 10, 4 );
 
+		// Fail closed: a sign-in still owing its code when cookies are about
+		// to be sent never reached the end of the chain that parks it.
+		add_filter( 'send_auth_cookies', array( $this, 'withhold_while_owed' ), 10, 4 );
+
 		add_action(
 			'application_password_did_authenticate',
 			function ( $user ): void {
@@ -173,6 +178,7 @@ final class Manager {
 	public function begin_chain( $user ) {
 		$this->application_password_user = 0;
 		$this->passed_gate               = 0;
+		$this->owed                      = 0;
 
 		return $user;
 	}
@@ -684,6 +690,9 @@ final class Manager {
 	/** Whether the sign-in being re-entered began with a password. */
 	private bool $reentered_with_password = false;
 
+	/** The account the gate found owes a code, until the chain's end parks it. */
+	private int $owed = 0;
+
 	/**
 	 * Whether this plugin is currently re-running the chain for exactly
 	 * this account. Read by its own sign-in gates and nothing else.
@@ -757,7 +766,10 @@ final class Manager {
 		$this->reentered_with_password = $with_password;
 
 		try {
-			$verdict = apply_filters( 'authenticate', $user, $user->user_login, '' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- core's own filter.
+			// Every check on the chain, except another plugin's that reads
+			// the password: there is none here, and an empty one judged as
+			// if it were typed is judged, and may be remembered, wrongly.
+			$verdict = self::run_by_hand( $user, false );
 
 			// A sign-in that never went through core's password handler (a
 			// passkey's) has not had the account checks core runs there.
@@ -780,9 +792,11 @@ final class Manager {
 	 * Those already ran, and passed, on the request that parked the sign-in,
 	 * with whatever proof only that request carried: a bot check's token is
 	 * in the password form's POST and not in the code screen's, so asked
-	 * again it refused every sign-in after a right code. Everything hooked
-	 * after the gate runs as it always did, and so does this plugin's own
-	 * gates before it, which stand aside or have their say by
+	 * again it refused every sign-in after a right code. Since the sign-in
+	 * is parked only at the end of the chain, everything hooked after the
+	 * gate has also answered on the password already; what runs again is a
+	 * check that does not read the password (a spam flag, a sign-in rule),
+	 * and this plugin's own gates, which stand aside or have their say by
 	 * `reentering()` and `finishing_a_password()` and read state that can
 	 * change between the two screens: a lockdown, a password hold.
 	 *
@@ -792,34 +806,17 @@ final class Manager {
 	 * @return \WP_User|\WP_Error|mixed Whatever the chain answers.
 	 */
 	public function finish_chain( \WP_User $user, bool $with_password = false ) {
-		global $wp_filter, $wp_current_filter;
+		global $wp_filter;
 
-		$hook = $wp_filter['authenticate'] ?? null;
-
-		if ( ! $hook instanceof \WP_Hook ) {
+		if ( ! ( $wp_filter['authenticate'] ?? null ) instanceof \WP_Hook ) {
 			return $this->reenter_chain( $user, $with_password );
 		}
 
 		$this->reentered_for           = (int) $user->ID;
 		$this->reentered_with_password = $with_password;
-		$wp_current_filter[]           = 'authenticate'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- the hook is run by hand, so current_filter() says what core's own run would.
 
 		try {
-			$value = $user;
-			$hooks = $hook->callbacks;
-
-			ksort( $hooks );
-
-			foreach ( $hooks as $priority => $callbacks ) {
-				foreach ( $callbacks as $callback ) {
-					if ( (int) $priority <= self::GATE_PRIORITY && ! self::is_own( $callback['function'] ) ) {
-						continue;
-					}
-
-					$args  = array( $value, $user->user_login, '' );
-					$value = call_user_func_array( $callback['function'], array_slice( $args, 0, max( 1, (int) $callback['accepted_args'] ) ) );
-				}
-			}
+			$value = self::run_by_hand( $user, true );
 
 			// The gate itself was not asked, so the sign-in it finishes is
 			// marked as through it here; a session made without that mark is
@@ -830,10 +827,67 @@ final class Manager {
 
 			return $value;
 		} finally {
-			array_pop( $wp_current_filter );
 			$this->reentered_for           = null;
 			$this->reentered_with_password = false;
 		}
+	}
+
+	/**
+	 * Run the `authenticate` chain by hand from an already-verified account.
+	 * This plugin's own callbacks all run, and stand aside or have their say
+	 * by `reentering()`. Another plugin's that reads the password is left
+	 * out, and so, when finishing a parked sign-in, is everything another
+	 * plugin hooked at or before the gate: both already ran on the request
+	 * that parked it.
+	 *
+	 * @return \WP_User|\WP_Error|mixed Whatever the chain answers.
+	 */
+	private static function run_by_hand( \WP_User $user, bool $parked ) {
+		global $wp_filter, $wp_current_filter;
+
+		$hook = $wp_filter['authenticate'] ?? null;
+
+		if ( ! $hook instanceof \WP_Hook ) {
+			return $user;
+		}
+
+		$wp_current_filter[] = 'authenticate'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- the hook is run by hand, so current_filter() says what core's own run would.
+
+		try {
+			$value = $user;
+			$hooks = $hook->callbacks;
+
+			ksort( $hooks );
+
+			foreach ( $hooks as $priority => $callbacks ) {
+				foreach ( $callbacks as $callback ) {
+					if ( ! self::is_own( $callback['function'] ) && ( self::reads_password( $callback ) || ( $parked && (int) $priority <= self::GATE_PRIORITY ) ) ) {
+						continue;
+					}
+
+					$args  = array( $value, $user->user_login, '' );
+					$value = call_user_func_array( $callback['function'], array_slice( $args, 0, max( 1, (int) $callback['accepted_args'] ) ) );
+				}
+			}
+
+			return $value;
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * Whether another plugin's callback reads the password: it asks for all
+	 * three of the filter's arguments. A chain run by hand has no password to
+	 * give it, and a check handed an empty one cannot tell that from a real
+	 * one, so it would judge, and may remember, the wrong password. On the
+	 * code screen these already ran, on the password itself, before the
+	 * sign-in was parked.
+	 *
+	 * @param array{function: mixed, accepted_args: int} $callback
+	 */
+	private static function reads_password( array $callback ): bool {
+		return (int) $callback['accepted_args'] >= 3;
 	}
 
 	/**
@@ -916,6 +970,12 @@ final class Manager {
 			);
 		}
 
+		// A sign-in page's own check of the password, ahead of its form: the
+		// form's POST that follows owes the code, not this.
+		if ( LoginStep::instance()->asked_ahead( $user ) ) {
+			return $user;
+		}
+
 		// A sign-in that is not a person at a browser cannot be sent to a
 		// second screen: it gets a refusal that names the alternatives. This
 		// refusal is one of the plugin's own and does not count as a wrong
@@ -932,10 +992,79 @@ final class Manager {
 			return $user;
 		}
 
-		// Park the sign-in and go to the code screen; nothing that signs
-		// anybody in has been set yet. Returns only when the response has
-		// already started and there is no way to send the browser on.
+		/*
+		 * A code is owed, but the sign-in is parked only once the whole chain
+		 * has answered (`park_owed()`). Parking here sent the browser on before
+		 * any check hooked later had seen the password: another plugin's
+		 * lockout, a leaked-password block or a sign-in hours rule never
+		 * refused a right password for an account with two-factor, the
+		 * different answer confirmed the password to whoever was guessing,
+		 * and a code was then spent on a sign-in they would refuse.
+		 */
+		// Asked outside the chain there is no end of it to wait for.
+		if ( ! doing_filter( 'authenticate' ) ) {
+			return LoginStep::instance()->begin( $user );
+		}
+
+		$this->owed = (int) $user->ID;
+
+		// Added now rather than at boot, so it runs after everything already
+		// on the chain, whatever priority another plugin chose.
+		add_filter( 'authenticate', array( $this, 'park_owed' ), PHP_INT_MAX, 1 );
+
+		return $user;
+	}
+
+	/**
+	 * The end of the chain for a sign-in the gate found owes a code: park it
+	 * and go to the code screen, unless a check after the gate refused it.
+	 * Nothing that signs anybody in has been set yet. Returns only when
+	 * something refused, or the response has already started and there is
+	 * no way to send the browser on.
+	 *
+	 * @param mixed $user What the chain answered.
+	 * @return mixed
+	 */
+	public function park_owed( $user ) {
+		$owed       = $this->owed;
+		$this->owed = 0;
+
+		if ( 0 === $owed || $user instanceof \WP_Error ) {
+			return $user;
+		}
+
+		// Another account, or none, where the gate found this one: never a
+		// sign-in that skips the code it owes.
+		if ( ! $user instanceof \WP_User || (int) $user->ID !== $owed ) {
+			return LoginStep::refusal();
+		}
+
 		return LoginStep::instance()->begin( $user );
+	}
+
+	/**
+	 * Send no sign-in cookie for an account the gate found owes a code and
+	 * that was never parked for it: something took the end of the chain away.
+	 *
+	 * @param mixed $send
+	 * @param mixed $expire
+	 * @param mixed $expiration
+	 * @param mixed $user_id
+	 * @return mixed
+	 */
+	public function withhold_while_owed( $send, $expire = 0, $expiration = 0, $user_id = 0 ) {
+		unset( $expire, $expiration );
+
+		return $this->owes_code( (int) $user_id ) ? false : $send;
+	}
+
+	/**
+	 * Whether the gate found this account owes a code on this request and the
+	 * chain has not finished yet: its password is right, and it has not
+	 * signed in. A check that records a sign-in leaves it for the code.
+	 */
+	public function owes_code( int $user_id ): bool {
+		return $user_id > 0 && $this->owed === $user_id;
 	}
 
 	/**
@@ -1326,6 +1455,110 @@ final class Manager {
 		$step = Totp::verify( $secret, $digits, time() );
 
 		return null !== $step && $step <= $spent;
+	}
+
+	/**
+	 * Check a code as `check_code()` does, counted the same way, without
+	 * spending it: for a change that may still be canceled or refused after
+	 * the code is asked for. A wrong code is counted and refused here; a right
+	 * one is spent by `spend_proof()` once the change happens, and stays
+	 * usable when it never does.
+	 *
+	 * @return array{kind: string, step?: int, stamped?: string, hash?: string}|false|\WP_Error
+	 *         What to spend later, false when wrong, an error as `check_code()` gives.
+	 */
+	public function prove_code( int $user_id, string $code ) {
+		$allowed = $this->guess_attempt_allowed( $user_id );
+
+		if ( null === $allowed ) {
+			return $this->records_unreadable( $user_id );
+		}
+
+		if ( ! $allowed ) {
+			return self::capped();
+		}
+
+		$digits   = (string) preg_replace( '/[^0-9]/', '', $code );
+		$imported = BackupCodes::imported_code( $code );
+
+		if ( '' === $imported && Totp::DIGITS === strlen( $digits ) ) {
+			$secret = (string) get_user_meta( $user_id, self::META_SECRET, true );
+
+			if ( '' === $secret ) {
+				return false;
+			}
+
+			$stamped = (string) get_user_meta( $user_id, self::META_LAST_STEP, true );
+			$step    = Totp::verify( $secret, $digits, time(), (int) $stamped );
+
+			if ( null === $step ) {
+				return false;
+			}
+
+			self::accepted( $user_id );
+
+			return array(
+				'kind'    => 'totp',
+				'step'    => (int) $step,
+				'stamped' => $stamped,
+			);
+		}
+
+		if ( '' === $imported && 8 !== strlen( $digits ) ) {
+			return false;
+		}
+
+		$backup = $this->backup_guess_allowed( $user_id );
+
+		if ( null === $backup ) {
+			return $this->records_unreadable( $user_id );
+		}
+
+		if ( ! $backup ) {
+			return self::capped();
+		}
+
+		$hash = BackupCodes::matching_hash( $user_id, '' !== $imported ? $imported : $digits );
+
+		if ( '' === $hash ) {
+			return false;
+		}
+
+		Claim::give_back( self::backup_key( $user_id ) );
+		self::accepted( $user_id );
+
+		return array(
+			'kind' => 'backup',
+			'hash' => $hash,
+		);
+	}
+
+	/**
+	 * Spend the code `prove_code()` accepted. False when it can no longer be
+	 * spent: used since, or a later app code spent first.
+	 *
+	 * @param array<string, mixed> $proof What `prove_code()` returned.
+	 */
+	public function spend_proof( int $user_id, array $proof ): bool {
+		if ( 'totp' === ( $proof['kind'] ?? '' ) && isset( $proof['step'] ) ) {
+			return $this->stamp_step( $user_id, (int) $proof['step'], (string) ( $proof['stamped'] ?? '' ) );
+		}
+
+		if ( 'backup' !== ( $proof['kind'] ?? '' ) || ! BackupCodes::consume_hash( $user_id, (string) ( $proof['hash'] ?? '' ) ) ) {
+			return false;
+		}
+
+		Writer::instance()->record(
+			'two_factor_backup_used',
+			Writer::SEVERITY_LOW,
+			array(
+				'object_type' => 'user',
+				'object_id'   => (string) $user_id,
+				'context'     => array( 'remaining' => BackupCodes::remaining( $user_id ) ),
+			)
+		);
+
+		return true;
 	}
 
 	/**

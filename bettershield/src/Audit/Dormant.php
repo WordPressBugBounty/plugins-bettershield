@@ -121,7 +121,9 @@ final class Dormant {
 	 * @return mixed
 	 */
 	public static function observe_authentication( $user ) {
-		if ( $user instanceof \WP_User ) {
+		// A right password still owing its code has not signed in yet; the
+		// code screen finishes the chain again and is the use.
+		if ( $user instanceof \WP_User && ! \BetterShield\TwoFactor\Manager::instance()->owes_code( (int) $user->ID ) ) {
 			self::stamp( (string) $user->user_login, $user );
 		}
 

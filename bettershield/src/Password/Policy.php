@@ -45,6 +45,7 @@ namespace BetterShield\Password;
 
 use BetterShield\Events\Writer;
 use BetterShield\Recovery\SafeMode;
+use BetterShield\Support\OneTimeNote;
 use BetterShield\Undo\SettingsLedger;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -81,6 +82,9 @@ final class Policy {
 	 * it read for the privileged count were all of them.
 	 */
 	public const FLAGGED_MAX = 200;
+
+	/** The query key a membership reset form's refusal comes back under. */
+	public const RESET_NOTE = 'bettershield_reset_note';
 
 	private static ?Policy $instance = null;
 
@@ -282,6 +286,15 @@ final class Policy {
 		// costs such a site nothing, and detecting would mean asking a
 		// question whose answer changes mid-request.
 		add_action( 'woocommerce_save_account_details_errors', array( $this, 'check_store_account' ), 10, 2 );
+
+		// A membership plugin's reset form that sets the password itself, on
+		// the sign-in page's own actions, without ever firing the reset
+		// validation: the rules never ran there (#3054). Ahead of its
+		// handler, the same validation core runs is asked first, and a refusal
+		// goes back to that form with its reason.
+		add_action( 'login_form_rp', array( $this, 'check_membership_reset' ), 9 );
+		add_action( 'login_form_resetpass', array( $this, 'check_membership_reset' ), 9 );
+		add_filter( 'do_shortcode_tag', array( $this, 'show_membership_refusal' ), 10, 2 );
 
 		// And the form where a shop's passwords are actually first chosen.
 		// The store's sign-up carries the password in the request rather than
@@ -799,15 +812,8 @@ final class Policy {
 			return;
 		}
 
-		// Core reads the proposed password from the same place; absent means
-		// the form is being rendered, not submitted. A store's reset form
-		// fires this same action, having verified the same reset key, and
-		// posts the new password under its own field name — so both names are
-		// read, and the first one present is the password being chosen.
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- the reset flow, core's or a store's, verifies its own key before this hook fires.
-		$posted = isset( $_POST['pass1'] ) ? $_POST['pass1'] : ( $_POST['password_1'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.NonceVerification.Missing -- unslashed on the next line; a password is compared, never stored or output.
-
-		$password = (string) wp_unslash( $posted );
+		// Absent means the form is being rendered, not submitted.
+		$password = self::posted_reset_password();
 
 		if ( '' === $password ) {
 			return;
@@ -817,7 +823,137 @@ final class Policy {
 
 		if ( null !== $refusal ) {
 			$errors->add( $refusal->get_error_code(), $refusal->get_error_message() );
+			self::tell_membership_form( $refusal->get_error_message() );
 		}
+	}
+
+	/**
+	 * A membership plugin's reset form that fires the reset validation and
+	 * then ignores what it answered, re-showing the form with no reason: the
+	 * reason is put on that form's own field instead. Only on its own
+	 * request, and only where its form object is there to take it.
+	 */
+	private static function tell_membership_form( string $message ): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- the form verified its own reset key before this hook fired; only whether it is that form is read.
+		if ( ! isset( $_POST['_um_password_change'] ) || ! function_exists( 'UM' ) ) {
+			return;
+		}
+
+		$form = \UM()->form();
+
+		if ( is_object( $form ) && method_exists( $form, 'add_error' ) ) {
+			$form->add_error( 'user_password', $message );
+		}
+	}
+
+	/**
+	 * A membership plugin's reset form posted to the sign-in page's reset
+	 * action, which sets the password itself and never asks the reset
+	 * validation. Asked here first, the way core asks it: a refusal (these
+	 * rules, a password hold, any other plugin's) goes back to that form with
+	 * its reason, and the password is left as it was.
+	 */
+	public function check_membership_reset(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- the reset key is the form's proof, checked below by core; the password is compared and discarded, never stored or output.
+		if ( ! isset( $_REQUEST['pmpro_login_form_used'], $_POST['pass1'], $_REQUEST['rp_key'], $_REQUEST['rp_login'] ) || ! function_exists( 'pmpro_url' ) ) {
+			return;
+		}
+
+		$pass1 = is_string( $_POST['pass1'] ) ? (string) wp_unslash( $_POST['pass1'] ) : '';
+		$pass2 = isset( $_POST['pass2'] ) && is_string( $_POST['pass2'] ) ? (string) wp_unslash( $_POST['pass2'] ) : '';
+		$key   = is_string( $_REQUEST['rp_key'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['rp_key'] ) ) : '';
+		$login = is_string( $_REQUEST['rp_login'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['rp_login'] ) ) : '';
+		// phpcs:enable
+
+		// An empty or mismatched pair, and a bad key, are that form's to say.
+		if ( '' === $pass1 || $pass1 !== $pass2 ) {
+			return;
+		}
+
+		$user = check_password_reset_key( $key, $login );
+
+		if ( ! $user instanceof \WP_User ) {
+			return;
+		}
+
+		$errors = new \WP_Error();
+
+		/** This action is documented in wp-login.php. */
+		do_action( 'validate_password_reset', $errors, $user );
+
+		if ( ! $errors->has_errors() ) {
+			return;
+		}
+
+		$back = add_query_arg(
+			array(
+				'key'            => rawurlencode( $key ),
+				'login'          => rawurlencode( $login ),
+				'action'         => 'rp',
+				self::RESET_NOTE => OneTimeNote::keep( $errors->get_error_message() ),
+			),
+			(string) \pmpro_url( 'login' )
+		);
+
+		wp_safe_redirect( $back );
+		exit;
+	}
+
+	/**
+	 * The reason, at the top of the membership plugin's sign-in block it was
+	 * sent back to, once, escaped.
+	 *
+	 * @param mixed $output
+	 * @param mixed $tag
+	 * @return mixed
+	 */
+	public function show_membership_refusal( $output, $tag = '' ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- a note this site wrote, looked up by its name; shown escaped, nothing is acted on.
+		if ( 'pmpro_login' !== $tag || ! is_string( $output ) || ! isset( $_GET[ self::RESET_NOTE ] ) ) {
+			return $output;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- as above.
+		$text = OneTimeNote::take( wp_unslash( $_GET[ self::RESET_NOTE ] ) );
+
+		if ( null === $text ) {
+			return $output;
+		}
+
+		return '<div class="pmpro"><div class="pmpro_message pmpro_error" role="alert">' . esc_html( $text ) . '</div></div>' . $output;
+	}
+
+	/**
+	 * The new password a reset form posted, or '' when none was.
+	 *
+	 * Core's reset form, a store's and a membership plugin's all fire
+	 * `validate_password_reset` once they have verified the reset key, each
+	 * with the new password under its own field name. A check that read
+	 * only some of them let the others set any password, and let a held
+	 * account "reset" to the password it was held for. The first name
+	 * present is the password being chosen.
+	 *
+	 * Read rather than trusted: compared and discarded inside this request,
+	 * never stored, logged or echoed.
+	 */
+	public static function posted_reset_password(): string {
+		/**
+		 * The POST fields a password reset form carries its new password in,
+		 * first match wins. For a front-end reset form that fires
+		 * `validate_password_reset` under a name of its own.
+		 *
+		 * @param string[] $fields
+		 */
+		$fields = (array) apply_filters( 'bettershield_reset_password_fields', array( 'pass1', 'password_1', 'user_password' ) );
+
+		foreach ( $fields as $field ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- the reset flow verifies its own key before this hook fires; unslashed here, compared and never stored or output.
+			if ( is_string( $field ) && isset( $_POST[ $field ] ) && is_string( $_POST[ $field ] ) ) {
+				return (string) wp_unslash( $_POST[ $field ] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- as above.
+			}
+		}
+
+		return '';
 	}
 
 	/**

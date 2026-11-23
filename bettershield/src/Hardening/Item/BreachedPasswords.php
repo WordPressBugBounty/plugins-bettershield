@@ -337,8 +337,15 @@ final class BreachedPasswords {
 	 * request, and nothing here stores, logs or echoes it.
 	 */
 	private static function posted_password(): string {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- the reset flow verifies its own key, and registration is an unauthenticated form by design; this reads what was submitted rather than deciding anything on its own.
-		$posted = $_POST['pass1'] ?? ( $_POST['password_1'] ?? ( $_POST['password'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.NonceVerification.Missing -- unslashed on the next line; a password is compared, never stored or output.
+		// Every reset form's field first, then a sign-up form's.
+		$reset = \BetterShield\Password\Policy::posted_reset_password();
+
+		if ( '' !== $reset ) {
+			return $reset;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- registration is an unauthenticated form by design; this reads what was submitted rather than deciding anything on its own.
+		$posted = $_POST['password'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.NonceVerification.Missing -- unslashed on the next line; a password is compared, never stored or output.
 
 		return is_string( $posted ) ? (string) wp_unslash( $posted ) : '';
 	}

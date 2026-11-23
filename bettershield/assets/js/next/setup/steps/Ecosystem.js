@@ -27,7 +27,7 @@ import Button from '../../ui/Button';
 import { Toggle } from '../../ui/Setting';
 import { useSetup } from '../context';
 import { failureMessage, request, ROUTES } from '../api';
-import { initials } from '../../../setup/format';
+import { initials, listOf } from '../../../setup/format';
 
 /**
  * One plugin: its name and its switch, and one line about it.
@@ -216,18 +216,29 @@ export default function RecommendedPlugins( { register, onChosen, onProgress } )
 			// message says; switching one on again tries it again.
 			setChosen( ( list ) => list.filter( ( slug ) => 'error' !== next[ slug ]?.status ) );
 			setSaid( '' );
+			// Where every chosen plugin failed there are no others to speak
+			// of: it says so by name, and that the setup goes on (#2996).
+			const failed = [ ...lists.recommended, ...lists.more ].filter( ( plugin ) => 'error' === next[ plugin.slug ]?.status ).map( ( plugin ) => plugin.name );
+
 			setError( {
 				key: 'ecosystem',
-				message: sprintf(
-					/* translators: %d: number of plugins that could not be installed. */
-					_n(
-						'%d plugin could not be installed. The others are active, and you can continue.',
-						'%d plugins could not be installed. The others are active, and you can continue.',
-						failures,
-						'bettershield'
-					),
-					failures
-				),
+				message:
+					failures === order.length
+						? sprintf(
+								/* translators: %s: one or more plugin names. */
+								_n( '%s could not be installed. You can continue without it.', '%s could not be installed. You can continue without them.', failures, 'bettershield' ),
+								listOf( failed )
+						  )
+						: sprintf(
+								/* translators: %d: number of plugins that could not be installed. */
+								_n(
+									'%d plugin could not be installed. The others are active, and you can continue.',
+									'%d plugins could not be installed. The others are active, and you can continue.',
+									failures,
+									'bettershield'
+								),
+								failures
+						  ),
 			} );
 
 			return false;

@@ -702,25 +702,54 @@ function adminRemovePasskeys() {
 			} );
 	};
 
-	go.addEventListener( 'click', () => {
-		if (
-			// eslint-disable-next-line no-alert
-			! window.confirm(
-				__(
-					'Remove all passkeys on this account? Every device is signed out, and they use their password until they add one.',
-					'bettershield'
-				)
-			)
-		) {
-			return;
-		}
+	/*
+	 * Armed, as the dashboard's other destructive controls are, rather than
+	 * the browser's own confirm(): the first press says what happens and
+	 * offers a button named for it, the second does it (#3004).
+	 */
+	const count = parseInt( passkeyRemoveHolder.dataset.count || '0', 10 ) || 1;
+	const confirmRow = el( 'p', 'bs-profile-2fa__row' );
+	const warning = el(
+		'span',
+		'bs-profile-2fa__note',
+		__( 'Every device is signed out, and they use their password until they add one.', 'bettershield' )
+	);
+	const yes = button(
+		/* translators: %d: how many passkeys the account holds. */
+		sprintf( _n( 'Yes, Remove %d Passkey', 'Yes, Remove %d Passkeys', count, 'bettershield' ), count )
+	);
+	const cancel = button( __( 'Cancel', 'bettershield' ) );
 
+	confirmRow.append( yes, cancel, warning );
+
+	// Shown and hidden by style: the row's own display outranks `hidden`.
+	const show = ( node, on ) => {
+		node.style.display = on ? '' : 'none';
+	};
+
+	show( confirmRow, false );
+
+	go.addEventListener( 'click', () => {
+		show( go, false );
+		show( confirmRow, true );
+		yes.focus();
+	} );
+
+	cancel.addEventListener( 'click', () => {
+		show( confirmRow, false );
+		show( go, true );
+		go.focus();
+	} );
+
+	yes.addEventListener( 'click', () => {
+		show( confirmRow, false );
+		show( go, true );
 		send();
 	} );
 
 	const row = el( 'p', 'bs-profile-2fa__row' );
 	row.append( go, note );
-	passkeyRemoveHolder.append( row );
+	passkeyRemoveHolder.append( row, confirmRow );
 }
 
 /* ---- issuing a fresh set, for an account already using two-factor --------- */

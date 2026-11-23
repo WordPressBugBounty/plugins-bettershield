@@ -384,6 +384,17 @@ final class Proposals {
 			return $unknown;
 		}
 
+		// Closed because the change was made another way: nobody withdrew
+		// it, and the caller is told what moved, as when the change lands
+		// between the plan and the confirmation.
+		if ( null !== $row->withdrawn_at && self::ALREADY_DONE === (string) ( $row->outcome ?? '' ) ) {
+			return new \WP_Error(
+				'bettershield_state_moved',
+				__( 'That change was already applied another way, so its confirmation no longer stands.', 'bettershield' ),
+				array( 'status' => 409 )
+			);
+		}
+
 		if ( null !== $row->withdrawn_at ) {
 			return new \WP_Error(
 				'bettershield_confirmation_withdrawn',
@@ -434,6 +445,91 @@ final class Proposals {
 		self::refresh_open_count();
 
 		return true;
+	}
+
+	/** The outcome a proposal closed because its change was made another way carries. */
+	public const ALREADY_DONE = 'already_done';
+
+	/**
+	 * Close the proposals still waiting for a change that has now been made
+	 * another way: the dashboard, or the same assistant applying it directly.
+	 * Left open, the row read Waiting for something already on, and allowing
+	 * it still issued a confirmation (#2998). Answers how many were closed.
+	 */
+	public static function close_done( string $ability, string $target ): int {
+		global $wpdb;
+
+		if ( '' === $target || ! Schema::ready( 'write_proposals' ) ) {
+			return 0;
+		}
+
+		$closed = (int) $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i SET withdrawn_at = %s, outcome = %s WHERE ability = %s AND target = %s AND spent_at IS NULL AND withdrawn_at IS NULL',
+				Schema::table( 'write_proposals' ),
+				Time::stamp(),
+				self::ALREADY_DONE,
+				Text::clip( $ability, 64 ),
+				$target
+			)
+		);
+
+		if ( $closed > 0 ) {
+			self::refresh_open_count();
+		}
+
+		return $closed;
+	}
+
+	/**
+	 * Close the plans to update a plugin that an update made another way has
+	 * already carried out: the version now installed is the one the plan
+	 * offered, or newer. Left open, the row read Waiting, and allowing it
+	 * answered that no newer version was offered (#3052). Answers how
+	 * many were closed.
+	 */
+	public static function close_updated_plugin( string $plugin, string $version ): int {
+		global $wpdb;
+
+		if ( '' === $plugin || '' === $version || ! Schema::ready( 'write_proposals' ) ) {
+			return 0;
+		}
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT id, plan FROM %i WHERE ability = %s AND target = %s AND spent_at IS NULL AND withdrawn_at IS NULL LIMIT 50',
+				Schema::table( 'write_proposals' ),
+				'bettershield/update-plugin',
+				Text::clip( $plugin, 191 )
+			)
+		);
+
+		$closed = 0;
+
+		foreach ( (array) $rows as $row ) {
+			$plan = json_decode( (string) $row->plan, true );
+			$to   = is_array( $plan ) ? (string) ( $plan['to'] ?? '' ) : '';
+
+			if ( '' === $to || version_compare( $version, $to, '<' ) ) {
+				continue;
+			}
+
+			$closed += (int) $wpdb->query(
+				$wpdb->prepare(
+					'UPDATE %i SET withdrawn_at = %s, outcome = %s WHERE id = %d AND spent_at IS NULL AND withdrawn_at IS NULL',
+					Schema::table( 'write_proposals' ),
+					Time::stamp(),
+					self::ALREADY_DONE,
+					(int) $row->id
+				)
+			);
+		}
+
+		if ( $closed > 0 ) {
+			self::refresh_open_count();
+		}
+
+		return $closed;
 	}
 
 	/**
@@ -497,6 +593,10 @@ final class Proposals {
 		}
 
 		if ( null !== $row->withdrawn_at ) {
+			if ( self::ALREADY_DONE === (string) ( $row->outcome ?? '' ) ) {
+				return 'done_elsewhere';
+			}
+
 			return null === $row->minted_at ? 'declined' : 'withdrawn';
 		}
 

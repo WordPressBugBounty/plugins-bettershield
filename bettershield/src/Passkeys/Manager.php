@@ -64,6 +64,17 @@ final class Manager {
 				'reason'    => __( 'Passkeys are not available on this site yet. Site owner: ask your host to turn on PHP’s OpenSSL extension.', 'bettershield' ),
 				'label'     => __( 'Requires PHP OpenSSL', 'bettershield' ),
 			);
+		} elseif ( self::on_ip_address() ) {
+			/*
+			 * Browsers refuse an IP address as a passkey's domain whatever the
+			 * connection, so offering the button there only led to an error
+			 * that blamed HTTPS (#3004).
+			 */
+			$answer = array(
+				'available' => false,
+				'label'     => __( 'Requires a domain name', 'bettershield' ),
+				'reason'    => __( 'Passkeys need a domain name, not an IP address. Open this site at its domain name, then add a passkey.', 'bettershield' ),
+			);
 		} elseif ( ! self::is_secure_context() ) {
 			$answer = array(
 				'available' => false,
@@ -875,6 +886,13 @@ final class Manager {
 		);
 	}
 
+	/** Whether the site's own address is an IP address rather than a domain name. */
+	private static function on_ip_address(): bool {
+		$host = trim( self::host_of( (string) home_url() ), '[]' );
+
+		return '' !== $host && false !== filter_var( $host, FILTER_VALIDATE_IP );
+	}
+
 	/**
 	 * Whether a browser on this site is in a context WebAuthn will work in.
 	 *
@@ -900,7 +918,7 @@ final class Manager {
 		// party: what the browser judges is the address it is at.
 		$host = self::host_of( (string) home_url() );
 
-		return 'localhost' === $host || '127.0.0.1' === $host || str_ends_with( $host, '.localhost' );
+		return 'localhost' === $host || str_ends_with( $host, '.localhost' );
 	}
 
 	public static function b64url( string $raw ): string {

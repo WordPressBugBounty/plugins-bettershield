@@ -48,12 +48,14 @@ export function listedOff( rows, choices ) {
 }
 
 /**
- * Of those, the ones the main button switches off: where WordPress gives a
- * link this account may use.
+ * Of those, the ones the main button switches off: where nothing stands in
+ * the way and WordPress gives a link this account may use. Where the site has
+ * turned the setup's deactivation off (`off`), the button switches nothing
+ * off and the step points to the Plugins screen instead (#2993).
  *
  * @param {Object[]} listed What `listedOff()` answered.
  * @return {Object[]} The plugins the main button switches off.
  */
 export function switchingOff( listed ) {
-	return listed.filter( ( plugin ) => ( 'off' === plugin.why || '' === plugin.why ) && ( plugin.link || plugin.deactivate_url ) );
+	return listed.filter( ( plugin ) => '' === plugin.why && ( plugin.link || plugin.deactivate_url ) );
 }

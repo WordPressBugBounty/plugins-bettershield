@@ -23,7 +23,7 @@ const PATH = '/bettershield/v1/findings/lockouts_not_running/proxy';
 /** What each case means, and what it asks for. */
 const CASES = {
 	unnamed_proxy: () =>
-		__( 'A service in front of your site, like a CDN, passes on visitor addresses, but BetterShield doesn’t trust it yet. Add the address ranges your host or CDN lists.', 'bettershield' ),
+		__( 'BetterShield doesn’t yet trust the CDN or service in front of your site, so one visitor’s wrong passwords lock everyone out. Add the address ranges it lists.', 'bettershield' ),
 	proxy_names_no_visitor: () =>
 		__( 'The service you added isn’t passing on visitors’ real addresses. Check its settings, or add any other service in front of it.', 'bettershield' ),
 	proxy_sends_no_header: () =>

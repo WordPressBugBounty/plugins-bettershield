@@ -286,7 +286,7 @@ final class AgentWriteController {
 
 		$status = Proposals::status_of( $proposal );
 
-		if ( 'spent' === $status || 'withdrawn' === $status || 'declined' === $status ) {
+		if ( 'spent' === $status || 'withdrawn' === $status || 'declined' === $status || 'done_elsewhere' === $status ) {
 			$refusal = self::refusal_for( $status );
 
 			return null === $refusal ? self::denied() : $refusal;
@@ -490,6 +490,7 @@ final class AgentWriteController {
 			'spent'     => array( 'bettershield_proposal_spent', __( 'That change has already been made.', 'bettershield' ) ),
 			'withdrawn' => array( 'bettershield_proposal_withdrawn', __( 'That change was withdrawn.', 'bettershield' ) ),
 			'declined'  => array( 'bettershield_proposal_declined', __( 'That change was declined.', 'bettershield' ) ),
+			'done_elsewhere' => array( 'bettershield_proposal_done', __( 'That change is already in place.', 'bettershield' ) ),
 			'expired'   => array( 'bettershield_proposal_expired', __( 'That plan has run out. Ask for the change again.', 'bettershield' ) ),
 			'allowed'   => array( 'bettershield_proposal_allowed', __( 'That change has already been allowed.', 'bettershield' ) ),
 		);

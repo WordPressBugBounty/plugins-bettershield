@@ -109,6 +109,18 @@ final class Items {
 	}
 
 	/**
+	 * Items whose files, written from a network's main site, are files every
+	 * site of the network shares: the root .htaccess, and the uploads folder
+	 * every subsite's own uploads sit inside. On a subsite each writes only
+	 * that subsite's own folder.
+	 *
+	 * @return string[]
+	 */
+	public static function shared_files(): array {
+		return array( 'sensitive_files', 'uploads_php', 'directory_browsing' );
+	}
+
+	/**
 	 * Items with behavior beyond runtime filters: a class the manager calls
 	 * for apply-time work, revert, availability, options and extra actions.
 	 * Translation-free and safe before init.
@@ -808,7 +820,7 @@ final class Items {
 				'group'       => 'accounts',
 				'reversible'  => true,
 				'title'       => __( 'Admin-only script and file uploads', 'bettershield' ),
-				'description' => __( 'Non-admins can no longer add scripts to posts or upload any file type. No role is changed.', 'bettershield' ),
+				'description' => __( 'Accounts below Editor can no longer add scripts to posts, and nobody below administrator can upload any file type. No role is changed.', 'bettershield' ),
 				'detail'      => __( 'Script in a post runs in the browser of whoever views it, administrators included.', 'bettershield' ),
 				'reverts'     => static function (): array {
 					return array(

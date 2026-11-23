@@ -1093,13 +1093,20 @@ final class Coexistence {
 
 		foreach ( $active as $file => $plugin ) {
 			if ( in_array( $job, $plugin['jobs'], true ) ) {
+				$why = self::why_not_deactivate( (string) $file );
+
+				// With the setup's deactivation off, the step points to the
+				// Plugins screen, and carries no link it could follow to switch
+				// the plugin off itself (#2993).
+				$off = 'off' === $why;
+
 				$plugins[] = array(
 					'file'           => (string) $file,
 					'name'           => (string) $plugin['name'],
-					'why'            => self::why_not_deactivate( (string) $file ),
+					'why'            => $why,
 					'jobs'           => array_values( $plugin['jobs'] ),
-					'link'           => self::offers_link( $plugin['jobs'] ) ? self::deactivate_link( (string) $file ) : '',
-					'deactivate_url' => self::deactivate_url( (string) $file ),
+					'link'           => ! $off && self::offers_link( $plugin['jobs'] ) ? self::deactivate_link( (string) $file ) : '',
+					'deactivate_url' => $off ? '' : self::deactivate_url( (string) $file ),
 					// For the step's Turn It Back On, once it is off.
 					'activate_url'   => self::activate_url( (string) $file ),
 					'sign_in_path'   => self::path_of( $moved[ (string) $file ] ?? '' ),

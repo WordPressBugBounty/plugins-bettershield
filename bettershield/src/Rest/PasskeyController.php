@@ -70,6 +70,19 @@ final class PasskeyController {
 			}
 
 			/*
+			 * A removal this account may not make is refused before the code
+			 * is asked for: checked first, a code was spent on a change that
+			 * never happened. The removal asks the same again when it runs.
+			 */
+			if ( \WP_REST_Server::DELETABLE === $request->get_method() ) {
+				$refused = Store::removal_refusal( get_current_user_id(), (int) $request->get_param( 'id' ) );
+
+				if ( null !== $refused ) {
+					return $refused;
+				}
+			}
+
+			/*
 			 * Core asks a route's permission again to answer its Allow header,
 			 * after the route has run. A code is spent by being checked, so the
 			 * answer is kept for this request rather than asked for twice.
@@ -77,7 +90,11 @@ final class PasskeyController {
 			self::$proved ??= new \WeakMap();
 
 			if ( ! isset( self::$proved[ $request ] ) ) {
-				self::$proved[ $request ] = self::holder_proved( wp_get_current_user(), (string) $request->get_param( 'code' ) );
+				// Asking for a passkey's options adds nothing yet, and the
+				// browser's prompt is often dismissed: the code is proved
+				// here and spent only when the passkey is saved.
+				$adding                   = '/bettershield/v1/passkeys/register-options' === $request->get_route();
+				self::$proved[ $request ] = self::holder_proved( wp_get_current_user(), (string) $request->get_param( 'code' ), ! $adding );
 			}
 
 			return self::$proved[ $request ];
@@ -159,6 +176,12 @@ final class PasskeyController {
 			array(
 				'methods'             => \WP_REST_Server::CREATABLE,
 				'callback'            => static function ( \WP_REST_Request $request ) {
+					$spent = self::spend_adding_proof( wp_get_current_user() );
+
+					if ( is_wp_error( $spent ) ) {
+						return $spent;
+					}
+
 					$body   = $request->get_json_params();
 					$result = Manager::register( wp_get_current_user(), is_array( $body ) ? $body : array() );
 
@@ -299,6 +322,37 @@ final class PasskeyController {
 		return ! is_multisite() || ! \BetterShield\Database\Schema::is_network_table_here( 'passkeys' ) || is_super_admin();
 	}
 
+	/** How long a code proved for adding a passkey waits for the passkey. */
+	private const PROOF_SECONDS = 600;
+
+	private static function proof_key( int $user_id ): string {
+		return 'bettershield_passkey_proof_' . $user_id;
+	}
+
+	/**
+	 * Spend the code proved when the passkey's options were asked for, now that
+	 * a passkey is being saved. Nothing to spend where no code was asked:
+	 * safe mode, or an account without a second factor.
+	 *
+	 * @return true|\WP_Error
+	 */
+	private static function spend_adding_proof( \WP_User $user ) {
+		$two_factor = \BetterShield\TwoFactor\Manager::instance();
+
+		if ( SafeMode::is_active() || ! $two_factor->enabled( (int) $user->ID ) ) {
+			return true;
+		}
+
+		$proof = get_transient( self::proof_key( (int) $user->ID ) );
+		delete_transient( self::proof_key( (int) $user->ID ) );
+
+		if ( ! is_array( $proof ) || ! $two_factor->spend_proof( (int) $user->ID, $proof ) ) {
+			return new \WP_Error( 'bettershield_current_code_required', __( 'That code was used before this passkey was saved. Start again with a current code.', 'bettershield' ), array( 'status' => 403 ) );
+		}
+
+		return true;
+	}
+
 	/**
 	 * Whether the person changing this account's passkeys proved they hold it.
 	 *
@@ -312,7 +366,7 @@ final class PasskeyController {
 	 *
 	 * @return true|\WP_Error
 	 */
-	public static function holder_proved( \WP_User $user, string $code ) {
+	public static function holder_proved( \WP_User $user, string $code, bool $spend = true ) {
 		if ( SafeMode::is_active() ) {
 			return true;
 		}
@@ -327,10 +381,17 @@ final class PasskeyController {
 			// Only something shaped like a code is checked, so typing anything
 			// else spends none of the account's guesses.
 			$digits  = (string) preg_replace( '/[^0-9]/', '', $code );
-			$checked = in_array( strlen( $digits ), array( 6, 8 ), true ) ? $two_factor->check_code( $user->ID, $code ) : false;
+			$shaped  = in_array( strlen( $digits ), array( 6, 8 ), true );
+			$checked = ! $shaped ? false : ( $spend ? $two_factor->check_code( $user->ID, $code ) : $two_factor->prove_code( $user->ID, $code ) );
 
 			if ( is_wp_error( $checked ) ) {
 				return $checked;
+			}
+
+			// Proved, to be spent once the passkey is saved.
+			if ( is_array( $checked ) ) {
+				set_transient( self::proof_key( (int) $user->ID ), $checked, self::PROOF_SECONDS );
+				$checked = true;
 			}
 
 			return true === $checked ? true : new \WP_Error( 'bettershield_wrong_code', $two_factor->wrong_code_message( (int) $user->ID, $code, __( 'That code does not match. Enter a current app code or an unused backup code.', 'bettershield' ) ), array( 'status' => 403 ) );

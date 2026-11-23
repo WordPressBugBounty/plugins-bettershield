@@ -15,6 +15,9 @@ import { brand } from '../../nav';
 /** Keys another part of the screen already says, so they are not repeated. */
 export const HIDDEN_KEYS = [ 'complete' ];
 
+/** Keys the Evidence table lists but a one-line summary leaves out: a list of advisory IDs reads as a dump there. */
+const SUMMARY_HIDDEN_KEYS = [ 'advisories' ];
+
 /*
  * A key named for the one check that stores it, where the shared name says
  * too little there (#2819): "Count" of what, and a second "Checked" time in
@@ -102,6 +105,8 @@ export function evidenceLabel( key, check = '' ) {
 		last_error: __( 'Last error', 'bettershield' ),
 		behind: __( 'Overdue background jobs', 'bettershield' ),
 		eol_since: __( 'Support ended', 'bettershield' ),
+		fixed_in: __( 'Fixed in', 'bettershield' ),
+		advisories: __( 'Advisories', 'bettershield' ),
 		branch: __( 'Branch', 'bettershield' ),
 		server: __( 'Server', 'bettershield' ),
 		type: __( 'Type', 'bettershield' ),
@@ -283,7 +288,7 @@ export function evidenceText( value, key = '', check = '' ) {
 		not_checked: __( 'Not checked', 'bettershield' ),
 		// Why sign-in lockouts are not running: which proxy setting is missing.
 		proxy_names_no_visitor: __( 'Your CDN or proxy doesn’t send the visitor’s address', 'bettershield' ),
-		unnamed_proxy: __( 'A CDN or proxy you haven’t added is in front of your site', 'bettershield' ),
+		unnamed_proxy: __( 'A CDN or proxy you haven’t added is in front of your site, so one visitor’s wrong passwords lock everyone out', 'bettershield' ),
 		proxy_sends_no_header: __( 'The trusted proxy does not send the visitor’s address', 'bettershield' ),
 		private_address: __( 'Visitors appear to come from a private address', 'bettershield' ),
 		unknown: __( 'Unknown', 'bettershield' ),
@@ -348,6 +353,16 @@ export function evidenceText( value, key = '', check = '' ) {
 		return formatTime( text );
 	}
 
+	// A day with no time, said as the guidance beside it says days, not as
+	// the YYYY-MM-DD it is stored as (#2995).
+	if ( /^\d{4}-\d{2}-\d{2}$/.test( text ) ) {
+		const day = new Date( `${ text }T00:00:00Z` );
+
+		if ( ! Number.isNaN( day.getTime() ) ) {
+			return day.toLocaleDateString( undefined, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' } );
+		}
+	}
+
 	// A reason code nothing names yet, said as words rather than as the
 	// identifier, which also lets it wrap between words. Only a reason: a
 	// hook, slug or option name is shown as it is, since that is what to
@@ -374,7 +389,7 @@ export function evidenceSummary( evidence ) {
 	}
 
 	return Object.entries( evidence )
-		.filter( ( [ key ] ) => ! HIDDEN_KEYS.includes( key ) )
+		.filter( ( [ key ] ) => ! HIDDEN_KEYS.includes( key ) && ! SUMMARY_HIDDEN_KEYS.includes( key ) )
 		.map( ( [ key, value ] ) => {
 			const said = Array.isArray( value ) && value.length ? value.map( ( entry ) => ( isNamespaceEntry( entry ) ? evidenceText( entry ) : entryText( entry ) ) ).join( ', ' ) : evidenceText( value, key );
 

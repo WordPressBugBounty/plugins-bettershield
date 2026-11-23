@@ -3,14 +3,18 @@
  *
  * A check moves in slices, and between them it waits for the hourly task, so a
  * screen saying the score is on its way asks for the next slice when the last
- * one answers. It stops when they end, the screen closes or a slice fails; the
- * server's bounded wait covers that last case.
+ * one answers. It stops when they end or the screen closes. A slice that fails
+ * is asked again a few times, further apart each time; when they keep failing
+ * the progress says the check paused, and the hourly task finishes it.
  */
 
 import apiFetch from '@wordpress/api-fetch';
 import { useEffect, useRef, useState } from '@wordpress/element';
 
 const SLICE_GAP = 1500;
+
+/** Waits before asking a failed slice again: about twenty seconds in all. */
+const RETRY_GAPS = [ 3000, 6000, 12000 ];
 
 /**
  * @param {?Object}  report     The payload's `first_scan`.
@@ -31,6 +35,7 @@ export function useFirstScan( report, onFinished ) {
 
 		let stopped = false;
 		let timer = 0;
+		let failed = 0;
 
 		const slice = () => {
 			apiFetch( { path: '/bettershield/v1/integrity/scan', method: 'POST' } )
@@ -39,6 +44,8 @@ export function useFirstScan( report, onFinished ) {
 						return;
 					}
 
+					failed = 0;
+
 					if ( answer && ( answer.running || answer.first_scan_running ) ) {
 						setProgress( answer.progress || null );
 						timer = window.setTimeout( slice, SLICE_GAP );
@@ -46,7 +53,20 @@ export function useFirstScan( report, onFinished ) {
 						finished.current();
 					}
 				} )
-				.catch( () => {} );
+				.catch( () => {
+					if ( stopped ) {
+						return;
+					}
+
+					if ( failed < RETRY_GAPS.length ) {
+						timer = window.setTimeout( slice, RETRY_GAPS[ failed ] );
+						failed++;
+
+						return;
+					}
+
+					setProgress( ( last ) => ( { ...( last || {} ), paused: true } ) );
+				} );
 		};
 
 		slice();

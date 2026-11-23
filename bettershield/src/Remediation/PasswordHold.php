@@ -182,6 +182,24 @@ final class PasswordHold {
 	}
 
 	/**
+	 * Why `retrieve_password()` sent nothing, or '' when it was the email
+	 * itself that failed. A reset another plugin refused never tried an
+	 * email, so it is told in the refusal's own words.
+	 *
+	 * @param true|\WP_Error $sent What `retrieve_password()` returned.
+	 */
+	public static function refused_reset( $sent ): string {
+		if ( ! is_wp_error( $sent ) || 'retrieve_password_email_failure' === $sent->get_error_code() ) {
+			return '';
+		}
+
+		// Login-screen errors lead with a bold "Error:" of their own.
+		$reason = trim( wp_strip_all_tags( (string) preg_replace( '#^\s*<strong>[^<]*</strong>\s*:?\s*#i', '', $sent->get_error_message() ) ) );
+
+		return '' === $reason ? __( 'The password reset was refused, so no email was sent.', 'bettershield' ) : $reason;
+	}
+
+	/**
 	 * Refuse a correct password for an account on hold.
 	 *
 	 * @param mixed  $user
@@ -257,11 +275,9 @@ final class PasswordHold {
 			return;
 		}
 
-		// Read from where the reset form posts it; absent means the form is
-		// being drawn, not submitted.
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- the reset flow, core's or a store's, verifies its own key before this hook fires.
-		$posted   = isset( $_POST['pass1'] ) ? $_POST['pass1'] : ( $_POST['password_1'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.NonceVerification.Missing -- unslashed on the next line; a password is compared, never stored or output.
-		$password = trim( (string) wp_unslash( $posted ) );
+		// Read from where the reset form posts it, whichever form it is;
+		// absent means the form is being drawn, not submitted.
+		$password = trim( \BetterShield\Password\Policy::posted_reset_password() );
 
 		if ( '' !== $password && wp_check_password( $password, (string) $user->user_pass, (int) $user->ID ) ) {
 			$errors->add( 'bettershield_new_password_same', __( 'Choose a different password. This account needs a new one to sign in.', 'bettershield' ) );

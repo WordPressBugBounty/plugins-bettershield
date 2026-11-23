@@ -716,6 +716,54 @@ export default function Coexistence() {
 				</span>
 			) );
 
+	/*
+	 * What switching to BetterShield costs on this card, said on the card:
+	 * another plugin's firewall that goes off with it, or accounts that sign
+	 * in with a password alone until they set up two-factor here. A gap in
+	 * coverage is never only behind an ⓘ (#2997).
+	 */
+	const costLines = ( row ) => {
+		const lines = [ ...accountLines( row ), ...stopLines( row ) ];
+
+		return lines.length ? <div className="bs-ds-setup__note bs-ds-setup-coex__costs">{ lines }</div> : null;
+	};
+
+	/*
+	 * What the owner does next where BetterShield takes the job: switch the
+	 * other plugin off on the Plugins screen, since this step never does. Said
+	 * in the Use BetterShield tip rather than as a box under the answers.
+	 */
+	const offTip = ( row ) => {
+		const away = 'bettershield' === choices[ row.job ] ? ( row.deactivate || [] ).filter( ( plugin ) => ! onePress( plugin ) && ! plugin.deactivate_url && pointed( plugin, row.job ) ) : [];
+
+		if ( ! away.length ) {
+			return null;
+		}
+
+		return (
+			<>
+				<span>
+					{ [
+						sprintf(
+							/* translators: 1: one or more plugin names, 2: this plugin's name. */
+							__( 'Deactivate %1$s on the Plugins screen when ready. %2$s never switches it off.', 'bettershield' ),
+							listOf( away.map( ( plugin ) => plugin.name ) ),
+							brand()
+						),
+						...away.map( ( plugin ) => alsoStops( plugin, choices, moves ) ),
+					]
+						.filter( Boolean )
+						.join( ' ' ) }
+				</span>
+				<span>
+					<Button type="link" size="sm" className="bs-ds-setup__wrap" trailing="external-link" trailingTone="2" href={ links.plugins } target="_blank" rel="noopener noreferrer">
+						{ __( 'Open the Plugins Screen', 'bettershield' ) }
+					</Button>
+				</span>
+			</>
+		);
+	};
+
 	const useTip = ( row ) => {
 		const sources = tipFor[ row.job ] || [];
 
@@ -724,8 +772,7 @@ export default function Coexistence() {
 				<InfoTip label={ sprintf( /* translators: %s: this plugin's name. */ __( 'About using %s here', 'bettershield' ), brand() ) }>
 					<span className="bs-ds-setup-coex__tip">
 						<span>{ doesHere( row ) }</span>
-						{ accountLines( row ) }
-						{ stopLines( row ) }
+						{ offTip( row ) }
 					</span>
 				</InfoTip>
 			);
@@ -746,7 +793,6 @@ export default function Coexistence() {
 							{ listOf( source.carried ) }
 						</span>
 					) ) }
-					{ accountLines( row ) }
 					<span>
 						{ sprintf(
 							/* translators: %s: the plugin's name. */
@@ -754,7 +800,7 @@ export default function Coexistence() {
 							brand()
 						) }
 					</span>
-					{ stopLines( row ) }
+					{ offTip( row ) }
 				</span>
 			</InfoTip>
 		);
@@ -823,28 +869,7 @@ export default function Coexistence() {
 									onChange={ ( value ) => setChoices( { ...choices, [ row.job ]: value } ) }
 								/>
 								{ text.note ? <p className="bs-ds-setup__note">{ text.note }</p> : null }
-								{ 'bettershield' === chosen && ( row.deactivate || [] ).some( ( plugin ) => ! onePress( plugin ) && ! plugin.deactivate_url && pointed( plugin, row.job ) ) ? (
-									<Alert
-										layout="default"
-										tone="info"
-										desc={ [
-											sprintf(
-												/* translators: 1: one or more plugin names, 2: this plugin's name. */
-												__( 'Deactivate %1$s on the Plugins screen when ready. %2$s never switches it off.', 'bettershield' ),
-												listOf( row.deactivate.filter( ( plugin ) => ! onePress( plugin ) && ! plugin.deactivate_url && pointed( plugin, row.job ) ).map( ( plugin ) => plugin.name ) ),
-												brand()
-											),
-											...row.deactivate.filter( ( plugin ) => ! onePress( plugin ) && ! plugin.deactivate_url && pointed( plugin, row.job ) ).map( ( plugin ) => alsoStops( plugin, choices, moves ) ),
-										]
-											.filter( Boolean )
-											.join( ' ' ) }
-										actions={
-											<Button type="secondary" size="sm" className="bs-ds-setup__wrap" trailing="external-link" trailingTone="2" href={ links.plugins } target="_blank" rel="noopener noreferrer">
-												{ __( 'Open the Plugins Screen', 'bettershield' ) }
-											</Button>
-										}
-									/>
-								) : null }
+								{ 'bettershield' === chosen ? costLines( row ) : null }
 							</div>
 						) : null }
 						{ 'choice' !== row.kind && text.note ? (

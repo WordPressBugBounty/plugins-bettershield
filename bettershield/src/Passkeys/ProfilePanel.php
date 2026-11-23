@@ -89,22 +89,29 @@ final class ProfilePanel {
 			return;
 		}
 
+		/*
+		 * Removing them gives the password back only where a passkey-only
+		 * rule refuses it; anywhere else the password already works, and
+		 * saying otherwise sent administrators to remove passkeys for nothing
+		 * (#3004).
+		 */
+		$passkey_only = Policy::instance()->applies_to( $user );
+
 		echo '<p class="description">' . esc_html(
 			sprintf(
-				/* translators: %d: how many passkeys the account holds. */
-				_n(
-					'This user has %d passkey. Removing it lets them sign in with their password.',
-					'This user has %d passkeys. Removing them lets them sign in with their password.',
-					$count,
-					'bettershield'
-				),
+				$passkey_only
+					/* translators: %d: how many passkeys the account holds. */
+					? _n( 'This user has %d passkey. Removing it lets them sign in with their password.', 'This user has %d passkeys. Removing them lets them sign in with their password.', $count, 'bettershield' )
+					/* translators: %d: how many passkeys the account holds. */
+					: _n( 'This user has %d passkey.', 'This user has %d passkeys.', $count, 'bettershield' ),
 				$count
 			)
 		) . '</p>';
 
 		printf(
-			'<div id="bettershield-passkeys-admin-remove" class="bs-profile-2fa" data-user="%d"></div>',
-			(int) $user->ID
+			'<div id="bettershield-passkeys-admin-remove" class="bs-profile-2fa" data-user="%d" data-count="%d"></div>',
+			(int) $user->ID,
+			(int) $count
 		);
 		echo '<noscript><p>' . esc_html__( 'Removing someone’s passkeys needs JavaScript on this page.', 'bettershield' ) . '</p></noscript>';
 	}

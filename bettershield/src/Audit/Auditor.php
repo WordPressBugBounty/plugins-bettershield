@@ -201,6 +201,10 @@ final class Auditor {
 		// Whatever a change outside this plugin left owed is paid by this run,
 		// so the next screen does not run it a second time.
 		\BetterShield\Plugin::audit_paid();
+
+		// The headers findings read what the server was last seen sending;
+		// one credited to it is asked about again in the background (#2998).
+		\BetterShield\Hardening\Manager::recheck_credited_headers();
 		$now   = ( new \DateTimeImmutable( 'now', new \DateTimeZone( 'UTC' ) ) )->format( 'Y-m-d H:i:s.v' );
 
 		$open       = 0;
@@ -1340,7 +1344,10 @@ final class Auditor {
 				'first_seen_at'    => Time::utc_iso( (string) $row->first_seen_at ),
 				'last_seen_at'     => Time::utc_iso( (string) $row->last_seen_at ),
 				'resolved_at'      => Time::utc_iso( null !== $row->resolved_at ? (string) $row->resolved_at : null ),
-				'evidence'         => json_decode( (string) $row->evidence, true ),
+				// What the check saw while it was open; a fixed row's Details
+				// read it as the reason it still stood (#2998). The row keeps it
+				// for the audit to compare against if the finding comes back.
+				'evidence'         => 'fixed' === (string) $row->status ? null : json_decode( (string) $row->evidence, true ),
 				'snoozed_until'    => 'open' === (string) $row->status ? Snooze::until_iso( (string) $row->finding_key ) : null,
 			);
 		}

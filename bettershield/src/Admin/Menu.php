@@ -414,6 +414,9 @@ final class Menu {
 				'shared_code'   => true === \BetterShield\Rest\Permissions::shared_code( false ),
 			),
 			'areas'    => $areas,
+			// Whether this is a site of a network, for what a screen says
+			// differently there (a lockout is per site, #3005).
+			'multisite' => is_multisite(),
 			// The top bar's way to the hub, read here rather than from the
 			// hub's route on every screen just to draw the bar.
 			'hub'      => in_array( Sections::HUB, array_column( $sections, 'slug' ), true ) ? self::hub_way() : array(
@@ -427,6 +430,9 @@ final class Menu {
 			'brandLogo' => \BetterShield\Support\Branding::logo_url(),
 			'branded'   => null !== \BetterShield\Support\Branding::get(),
 			'helpLinks' => ! \BetterShield\Support\Branding::hides_help_links(),
+			// The support forum the sidebar links beside Docs, from the one
+			// place its address is kept.
+			'supportUrl' => \BetterShield\Operator\Diagnostics::SUPPORT_URL,
 			// The tier the site is served at, and what — if anything — the
 			// interface may say about a paid one, in the places the product
 			// rules allow. Both come from the server so the bundle promises

@@ -475,7 +475,7 @@ final class Response {
 		$sent = retrieve_password( get_userdata( $id )->user_login );
 		if ( true !== $sent ) {
 			PasswordHold::lift( $id, 'not_sent' );
-			return self::error( __( 'The reset email failed, so the account signs in as before.', 'bettershield' ) );
+			return self::error( PasswordHold::refused_reset( $sent ) ?: __( 'The reset email failed, so the account signs in as before.', 'bettershield' ) );
 		}
 		self::note( 'incident_password_held', Writer::SEVERITY_MEDIUM, 'user', (string) $id, array( 'undo' => $undo ) );
 		return $undo;

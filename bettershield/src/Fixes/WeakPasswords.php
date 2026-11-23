@@ -146,9 +146,11 @@ final class WeakPasswords {
 			}
 
 			// A hold nobody was told how to clear would only be a lockout.
-			if ( '' === $reason && true !== retrieve_password( $login ) ) {
+			$sent = '' === $reason ? retrieve_password( $login ) : true;
+
+			if ( true !== $sent ) {
 				PasswordHold::lift( $id, 'not_sent' );
-				$reason = __( 'The reset email failed, so it signs in as before.', 'bettershield' );
+				$reason = PasswordHold::refused_reset( $sent ) ?: __( 'The reset email failed, so it signs in as before.', 'bettershield' );
 			}
 
 			if ( '' !== $reason ) {

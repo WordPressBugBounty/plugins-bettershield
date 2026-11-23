@@ -23,14 +23,14 @@ import './Sidebar.css';
 
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
-import { brand, brandLogo, branded, helpLinks, navItemFor, navZones, tier } from '../../nav';
+import { brand, brandLogo, branded, helpLinks, navItemFor, navZones, supportUrl, tier } from '../../nav';
 import { useStore } from '../../store';
 import Icon from '../ui/Icon';
 import Badge from '../ui/Badge';
 import { useKept } from '../ui/useKept';
 import matchAdminMenu from './adminMenu';
 
-/** Where "Docs & support" leads. */
+/** Where "Docs" leads. */
 export const DOCS_URL = 'https://bettershield.ai/docs/';
 
 /** The design's icon for each entry and group, by the server's name for it. */
@@ -409,9 +409,18 @@ export default function Sidebar( { route, collapsed = false } ) {
 				<div className="bs-ds-side__foot">
 					<a className="bs-ds-nav__item" href={ DOCS_URL } target="_blank" rel="noopener noreferrer">
 						<Icon name="book-open" size={ 16 } tone="2" />
-						<span className="bs-ds-nav__label bs-ds-t14 bs-ds-lead bs-ds-m">{ __( 'Docs & support', 'bettershield' ) }</span>
+						<span className="bs-ds-nav__label bs-ds-t14 bs-ds-lead bs-ds-m">{ __( 'Docs', 'bettershield' ) }</span>
 						<span className="screen-reader-text">{ __( '(opens in a new tab)', 'bettershield' ) }</span>
 					</a>
+					{ /* The public forum, beside Docs, where a question asked
+					     also answers the next person who has it (#3031). */ }
+					{ supportUrl ? (
+						<a className="bs-ds-nav__item" href={ supportUrl } target="_blank" rel="noopener noreferrer">
+							<Icon name="message-square" size={ 16 } tone="2" />
+							<span className="bs-ds-nav__label bs-ds-t14 bs-ds-lead bs-ds-m">{ __( 'Support Forum', 'bettershield' ) }</span>
+							<span className="screen-reader-text">{ __( '(opens in a new tab)', 'bettershield' ) }</span>
+						</a>
+					) : null }
 				</div>
 			) : null }
 		</nav>

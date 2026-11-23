@@ -1,6 +1,6 @@
 {
 	"name": "bettershield",
-	"version": "1.1.10",
+	"version": "1.1.11",
 	"private": true,
 	"description": "Development tooling for the BetterShield plugin. The plugin itself ships no Node runtime code.",
 	"scripts": {
@@ -18,7 +18,7 @@
 		"lint:css": "wp-scripts lint-style 'assets/css/**/*.css' 'assets/js/**/*.css'",
 		"test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/bettershield vendor/bin/phpunit",
 		"manifest": "bash bin/abilities-manifest.sh",
-    "test:php:multisite": "wp-env run tests-cli --env-cwd=wp-content/plugins/bettershield bash -c \"WP_MULTISITE=1 vendor/bin/phpunit -c phpunit-multisite.xml.dist\"",
+		"test:php:multisite": "wp-env run tests-cli --env-cwd=wp-content/plugins/bettershield bash -c \"WP_MULTISITE=1 vendor/bin/phpunit -c phpunit-multisite.xml.dist\"",
 		"env:floor": "wp-env start --config=.wp-env.floor.json",
 		"test:php:floor": "wp-env run tests-cli --config=.wp-env.floor.json --env-cwd=wp-content/plugins/bettershield vendor/bin/phpunit",
 		"env:ceiling": "wp-env start --config=.wp-env.ceiling.json",

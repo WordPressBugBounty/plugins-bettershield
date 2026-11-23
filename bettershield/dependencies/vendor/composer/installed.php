@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'bettershield/abilities-runtime',
-        'pretty_version' => 'v1.1.10',
-        'version' => '1.1.10.0',
-        'reference' => '017f1f9ed2e0f50b03856da47fae3dc80d8a2222',
+        'pretty_version' => 'v1.1.11',
+        'version' => '1.1.11.0',
+        'reference' => 'f4c41dbec163a6442e4d270fe4abca14cdcce414',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'bettershield/abilities-runtime' => array(
-            'pretty_version' => 'v1.1.10',
-            'version' => '1.1.10.0',
-            'reference' => '017f1f9ed2e0f50b03856da47fae3dc80d8a2222',
+            'pretty_version' => 'v1.1.11',
+            'version' => '1.1.11.0',
+            'reference' => 'f4c41dbec163a6442e4d270fe4abca14cdcce414',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

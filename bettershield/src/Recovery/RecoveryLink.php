@@ -666,6 +666,17 @@ final class RecoveryLink {
 	}
 
 	/**
+	 * Whether the mail carrying this site's link was accepted, or null where
+	 * none was attempted yet, as `network_mail_result()` answers for the
+	 * network's.
+	 */
+	public static function site_mail_result(): ?bool {
+		$recorded = get_option( self::MAILED_OPTION, null );
+
+		return null === $recorded ? null : '1' === (string) $recorded;
+	}
+
+	/**
 	 * Whether the mail carrying the network's link was accepted, or null
 	 * where none was ever attempted.
 	 *
@@ -969,6 +980,13 @@ final class RecoveryLink {
 			return;
 		}
 
+		// The same for a printed code: the page it got the first time.
+		if ( OfflineCodes::just_spent( $token ) ) {
+			self::show_entered( SafeMode::until(), null, OfflineCodes::remaining() );
+
+			return;
+		}
+
 		/*
 		 * A printed code arrives at the same door, because the door is the
 		 * thing that works when nothing else does — one address to write down,
@@ -1172,24 +1190,38 @@ final class RecoveryLink {
 
 		$page = '<h1>' . esc_html__( 'Protection is paused', 'bettershield' ) . '</h1><p>' . esc_html( $paused ) . '</p>';
 
+		/*
+		 * The email goes out after this page is sent, so the page never waits
+		 * on a mail server: here it can only say that one is on its way, not
+		 * that it arrived.
+		 */
 		if ( null !== $replacement ) {
 			$page .= '<h2>' . esc_html__( 'Save your next recovery link', 'bettershield' ) . '</h2><p>' .
 				esc_html(
 					$network
-						? __( 'Your old link no longer works. Copy the new one now; treat it like a password. It is also emailed to the network’s admin address.', 'bettershield' )
-						: __( 'Your old link no longer works. Copy the new one now; treat it like a password. It is also emailed to the site’s admin address.', 'bettershield' )
+						? __( 'Your old link no longer works. Copy the new one and treat it like a password: a copy is being emailed to the network’s admin address, but may not arrive.', 'bettershield' )
+						: __( 'Your old link no longer works. Copy the new one and treat it like a password: a copy is being emailed to the site’s admin address, but may not arrive.', 'bettershield' )
 				) .
 				'</p><p><code style="display:block;word-break:break-all;padding:12px;background:#f0f0f1;">' . esc_html( $replacement ) . '</code></p>';
 		}
 
 		// The replacement was printed once, for whoever posted first; this
 		// says where it went rather than printing it again.
+		// By now the email was tried, and its result is on record.
 		if ( $again ) {
-			$page .= '<p>' . esc_html(
-				$network
+			$mailed = $network ? self::network_mail_result() : self::site_mail_result();
+
+			if ( true === $mailed ) {
+				$said = $network
 					? __( 'This link was already used and no longer works. Its replacement was shown then and emailed to the network’s admin address.', 'bettershield' )
-					: __( 'This link was already used and no longer works. Its replacement was shown then and emailed to the site’s admin address.', 'bettershield' )
-			) . '</p>';
+					: __( 'This link was already used and no longer works. Its replacement was shown then and emailed to the site’s admin address.', 'bettershield' );
+			} elseif ( false === $mailed ) {
+				$said = __( 'This link was already used and no longer works. Its replacement was shown then, and the email carrying it could not be sent, so use the copy you saved.', 'bettershield' );
+			} else {
+				$said = __( 'This link was already used and no longer works. Its replacement was shown then.', 'bettershield' );
+			}
+
+			$page .= '<p>' . esc_html( $said ) . '</p>';
 		}
 
 		if ( null !== $remaining ) {

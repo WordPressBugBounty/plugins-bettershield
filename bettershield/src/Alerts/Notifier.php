@@ -205,6 +205,9 @@ final class Notifier {
 					// such, so "was this you?" is not answered yes for them.
 					'via_assistant' => 'mcp' === ( $event['entry_path'] ?? null ),
 					'finding' => 'finding' === ( $event['object_type'] ?? null ) ? (string) ( $event['object_id'] ?? '' ) : '',
+					// A vulnerability known to be exploited asks the reader to
+					// act, so whether it is travels with it (#2727).
+					'exploited' => 'vulnerability_found' === (string) $event['event_type'] && ! empty( ( (array) json_decode( (string) ( $event['context'] ?? '' ), true ) )['exploited'] ),
 					// Which addresses it reaches: one set to critical only is
 					// told when something in the message is critical (#1886).
 					// A maintenance summary is on the instant path whatever the
@@ -617,7 +620,7 @@ final class Notifier {
 		// either way, and re-reporting it tomorrow would double-count every
 		// finding in it; a delivery failure is recorded as its own fact by the
 		// mailer, where it can be seen.
-		Digest::mark_sent();
+		Digest::mark_sent( $digest );
 
 		// The schedule's marker moves only when the schedule is what called.
 		// Pressing "send now" costs the owner nothing: the digest they chose
@@ -787,6 +790,7 @@ final class Notifier {
 				'actor'   => isset( $event['actor'] ) ? (string) $event['actor'] : '',
 				'via_assistant' => ! empty( $event['via_assistant'] ),
 				'finding' => isset( $event['finding'] ) ? (string) $event['finding'] : '',
+				'exploited' => ! empty( $event['exploited'] ),
 				// Queued before severities were kept, it qualified at high.
 				'severity' => (int) ( $event['severity'] ?? Writer::SEVERITY_HIGH ),
 				// Where this entry sits in the queue, which is the only thing
@@ -890,13 +894,22 @@ final class Notifier {
 				);
 			}
 
-			return 'file_changed' === (string) $urgent[0]['type']
-				? __( 'Action needed: a code file changed and nothing explains it', 'bettershield' )
-				: sprintf(
-					/* translators: %s: what happened. */
-					__( 'Action needed: %s', 'bettershield' ),
-					Types::label( (string) $urgent[0]['type'] )
-				);
+			if ( 'file_changed' === (string) $urgent[0]['type'] ) {
+				// A server's own settings file runs nothing itself, though a
+				// change to it is as urgent as one to a file that does (#2727).
+				return self::server_config( (string) ( $urgent[0]['id'] ?? '' ) )
+					? __( 'Action needed: a server configuration file changed and nothing explains it', 'bettershield' )
+					: __( 'Action needed: a code file changed and nothing explains it', 'bettershield' );
+			}
+
+			// A finding is named by its title, as "Worth a look" names it.
+			$about = 'finding_opened' === (string) $urgent[0]['type'] ? (string) ( $urgent[0]['subject'] ?? '' ) : '';
+
+			return sprintf(
+				/* translators: %s: what happened, or what it is about. */
+				__( 'Action needed: %s', 'bettershield' ),
+				'' !== $about ? $about : Types::label( (string) $urgent[0]['type'] )
+			);
 		}
 
 		// One event names what it was about, where it was about something:
@@ -960,9 +973,24 @@ final class Notifier {
 			return 'maintenance_window_booked' !== $type;
 		}
 
+		// A vulnerability attackers are known to use, and the activity log's
+		// seal found broken, are acted on now, not read on Monday (#2727).
+		if ( 'vulnerability_found' === $type && ! empty( $event['exploited'] ) ) {
+			return true;
+		}
+
+		if ( 'finding_opened' === $type && 'log_seal_broken' === (string) ( $event['finding'] ?? '' ) ) {
+			return true;
+		}
+
 		return 'file_changed' === $type
 			&& (int) ( $event['severity'] ?? 0 ) >= Writer::SEVERITY_CRITICAL
 			&& \BetterShield\Integrity\Packages::can_run( (string) ( $event['id'] ?? '' ) );
+	}
+
+	/** Whether a changed file is a server's settings file rather than code. */
+	private static function server_config( string $path ): bool {
+		return in_array( strtolower( basename( str_replace( '\\', '/', $path ) ) ), array( '.htaccess', '.user.ini' ), true );
 	}
 
 	/**
@@ -1424,9 +1452,11 @@ final class Notifier {
 		// alone is not one of findings: it said "open each finding above"
 		// with none above (#2611).
 		$listed        = array_filter( $pending['events'], static fn( array $event ): bool => empty( $event['summary'] ) );
+		// A vulnerability is answered in its finding, with the update that
+		// fixes it, not in Activity (#2727).
 		$findings_only = array() !== $listed && array() === array_filter(
 			$listed,
-			static fn( array $event ): bool => '' === (string) ( $event['finding'] ?? '' )
+			static fn( array $event ): bool => '' === (string) ( $event['finding'] ?? '' ) && 'vulnerability_found' !== (string) ( $event['type'] ?? '' )
 		);
 
 		if ( $findings_only ) {

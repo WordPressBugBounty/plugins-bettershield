@@ -2444,6 +2444,14 @@ final class Registrar {
 			);
 		}
 
+		// Files every site of a network shares are a network administrator's
+		// to change, whoever proposed it (#2994).
+		$shared = \BetterShield\Rest\Permissions::shared_files( $item );
+
+		if ( true !== $shared ) {
+			return self::refuse( $proposal, $shared );
+		}
+
 		/*
 		 * The record of what is about to happen, written and flushed before it
 		 * happens. A change that dies halfway leaves this row behind, which is
@@ -2515,6 +2523,14 @@ final class Registrar {
 				__( 'This protection writes a rule block into a shared configuration file, which stays the site owner’s own switch. It is not described or applied through an ability.', 'bettershield' ),
 				array( 'status' => 403 )
 			);
+		}
+
+		// Files every site of a network shares are a network administrator's
+		// to change (#2994).
+		$shared = \BetterShield\Rest\Permissions::shared_files( $item );
+
+		if ( true !== $shared ) {
+			return $shared;
 		}
 
 		/*
@@ -2780,6 +2796,14 @@ final class Registrar {
 				$proposal,
 				new \WP_Error( 'bettershield_confirmation_unknown', __( 'That confirmation belongs to a different change.', 'bettershield' ), array( 'status' => 403 ) )
 			);
+		}
+
+		// Files every site of a network shares are a network administrator's
+		// to take back too, as they are to change (#3053).
+		$shared = \BetterShield\Rest\Permissions::shared_files( $item );
+
+		if ( true !== $shared ) {
+			return self::refuse( $proposal, $shared );
 		}
 
 		if ( ! hash_equals( (string) $proposal->state_digest, self::revert_digest( $item, $token ) ) ) {

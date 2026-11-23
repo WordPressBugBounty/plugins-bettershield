@@ -51,6 +51,21 @@ final class ProxySetup {
 	}
 
 	/**
+	 * Whether the record describes a site whose lockouts cannot tell its
+	 * visitors apart: a request nothing could attribute, or one that came
+	 * with forwarding headers nothing vouches for. The second resolves to the
+	 * connecting address, so the lockout runs, but behind a public proxy
+	 * nobody named that address is the proxy's, and one visitor's failures
+	 * lock out everyone who shares it. The headers are only reported here,
+	 * never acted on.
+	 *
+	 * @param array<string, bool> $observed What Observed::client_resolution() said.
+	 */
+	public static function open( array $observed ): bool {
+		return empty( $observed['resolved'] ) || ! empty( $observed['ignored_headers'] );
+	}
+
+	/**
 	 * What the panel shows. Never an address a request carried.
 	 *
 	 * @return array{observed: bool, current: bool, resolved: bool, reason: string, cloudflare_seen: bool, cloudflare: bool, trusted_proxies: string[]}
@@ -63,8 +78,8 @@ final class ProxySetup {
 			'observed'        => null !== $observed,
 			// Made under the settings in force now, so its answer is about them.
 			'current'         => null !== $observed && $observed['current'],
-			'resolved'        => null !== $observed && $observed['resolved'],
-			'reason'          => null === $observed || $observed['resolved'] ? '' : self::reason( $observed ),
+			'resolved'        => null !== $observed && ! self::open( $observed ),
+			'reason'          => null === $observed || ! self::open( $observed ) ? '' : self::reason( $observed ),
 			'cloudflare_seen' => null !== $observed && $observed['cloudflare_seen'],
 			'cloudflare'      => (bool) $settings['cloudflare'],
 			'trusted_proxies' => array_values( (array) $settings['trusted_proxies'] ),

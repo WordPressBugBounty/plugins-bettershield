@@ -40,6 +40,34 @@ import Codes from './Codes';
 import Passkeys from './Passkeys';
 import SafeMode from './SafeMode';
 
+
+/**
+ * A code field and its button, sent by Enter as by the button (#2999). The
+ * browser submits a form with one field on Enter; this answers that with the
+ * button's own action, only while the button could be pressed.
+ *
+ * @param {Object}   props
+ * @param {boolean}  props.ready    Whether the button could be pressed now.
+ * @param {Function} props.onSubmit The button's action.
+ * @param {Object}   props.children The field and its buttons.
+ */
+function CodeForm( { ready, onSubmit, children } ) {
+	return (
+		<form
+			className="bs-ds-2fa__form"
+			onSubmit={ ( event ) => {
+				event.preventDefault();
+
+				if ( ready ) {
+					onSubmit();
+				}
+			} }
+		>
+			{ children }
+		</form>
+	);
+}
+
 /**
  * The backup codes as a file the person can keep, built from the codes
  * already on screen.
@@ -87,6 +115,15 @@ function Enrollment( { onDone } ) {
 	const [ code, setCode ] = useState( '' );
 	const [ codes, setCodes ] = useState( null );
 	const working = isWorking( busy, 'two-factor' );
+
+	const confirmCode = () =>
+		confirmTwoFactor( code ).then( ( result ) => {
+			if ( result ) {
+				setCodes( result.backup_codes );
+				setCode( '' );
+				setStep( 'codes' );
+			}
+		} );
 
 	/*
 	 * Each step replaces the one before, and the button pressed goes with it:
@@ -165,6 +202,7 @@ function Enrollment( { onDone } ) {
 					<li>
 						<p className="bs-ds-2fa__step">{ __( 'Enter the six-digit code the app now shows', 'bettershield' ) }</p>
 						<p className="bs-ds-2fa__note">{ __( 'This checks the app works before anything changes.', 'bettershield' ) }</p>
+						<CodeForm ready={ ! working && code.replace( /\D/g, '' ).length === 6 } onSubmit={ confirmCode }>
 						<FieldRow>
 							<Field
 								width="sm"
@@ -182,15 +220,7 @@ function Enrollment( { onDone } ) {
 									size="sm"
 									isBusy={ working }
 									disabled={ working || code.replace( /\D/g, '' ).length !== 6 }
-									onClick={ () =>
-										confirmTwoFactor( code ).then( ( result ) => {
-											if ( result ) {
-												setCodes( result.backup_codes );
-												setCode( '' );
-												setStep( 'codes' );
-											}
-										} )
-									}
+									onClick={ confirmCode }
 								>
 									{ __( 'Confirm Code', 'bettershield' ) }
 								</Button>
@@ -215,6 +245,7 @@ function Enrollment( { onDone } ) {
 								</Button>
 							</span>
 						</FieldRow>
+						</CodeForm>
 					</li>
 				</ol>
 				<p className="bs-ds-2fa__note">{ __( 'Two-factor is not on yet. If you leave this page now, nothing changes.', 'bettershield' ) }</p>
@@ -272,6 +303,32 @@ function Enabled( { status, onDone } ) {
 	// the way back when the phone and the codes are both gone. The server
 	// says when; the screen follows.
 	const byPassword = true === status.password_turn_off;
+
+	const reissue = () =>
+		reissueBackupCodes( fresh, ( result ) => {
+			if ( result ) {
+				setFresh( '' );
+				setIssued( result.codes );
+			}
+		} );
+
+	const offByPassword = () =>
+		disableTwoFactor( '', password ).then( ( result ) => {
+			// Never kept past the request, whatever it answered.
+			setPassword( '' );
+
+			if ( result ) {
+				onDone();
+			}
+		} );
+
+	const offByCode = () =>
+		disableTwoFactor( code ).then( ( result ) => {
+			if ( result ) {
+				setCode( '' );
+				onDone();
+			}
+		} );
 
 	return (
 		<>
@@ -347,26 +404,15 @@ function Enabled( { status, onDone } ) {
 						<KeepCodes codes={ issued } />
 					</>
 				) : (
-					<FieldRow>
-						<Field width="md" label={ __( 'Authenticator app code or backup code', 'bettershield' ) } value={ fresh } onChange={ setFresh } inputMode="numeric" />
-						{ /* The card's one primary action while two-factor is on. */ }
-						<Button
-							type="primary"
-							size="sm"
-							isBusy={ issuing }
-							disabled={ issuing || ! fresh.trim() }
-							onClick={ () =>
-								reissueBackupCodes( fresh, ( result ) => {
-									if ( result ) {
-										setFresh( '' );
-										setIssued( result.codes );
-									}
-								} )
-							}
-						>
-							{ __( 'Create New Backup Codes', 'bettershield' ) }
-						</Button>
-					</FieldRow>
+					<CodeForm ready={ ! issuing && Boolean( fresh.trim() ) } onSubmit={ reissue }>
+						<FieldRow>
+							<Field width="md" label={ __( 'Authenticator app code or backup code', 'bettershield' ) } value={ fresh } onChange={ setFresh } inputMode="numeric" />
+							{ /* The card's one primary action while two-factor is on. */ }
+							<Button type="primary" size="sm" isBusy={ issuing } disabled={ issuing || ! fresh.trim() } onClick={ reissue }>
+								{ __( 'Create New Backup Codes', 'bettershield' ) }
+							</Button>
+						</FieldRow>
+					</CodeForm>
 				) }
 			</SettingRow>
 
@@ -375,49 +421,25 @@ function Enabled( { status, onDone } ) {
 					title={ __( 'Turn off', 'bettershield' ) }
 					about={ __( 'Your recovery link is in use, so your password alone can turn two-factor off. An alert email is sent.', 'bettershield' ) }
 				>
-					<FieldRow>
-						<Field width="md" label={ __( 'Your password', 'bettershield' ) } type="password" autoComplete="current-password" value={ password } onChange={ setPassword } />
-						<Button
-							type="secondary"
-							size="sm"
-							isBusy={ working }
-							disabled={ working || ! password }
-							onClick={ () =>
-								disableTwoFactor( '', password ).then( ( result ) => {
-									// Never kept past the request, whatever it answered.
-									setPassword( '' );
-
-									if ( result ) {
-										onDone();
-									}
-								} )
-							}
-						>
-							{ __( 'Turn Two-Factor Off', 'bettershield' ) }
-						</Button>
-					</FieldRow>
+					<CodeForm ready={ ! working && Boolean( password ) } onSubmit={ offByPassword }>
+						<FieldRow>
+							<Field width="md" label={ __( 'Your password', 'bettershield' ) } type="password" autoComplete="current-password" value={ password } onChange={ setPassword } />
+							<Button type="secondary" size="sm" isBusy={ working } disabled={ working || ! password } onClick={ offByPassword }>
+								{ __( 'Turn Two-Factor Off', 'bettershield' ) }
+							</Button>
+						</FieldRow>
+					</CodeForm>
 				</SettingRow>
 			) : (
 				<SettingRow title={ __( 'Turn off', 'bettershield' ) }>
-					<FieldRow>
-						<Field width="md" label={ __( 'Authenticator app code or backup code', 'bettershield' ) } value={ code } onChange={ setCode } inputMode="numeric" />
-						<Button
-							type="secondary"
-							size="sm"
-							isBusy={ working }
-							disabled={ working || ! code.trim() }
-							onClick={ () =>
-								disableTwoFactor( code ).then( ( result ) => {
-									if ( result ) {
-										setCode( '' );
-										onDone();
-									}
-								} )
-							}
-						>
-							{ __( 'Turn Two-Factor Off', 'bettershield' ) }
-						</Button>
-					</FieldRow>
+					<CodeForm ready={ ! working && Boolean( code.trim() ) } onSubmit={ offByCode }>
+						<FieldRow>
+							<Field width="md" label={ __( 'Authenticator app code or backup code', 'bettershield' ) } value={ code } onChange={ setCode } inputMode="numeric" />
+							<Button type="secondary" size="sm" isBusy={ working } disabled={ working || ! code.trim() } onClick={ offByCode }>
+								{ __( 'Turn Two-Factor Off', 'bettershield' ) }
+							</Button>
+						</FieldRow>
+					</CodeForm>
 				</SettingRow>
 			) }
 		</>

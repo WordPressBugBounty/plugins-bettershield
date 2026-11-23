@@ -20,6 +20,12 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 export function scanProgress( progress ) {
 	const waiting = __( 'A check is running. On large sites it runs in steps and can take a few minutes.', 'bettershield' );
 
+	// The screen stopped asking for slices after they kept failing; the
+	// hourly task carries the check on without it.
+	if ( progress && progress.paused ) {
+		return __( 'The first scan paused. It will finish in the background.', 'bettershield' );
+	}
+
 	if ( ! progress || ! progress.targets ) {
 		return waiting;
 	}

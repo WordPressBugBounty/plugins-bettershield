@@ -1343,6 +1343,12 @@ final class Listeners {
 				continue;
 			}
 
+			// A plan to update this plugin that the update just carried out
+			// closes, as a hardening plan does when the change is made another way.
+			if ( null !== $from && '' !== $to ) {
+				\BetterShield\Abilities\Proposals::close_updated_plugin( $target, $to );
+			}
+
 			// A package uploaded over a plugin that was already here, or
 			// installed with --force, is an update: said so, with the
 			// versions it moved between. It keeps the install's grade, since

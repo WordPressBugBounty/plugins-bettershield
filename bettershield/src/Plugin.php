@@ -92,6 +92,11 @@ final class Plugin {
 			Mcp\Hub::retire_saved_address();
 		}
 
+		// Folders an older release guarded with index.php, which the uploads
+		// code block makes useless, are guarded properly as soon as somebody
+		// looks rather than on tomorrow's task. Two option reads otherwise.
+		Hardening\Item\DirectoryBrowsing::catch_up();
+
 		/*
 		 * A change no hook sees — wp-config.php edited, a file put back over
 		 * FTP — reaches the findings only through an audit. A BetterShield
@@ -476,6 +481,9 @@ final class Plugin {
 		Login\Protection::instance()->register();
 		Login\Sessions::instance()->register();
 		Login\Honeypot::instance()->register();
+		// A right password refused (passkey-only, a hold, a lockdown) is
+		// explained on the sign-in page rather than reported as a failure.
+		Login\RightPasswordRefusals::instance()->register();
 		Login\Requests::instance()->register();
 		// Missing pages and scanner paths, per source; off until the owner
 		// turns it on (#690).

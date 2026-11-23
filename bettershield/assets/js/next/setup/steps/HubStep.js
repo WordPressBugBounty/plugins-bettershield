@@ -130,7 +130,7 @@ export default function HubStep() {
 				<div className="bs-ds-setup-hub__box-text">
 					<p className="bs-ds-setup__note">
 						{ createInterpolateElement(
-							__( 'Connecting turns on “Let AI assistants see security info” and “Let AI assistants fix things”. Change them under <a>Agents<new /></a>.', 'bettershield' ),
+							__( 'Connecting turns on “Let AI assistants see security info” and “Let AI assistants fix things.” Change them under <a>Agents<new /></a>.', 'bettershield' ),
 							{
 								// In a new tab, as the other in-step links: this step has
 								// no Back, and the same tab left the setup (#2632).

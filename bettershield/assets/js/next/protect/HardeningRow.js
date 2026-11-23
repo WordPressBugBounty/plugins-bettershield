@@ -749,6 +749,8 @@ export default function HardeningRow( { item, sharedNote = '' } ) {
 					   became unavailable after it was applied (a move to
 					   nginx, an address that lost HTTPS) still has to be
 					   switchable off: this switch is the way to undo it.
+					   Except where only a network administrator may change
+					   it, on or off: offered, the switch answered 403.
 					*/ }
 					<Toggle
 						checked={ on }
@@ -756,7 +758,7 @@ export default function HardeningRow( { item, sharedNote = '' } ) {
 						// focus and grays out. A second press waits instead, and
 						// so does a press while another row saves: the store
 						// would drop it, and the switch moved and snapped back.
-						disabled={ Boolean( item.in_force_elsewhere ) || ( ! item.active && false === item.available ) || missingInput || brokenInput }
+						disabled={ Boolean( item.in_force_elsewhere ) || ( ! item.active && false === item.available ) || ( false === item.available && 'network_admin' === item.availability_reason ) || missingInput || brokenInput }
 						onChange={ () => {
 							if ( working || null !== moved || busy ) {
 								return;

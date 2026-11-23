@@ -48,6 +48,9 @@ final class OfflineCodes {
 
 	private const OPTION = 'bettershield_recovery_codes';
 
+	/** A keyed hash of the code that just started safe mode, never the code. */
+	private const SPENT_OPTION = 'bettershield_recovery_code_spent';
+
 	/**
 	 * How many wrong codes one address may cost this site in an hour.
 	 *
@@ -192,6 +195,28 @@ final class OfflineCodes {
 		return self::$paused;
 	}
 
+	/**
+	 * Whether a value is the code that started the safe mode now running,
+	 * posted again by a reload or a second press. Asked before attempt(), so
+	 * a code that worked is not counted as a guess. Only while that safe mode
+	 * lasts; after it, the code is refused as any spent one is.
+	 */
+	public static function just_spent( string $submitted ): bool {
+		$submitted = self::normalize( $submitted );
+
+		if ( ! self::shaped_like_code( $submitted ) || ! SafeMode::is_site_active() ) {
+			return false;
+		}
+
+		$spent = get_option( self::SPENT_OPTION );
+
+		return is_array( $spent ) && isset( $spent['hash'], $spent['until'] ) && (int) $spent['until'] > time() && hash_equals( (string) $spent['hash'], self::spent_hash( $submitted ) );
+	}
+
+	private static function spent_hash( string $code ): string {
+		return hash_hmac( 'sha256', 'offline_code_spent|' . $code, ClientIp::signing_secret() );
+	}
+
 	private static function normalize( string $submitted ): string {
 		return strtolower( (string) preg_replace( '/[^0-9a-fA-F]/', '', $submitted ) );
 	}
@@ -321,6 +346,15 @@ final class OfflineCodes {
 			// One entry, recorded by the door itself. How many codes are left
 			// travels with it rather than as a second row.
 			SafeMode::enter( $duration, 'recovery_code', array( 'remaining' => count( $remaining ) ) );
+
+			update_option(
+				self::SPENT_OPTION,
+				array(
+					'hash'  => self::spent_hash( $submitted ),
+					'until' => time() + $duration,
+				),
+				false
+			);
 
 			return true;
 		}

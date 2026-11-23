@@ -441,7 +441,7 @@ export default function Hub() {
 							{ /* The one screen that says connecting allows AI access
 							     leads to where it is changed (#2569). */ }
 							{ createInterpolateElement(
-								__( 'Connecting turns on “Let AI assistants see security info” and “Let AI assistants fix things”. Change them under <a>Agents</a>.', 'bettershield' ),
+								__( 'Connecting turns on “Let AI assistants see security info” and “Let AI assistants fix things.” Change them under <a>Agents</a>.', 'bettershield' ),
 								{ a: tabUrl( 'bettershield-agents', 'permissions' ) ? <a href={ tabUrl( 'bettershield-agents', 'permissions' ) } /> : <span /> }
 							) }
 						</p>

@@ -265,6 +265,53 @@ final class BackupCodes {
 	}
 
 	/**
+	 * The stored hash an unused code matches, or '' when none does. Nothing is
+	 * spent: `consume_hash()` spends it later, once what the code was asked
+	 * for has happened.
+	 */
+	public static function matching_hash( int $user_id, string $submitted ): string {
+		$imported  = self::imported_code( $submitted );
+		$submitted = '' !== $imported ? $imported : (string) preg_replace( '/[^0-9]/', '', $submitted );
+
+		if ( '' === $imported && 8 !== strlen( $submitted ) ) {
+			return '';
+		}
+
+		$hashes = get_user_meta( $user_id, self::META, true );
+
+		foreach ( is_array( $hashes ) ? $hashes : array() as $hash ) {
+			if ( is_string( $hash ) && self::matches( $submitted, $hash ) ) {
+				return $hash;
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Spend the code a hash belongs to, under the same conditional write as
+	 * `consume()`. False when it is gone already.
+	 */
+	public static function consume_hash( int $user_id, string $hash ): bool {
+		$hashes = get_user_meta( $user_id, self::META, true );
+
+		if ( '' === $hash || ! is_array( $hashes ) || array() === $hashes ) {
+			return false;
+		}
+
+		$index = array_search( $hash, $hashes, true );
+
+		if ( false === $index ) {
+			return false;
+		}
+
+		$remaining = $hashes;
+		unset( $remaining[ $index ] );
+
+		return (bool) update_user_meta( $user_id, self::META, array_values( $remaining ), $hashes );
+	}
+
+	/**
 	 * Whether a code matches one stored hash. Another plugin's is checked
 	 * with no account given, so core's rehash, which writes to the account's
 	 * password, never runs on it.

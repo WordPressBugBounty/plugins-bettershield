@@ -66,7 +66,9 @@ export default function InfoTip( { label, children, placement = 'bottom-start', 
 	return (
 		<Dropdown
 			className="bs-ds-infotip"
-			popoverProps={ { placement, offset: 6, className: 'bs-ds-infotip__pop' } }
+			// Shifted back into view where its placement would run past the
+			// screen's edge, as at phone widths (#2997).
+			popoverProps={ { placement, offset: 6, shift: true, className: 'bs-ds-infotip__pop' } }
 			renderToggle={ ( { isOpen, onToggle, onClose } ) => (
 				<button
 					ref={ toggle }

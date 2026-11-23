@@ -128,6 +128,20 @@ function gauge( state, after = null ) {
 	);
 }
 
+/**
+ * The site's badge on the Welcome picture, read from the first scan.
+ *
+ * @param {Object} state The setup's state.
+ * @return {string} The words.
+ */
+function scanBadge( state ) {
+	if ( state.first_scan?.running ) {
+		return __( 'Scanning…', 'bettershield' );
+	}
+
+	return undefined !== ( state.score || {} ).score ? __( 'Scanned', 'bettershield' ) : __( 'Ready for first scan', 'bettershield' );
+}
+
 function Welcome( { state } ) {
 	return (
 		<>
@@ -148,9 +162,11 @@ function Welcome( { state } ) {
 						<span className={ `bs-ds-setup-visual__host${ addressSize( siteName() ) }` } title={ host() }>
 							{ siteName() }
 						</span>
+						{ /* Follows the first scan: Ready before it, Scanning while it
+						     runs, Scanned once the gauge shows its score (#2996). */ }
 						<span className="bs-ds-setup-visual__ready">
 							<Icon name="scan" size={ 12 } tone="brand" />
-							{ __( 'Ready for first scan', 'bettershield' ) }
+							{ scanBadge( state ) }
 						</span>
 					</div>
 				</div>

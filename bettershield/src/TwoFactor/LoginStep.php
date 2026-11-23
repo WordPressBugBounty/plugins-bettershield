@@ -41,6 +41,7 @@ declare( strict_types=1 );
 namespace BetterShield\TwoFactor;
 
 use BetterShield\Events\Writer;
+use BetterShield\Support\Claim;
 use BetterShield\Login\Protection;
 use BetterShield\Recovery\SafeMode;
 use BetterShield\Support\Server;
@@ -50,6 +51,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class LoginStep {
+
+	/** The AJAX action a sign-in page script checks the password with before submitting its form. */
+	private const PRE_CHECK_ACTION = 'wordfence_ls_authenticate';
+
+	/** How long a finished sign-in is remembered for a second press of its form. */
+	private const DONE_SECONDS = 30;
+
+	/** How long a second press waits for the first to finish. */
+	private const FOLLOW_SECONDS = 8;
 
 	public const ACTION = 'bettershield_2fa';
 	public const COOKIE = 'bettershield_2fa_pending';
@@ -84,6 +94,61 @@ final class LoginStep {
 		// wp_signon() runs this filter with the credentials it was actually
 		// given — the only place a plugin's own "remember me" is visible.
 		add_filter( 'secure_signon_cookie', array( $this, 'note_remember' ), 10, 2 );
+
+		// No sign-in cookie for an account whose password a sign-in page's
+		// own check asked about ahead of its form (`asked_ahead()`).
+		add_filter( 'send_auth_cookies', array( $this, 'withhold_after_asking_ahead' ), 10, 4 );
+	}
+
+	/** The account a sign-in page's check asked about ahead of its form, on this request. */
+	private int $asked_ahead = 0;
+
+	/** The parked sign-in this request is finishing, once its code was accepted. */
+	private string $finishing = '';
+
+	/**
+	 * A sign-in page script that checks the password over AJAX before it lets
+	 * its form submit, and submits it when told the password was right. Its
+	 * handler answers with what the chain returned and signs nobody in. Asked
+	 * that way, the gate answers with the account and leaves the code for the
+	 * form's own POST: refused, the script showed the refusal instead of
+	 * submitting, every sign-in stopped on an error, and the check was
+	 * reported as a failed sign-in.
+	 *
+	 * Only the request that handler serves, and only while it runs: an AJAX
+	 * request for exactly its action, from inside its own hook. Any other
+	 * sign-in on that request is asked for its code as usual (#3055).
+	 * No sign-in cookie is sent for that account on the same request,
+	 * whatever else runs.
+	 */
+	public function asked_ahead( \WP_User $user ): bool {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- compared against one fixed action name, the one admin-ajax.php dispatches on; nothing is stored or printed.
+		$action = isset( $_REQUEST['action'] ) && is_string( $_REQUEST['action'] ) ? (string) wp_unslash( $_REQUEST['action'] ) : '';
+
+		if ( ! wp_doing_ajax() || self::PRE_CHECK_ACTION !== $action || ! has_action( 'wp_ajax_nopriv_' . self::PRE_CHECK_ACTION ) ) {
+			return false;
+		}
+
+		if ( ! doing_action( 'wp_ajax_nopriv_' . self::PRE_CHECK_ACTION ) && ! doing_action( 'wp_ajax_' . self::PRE_CHECK_ACTION ) ) {
+			return false;
+		}
+
+		$this->asked_ahead = (int) $user->ID;
+
+		return true;
+	}
+
+	/**
+	 * @param mixed $send
+	 * @param mixed $expire
+	 * @param mixed $expiration
+	 * @param mixed $user_id
+	 * @return mixed
+	 */
+	public function withhold_after_asking_ahead( $send, $expire = 0, $expiration = 0, $user_id = 0 ) {
+		unset( $expire, $expiration );
+
+		return $this->asked_ahead > 0 && $this->asked_ahead === (int) $user_id ? false : $send;
 	}
 
 	/**
@@ -104,7 +169,9 @@ final class LoginStep {
 
 	/** Test seam: a new request, as far as the remembered choice goes. */
 	public function reset_request_state(): void {
-		$this->remember = null;
+		$this->remember    = null;
+		$this->asked_ahead = 0;
+		$this->finishing   = '';
 	}
 
 	/* ---- the hand-off from the password step ----------------------------- */
@@ -390,6 +457,7 @@ final class LoginStep {
 				'user_id'  => (int) $user->ID,
 				'remember' => $remember,
 				'via'      => 'passkey' === $via ? 'passkey' : 'password',
+				'from'     => self::origin(),
 			),
 			self::TTL
 		);
@@ -419,7 +487,10 @@ final class LoginStep {
 	 * `password` is true unless the sign-in is on record as a passkey's: one
 	 * parked before the record said is read as the stricter of the two.
 	 *
-	 * @return array{user_id: int, remember: bool, password: bool}|null
+	 * `from` names the form the password was typed into when that form's
+	 * plugin decides where a sign-in lands (see `origin()`), else it is empty.
+	 *
+	 * @return array{user_id: int, remember: bool, password: bool, from: array<string, string>}|null
 	 */
 	public static function pending( string $token ): ?array {
 		if ( ! preg_match( '/^[0-9a-f]{64}$/', $token ) ) {
@@ -436,7 +507,78 @@ final class LoginStep {
 			'user_id'  => (int) $record['user_id'],
 			'remember' => ! empty( $record['remember'] ),
 			'password' => 'passkey' !== ( $record['via'] ?? '' ),
+			'from'     => isset( $record['from'] ) && is_array( $record['from'] ) ? array_map( 'strval', $record['from'] ) : array(),
 		);
+	}
+
+	/**
+	 * The form a password was typed into, where that form's own plugin
+	 * decides where a sign-in lands: a store's sign-in form, or a membership
+	 * plugin's. Each is known by its own nonce, as its plugin checks it. Once
+	 * the gate takes the sign-in, neither plugin's handler runs, so the code
+	 * screen sends the person where it would have (`from_form()`).
+	 *
+	 * @return array<string, string>
+	 */
+	private static function origin(): array {
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- nonces are verified as their plugins verify them; the page address is only ever followed through wp_safe_redirect().
+		if ( isset( $_POST['woocommerce-login-nonce'] ) && is_string( $_POST['woocommerce-login-nonce'] ) && wp_verify_nonce( wp_unslash( $_POST['woocommerce-login-nonce'] ), 'woocommerce-login' ) ) {
+			return array( 'form' => 'store' );
+		}
+
+		$form_id = isset( $_POST['form_id'] ) && is_scalar( $_POST['form_id'] ) ? absint( $_POST['form_id'] ) : 0;
+
+		if ( $form_id > 0 && function_exists( 'um_fetch_user' ) && isset( $_POST['_wpnonce'] ) && is_string( $_POST['_wpnonce'] ) && wp_verify_nonce( wp_unslash( $_POST['_wpnonce'] ), 'um_login_form' . $form_id ) ) {
+			$host = isset( $_SERVER['HTTP_HOST'] ) ? (string) wp_unslash( $_SERVER['HTTP_HOST'] ) : '';
+			$path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+
+			return array(
+				'form' => 'members',
+				'page' => '' !== $host ? wp_validate_redirect( set_url_scheme( 'http://' . $host . $path ), '' ) : '',
+			);
+		}
+		// phpcs:enable
+
+		return array();
+	}
+
+	/**
+	 * Where the form's own plugin sends a sign-in, or null for a sign-in that
+	 * did not start on such a form. A destination the form carried
+	 * (`redirect_to`) comes first, as in that plugin's own handler.
+	 *
+	 * @param array<string, string> $from What `origin()` recorded.
+	 */
+	private static function from_form( array $from, \WP_User $user, string $redirect_to ): ?string {
+		$form = $from['form'] ?? '';
+
+		if ( 'store' === $form ) {
+			$account = function_exists( 'wc_get_page_permalink' ) ? (string) wc_get_page_permalink( 'myaccount' ) : home_url();
+			$target  = '' !== $redirect_to ? $redirect_to : $account;
+
+			return wp_validate_redirect( (string) apply_filters( 'woocommerce_login_redirect', remove_query_arg( 'wc_error', $target ), $user ), $account ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the store's own filter, applied where its handler would have.
+		}
+
+		if ( 'members' !== $form || ! function_exists( 'um_fetch_user' ) || ! function_exists( 'um_user' ) || ! function_exists( 'um_user_profile_url' ) ) {
+			return null;
+		}
+
+		if ( '' !== $redirect_to ) {
+			return $redirect_to;
+		}
+
+		um_fetch_user( (int) $user->ID );
+
+		switch ( (string) um_user( 'after_login' ) ) {
+			case 'redirect_admin':
+				return admin_url();
+			case 'redirect_url':
+				return (string) apply_filters( 'um_login_redirect_url', um_user( 'login_redirect_url' ), (int) $user->ID ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the membership plugin's own filter, applied where its handler would have.
+			case 'refresh':
+				return '' !== ( $from['page'] ?? '' ) ? $from['page'] : home_url();
+		}
+
+		return (string) um_user_profile_url();
 	}
 
 	private static function forget( string $token ): void {
@@ -584,17 +726,18 @@ final class LoginStep {
 			return $result;
 		}
 
-		$this->complete( $result, $pending['remember'], $redirect_to, false, false, ! $pending['password'] );
+		$this->complete( $result, $pending['remember'], $redirect_to, false, false, ! $pending['password'], $pending['from'] );
 
 		return null;
 	}
 
 	/**
 	 * The code was right (or no longer needed): give the rest of the
-	 * `authenticate` chain its say before anybody is signed in. Handing over
-	 * to this screen left that chain at this plugin's own step; core's spam
-	 * check on a network and any third-party gate come after it, and a
-	 * refusal from them is a refusal.
+	 * `authenticate` chain its say before anybody is signed in: what can have
+	 * changed since the password, such as core's spam check on a network, a
+	 * lockdown or a hold, and a refusal from them is a refusal. Another
+	 * plugin's check that reads the password already answered on it before
+	 * the sign-in was parked, and is not handed an empty one here.
 	 *
 	 * What another plugin hooked before the step already passed on the
 	 * request that parked the sign-in, and is not asked again: a bot check
@@ -615,6 +758,10 @@ final class LoginStep {
 		}
 
 		$error = $verdict instanceof \WP_Error ? $verdict : new \WP_Error( 'bettershield_2fa_refused', __( 'Sign-in was refused after the code was accepted.', 'bettershield' ) );
+
+		// The password and the code were both right: nothing was guessed, so
+		// the refusal is reported to other plugins but not counted here.
+		\BetterShield\Login\Protection::instance()->not_a_guess();
 
 		do_action( 'wp_login_failed', $user->user_login, $error ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- core's own action.
 
@@ -649,13 +796,34 @@ final class LoginStep {
 		$errors = new \WP_Error();
 
 		if ( null !== $pending && $submitted ) {
+			// One request at a time per parked sign-in. A double-click sends
+			// the code twice, and the browser shows the second answer: checked
+			// again, it read "already used", and a backup code the first had
+			// just spent read "does not match" and left the person signed out.
+			// The second one waits for the first and goes where it went.
+			$slot = self::finish_slot( $token );
+
+			if ( ! $this->claim_or_follow( $token, $slot ) ) {
+				$errors = new \WP_Error( 'bettershield_2fa_busy', __( 'That sign-in is still being finished. Wait a moment, then refresh this page.', 'bettershield' ) );
+				$this->render_form( $errors, $redirect_to, (bool) $interim_login, $customize, (int) $pending['user_id'] );
+				exit;
+			}
+
 			$result = $this->attempt( $token, $code );
 
 			if ( $result instanceof \WP_User ) {
-				$this->complete( $result, $pending['remember'], $redirect_to, (bool) $interim_login, $customize, ! $pending['password'] );
+				$this->finishing = $token;
+				$this->complete( $result, $pending['remember'], $redirect_to, (bool) $interim_login, $customize, ! $pending['password'], $pending['from'] );
 			}
 
+			Claim::release( $slot );
+
 			$errors = $result;
+		}
+
+		// A second press that arrived after the first finished the sign-in.
+		if ( null === $pending && $submitted ) {
+			self::follow_if_finished( $token );
 		}
 
 		if ( null === $pending || 'bettershield_2fa_expired' === $errors->get_error_code() ) {
@@ -676,7 +844,7 @@ final class LoginStep {
 	 * Sign in exactly as core would have after the password, then go where
 	 * core would have gone.
 	 */
-	private function complete( \WP_User $user, bool $remember, string $redirect_to, bool $interim, bool $customize, bool $passkey = false ): void {
+	private function complete( \WP_User $user, bool $remember, string $redirect_to, bool $interim, bool $customize, bool $passkey = false, array $from = array() ): void {
 		$this->set_cookie( '', time() - YEAR_IN_SECONDS );
 
 		/**
@@ -702,14 +870,23 @@ final class LoginStep {
 		$requested = $redirect_to;
 		$target    = '' !== $redirect_to ? $redirect_to : admin_url();
 
+		// A store's or a membership plugin's form lands where that plugin
+		// sends it; core's sign-in where core does.
+		$own_form = self::from_form( $from, $user, $redirect_to );
+
 		/** This filter is documented in wp-login.php */
-		$target = apply_filters( 'login_redirect', $target, $requested, $user ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- core's own filter.
+		$target = null !== $own_form ? $own_form : apply_filters( 'login_redirect', $target, $requested, $user ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- core's own filter.
 
 		if ( $interim ) {
 			self::interim_success( $customize );
 		}
 
 		$destination = self::destination( $user, $target );
+
+		// Where this sign-in went, for a second press of the same form.
+		if ( '' !== $this->finishing ) {
+			set_transient( self::done_key( $this->finishing ), $destination['url'], self::DONE_SECONDS );
+		}
 
 		if ( $destination['own'] ) {
 			// A destination this code chose, on this site: core sends it with
@@ -829,6 +1006,9 @@ final class LoginStep {
 			<a href="<?php echo esc_url( wp_login_url( $redirect_to ) ); ?>"><?php esc_html_e( 'Start again', 'bettershield' ); ?></a>
 		</p>
 		<?php
+		// Sent once: a second press while the first is on its way is dropped.
+		// The button is disabled after the form's data is taken, not before.
+		wp_print_inline_script_tag( "(function(){var f=document.getElementById('loginform'),b=document.getElementById('wp-submit'),sent=false;if(!f||!b){return;}f.addEventListener('submit',function(e){if(sent){e.preventDefault();return;}sent=true;setTimeout(function(){b.disabled=true;},0);});})();" );
 		/**
 		 * Fires on the code screen, after the form and its links.
 		 *
@@ -837,6 +1017,67 @@ final class LoginStep {
 		do_action( 'bettershield_2fa_screen_after_form', $user_id );
 
 		login_footer( self::FIELD );
+	}
+
+	/**
+	 * Take the parked sign-in for this request, or, when another request
+	 * holds it, wait for that one: when it finished the sign-in, follow it to
+	 * where it went (does not return); when it gave the sign-in back, take it.
+	 * False when neither happened in time.
+	 */
+	private function claim_or_follow( string $token, string $slot ): bool {
+		$until = microtime( true ) + self::FOLLOW_SECONDS;
+
+		do {
+			// Taken, or not held by anybody (claims that cannot be written
+			// at all): the sign-in goes on as it always did.
+			if ( Claim::claim( $slot, self::DONE_SECONDS ) || ! Claim::held( $slot ) ) {
+				return true;
+			}
+
+			self::follow_if_finished( $token );
+
+			usleep( 200000 );
+		} while ( microtime( true ) < $until );
+
+		return false;
+	}
+
+	/**
+	 * When this parked sign-in was just finished by another press of its
+	 * form, go where that one went. Does not return then.
+	 */
+	private static function follow_if_finished( string $token ): void {
+		if ( '' === $token ) {
+			return;
+		}
+
+		$key = self::done_key( $token );
+
+		// Read fresh each time: an option found missing is remembered as
+		// missing for the rest of the request.
+		if ( ! wp_using_ext_object_cache() ) {
+			wp_cache_delete( 'notoptions', 'options' );
+			wp_cache_delete( '_transient_' . $key, 'options' );
+			wp_cache_delete( '_transient_timeout_' . $key, 'options' );
+		}
+
+		$went = get_transient( $key );
+
+		if ( is_string( $went ) && '' !== $went ) {
+			wp_safe_redirect( $went );
+			exit;
+		}
+	}
+
+	/** The claim one request holds while it works on a parked sign-in. */
+	private static function finish_slot( string $token ): string {
+		return 'tfa_finish_' . substr( hash( 'sha256', $token ), 0, 32 );
+	}
+
+	/** Where a finished sign-in went, kept briefly under its token's hash. */
+	private static function done_key( string $token ): string {
+		return 'bettershield_2fa_done_' . substr( hash( 'sha256', $token ), 0, 32 );
 	}
 
 	/**

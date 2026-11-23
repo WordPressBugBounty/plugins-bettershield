@@ -40,7 +40,27 @@ final class DirectoryBrowsing {
 	 */
 	private const MAX_GUARDS = 500;
 
-	private const GUARD = "<?php\n// Silence is golden.\n";
+	/**
+	 * The guard: an empty page, not a PHP file. The uploads code block answers
+	 * every PHP request in uploads with 404, an index.php guard included, and
+	 * Apache then fell back to listing the folder the guard was there to hide
+	 * (#3001). Every server serves an index.html as a plain file.
+	 */
+	private const GUARD = "<!-- Silence is golden. -->\n";
+
+	private const GUARD_FILE = 'index.html';
+
+	/**
+	 * The transient that rests the daily full walk once a pass found nothing
+	 * bare, and the mark it holds. Releases before the index.html guards
+	 * wrote '1' after a pass that counted index.php guards as guards, which
+	 * the uploads code block makes useless (#3001): that rest is not this
+	 * one's, so an updated site walks the tree again and puts an index.html
+	 * beside each of them (#3053).
+	 */
+	private const COMPLETE = 'bettershield_guards_complete';
+
+	private const COMPLETE_MARK = 'html';
 
 	/** The ledger action every guard is recorded under. */
 	private const ACTION = 'harden_directory_browsing';
@@ -94,7 +114,7 @@ final class DirectoryBrowsing {
 				++$failures;
 				continue;
 			}
-			$token = Guarded::create_owned( self::ACTION, $dir . '/index.php', self::GUARD );
+			$token = Guarded::create_owned( self::ACTION, $dir . '/' . self::GUARD_FILE, self::GUARD );
 
 			if ( is_wp_error( $token ) ) {
 				// One unwritable directory is a note, not a reason to abandon
@@ -127,7 +147,7 @@ final class DirectoryBrowsing {
 
 		// A fresh apply starts the count over; a rest the previous life of
 		// the item earned must not stop the top-up finishing this one.
-		delete_transient( 'bettershield_guards_complete' );
+		delete_transient( self::COMPLETE );
 
 		$placed   = self::place_guards( $base );
 		$tokens   = $placed['tokens'];
@@ -237,7 +257,7 @@ final class DirectoryBrowsing {
 		);
 
 		foreach ( array( dirname( $month ), $month ) as $dir ) {
-			if ( ! str_starts_with( $dir, trailingslashit( $base ) ) || ! is_dir( $dir ) || is_file( $dir . '/index.php' ) ) {
+			if ( ! str_starts_with( $dir, trailingslashit( $base ) ) || ! is_dir( $dir ) || self::guarded( $dir ) ) {
 				continue;
 			}
 
@@ -247,6 +267,24 @@ final class DirectoryBrowsing {
 		}
 
 		return $placed;
+	}
+
+	/**
+	 * A site updated from a release whose guards were index.php: once, on
+	 * the first BetterShield screen after the update, the pass that puts an
+	 * index.html beside each of them runs now rather than on tomorrow's
+	 * task, so the folders stop listing as soon as somebody looks. Nothing
+	 * where the item is off, PHP in uploads runs, or the rest is this one's.
+	 */
+	public static function catch_up(): void {
+		$rest = get_transient( self::COMPLETE );
+
+		if ( false === $rest || self::COMPLETE_MARK === $rest || ! self::php_blocked() ) {
+			return;
+		}
+
+		delete_transient( self::COMPLETE );
+		self::top_up();
 	}
 
 	private static function top_up_claimed(): void {
@@ -261,7 +299,7 @@ final class DirectoryBrowsing {
 		// something asks for it, which can be after that pass, and plugins
 		// make folders of their own at any time. The month's folder and its
 		// year are looked at every day, and the week brings the rest in.
-		if ( false !== get_transient( 'bettershield_guards_complete' ) ) {
+		if ( self::COMPLETE_MARK === get_transient( self::COMPLETE ) ) {
 			self::record_continued( self::guard_this_month() );
 
 			return;
@@ -284,7 +322,7 @@ final class DirectoryBrowsing {
 		 * to learn what this one had already established.
 		 */
 		if ( ! $placed['capped'] && 0 === $placed['failures'] ) {
-			set_transient( 'bettershield_guards_complete', '1', WEEK_IN_SECONDS );
+			set_transient( self::COMPLETE, self::COMPLETE_MARK, WEEK_IN_SECONDS );
 		}
 
 		self::record_continued( $placed );
@@ -335,6 +373,25 @@ final class DirectoryBrowsing {
 	}
 
 	/**
+	 * Whether a folder has an index file the web server will serve. An
+	 * index.php does not count where the uploads code block is in force on a
+	 * server that reads .htaccess: the block answers it with 404, and the
+	 * server lists the folder instead.
+	 */
+	public static function guarded( string $dir ): bool {
+		if ( is_file( $dir . '/index.html' ) ) {
+			return true;
+		}
+
+		return is_file( $dir . '/index.php' ) && ! self::php_blocked();
+	}
+
+	/** Whether PHP requests in uploads are answered with 404 by the uploads code block. */
+	private static function php_blocked(): bool {
+		return false !== \BetterShield\Support\Server::honors_htaccess() && \BetterShield\Hardening\Manager::instance()->is_active( 'uploads_php' );
+	}
+
+	/**
 	 * Folders this item guarded that are bare again: the guard it placed and
 	 * recorded is gone, and nothing else stands in for it.
 	 *
@@ -354,7 +411,10 @@ final class DirectoryBrowsing {
 			$path = (string) ( $state['path'] ?? '' );
 			$dir  = dirname( $path );
 
-			if ( '' === $path || is_file( $path ) || ! is_dir( $dir ) || is_file( $dir . '/index.html' ) ) {
+			// A folder still guarded is not one somebody left bare, whichever
+			// guard is there; an index.php the uploads code block answers with
+			// 404 is not a guard (#3053).
+			if ( '' === $path || ! is_dir( $dir ) || self::guarded( $dir ) ) {
 				continue;
 			}
 
@@ -411,7 +471,7 @@ final class DirectoryBrowsing {
 			}
 			$seen[ $resolved ] = true;
 
-			if ( ! is_file( $entry['path'] . '/index.php' ) && ! is_file( $entry['path'] . '/index.html' ) ) {
+			if ( ! self::guarded( $entry['path'] ) ) {
 				$found[] = $entry['path'];
 			}
 

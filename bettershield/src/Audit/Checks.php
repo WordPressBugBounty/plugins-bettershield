@@ -160,7 +160,10 @@ final class Checks {
 			return null;
 		}
 
-		if ( 1 === preg_match( '/ubuntu|deb/i', $parts[4] ) ) {
+		// A suffix naming deb.sury.org (the ondrej/php packages) is a build of
+		// the upstream release, so its number is the fix level. Only a
+		// distribution's own build backports fixes under an older number.
+		if ( 1 !== preg_match( '/sury/i', $parts[4] ) && 1 === preg_match( '/ubuntu|deb/i', $parts[4] ) ) {
 			return new \WP_Error(
 				'bettershield_audit_unknown',
 				sprintf(
@@ -1548,6 +1551,12 @@ final class Checks {
 					$base = trailingslashit( wp_normalize_path( $base ) );
 					$path = wp_normalize_path( (string) $bare[0] );
 
+					// The uploads folder itself is named as itself, not as a
+					// folder of that name inside it.
+					if ( untrailingslashit( $base ) === untrailingslashit( $path ) ) {
+						return array( 'folder' => 'wp-content/uploads/' );
+					}
+
 					return array( 'folder' => 'wp-content/uploads/' . ltrim( str_starts_with( $path, $base ) ? substr( $path, strlen( $base ) ) : basename( $path ), '/' ) );
 				},
 			),
@@ -1803,9 +1812,9 @@ final class Checks {
 
 			'lockouts_not_running'  => array(
 				'group'          => Areas::ACCESS,
-				'title'          => __( 'Failed sign-ins are not being counted, so password guessing is not stopped', 'bettershield' ),
+				'title'          => __( 'BetterShield can’t tell your visitors apart, so it can’t stop one person guessing passwords', 'bettershield' ),
 				'severity'       => 'high',
-				'why'            => __( 'Your host or CDN hides each visitor’s real address, so BetterShield cannot tell who keeps getting passwords wrong and cannot block them.', 'bettershield' ),
+				'why'            => __( 'Your host or CDN hides each visitor’s real address. So BetterShield either can’t block whoever keeps getting passwords wrong, or blocks everyone sharing that address, you included.', 'bettershield' ),
 				'break_note'     => __( 'Press Fix and tell BetterShield which service sits in front of your site, such as Cloudflare. Your host can give you the details.', 'bettershield' ),
 				'hardening_item' => null,
 				'test'           => static function (): ?array {
@@ -1826,7 +1835,10 @@ final class Checks {
 					$observed = Observed::client_resolution();
 
 					// Nothing observed yet is not the same as nothing working.
-					if ( null === $observed || $observed['resolved'] ) {
+					// Headers nothing vouches for keep it open even where the
+					// request resolved: the address it resolved to may be a
+					// proxy every visitor shares.
+					if ( null === $observed || ! \BetterShield\Fixes\ProxySetup::open( $observed ) ) {
 						return null;
 					}
 

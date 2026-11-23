@@ -54,6 +54,14 @@ final class Digest {
 	public const LAST_SCHEDULED_OPTION = 'bettershield_digest_last_scheduled';
 
 	/**
+	 * The update versions a summary has already named, so the next one names
+	 * only those that started waiting since. Moved on where the window moves
+	 * on, in `mark_sent()`, so a send and the schedule never name the same
+	 * update twice. Not autoloaded.
+	 */
+	public const UPDATES_REPORTED_OPTION = 'bettershield_digest_updates_reported';
+
+	/**
 	 * The window a first-ever digest covers. Seven days, so the first one a
 	 * site receives reads like every one after it.
 	 */
@@ -165,7 +173,115 @@ final class Digest {
 			'opened'        => $opened,
 			'resolved'      => $resolved,
 			'activity'      => self::activity_since( $since ),
+			// Updates that started waiting since the last summary, by name
+			// and version, and how many wait in all (#2727). No finding, so
+			// no score moves.
+			'updates'       => self::updates(),
 		) + self::sign_ins_stopped( $since );
+	}
+
+	/**
+	 * Updates waiting now, for WordPress, plugins and themes, read from the
+	 * update checks WordPress already ran: this runs none of its own. Each
+	 * that fixes a known vulnerability in what is installed says so.
+	 *
+	 * @return array<int, array{key: string, kind: string, name: string, version: string, security: bool}>
+	 */
+	public static function waiting_updates(): array {
+		$waiting = array();
+		$core    = get_site_transient( 'update_core' );
+
+		foreach ( is_object( $core ) && isset( $core->updates ) ? (array) $core->updates : array() as $offer ) {
+			if ( is_object( $offer ) && 'upgrade' === ( $offer->response ?? '' ) && ! empty( $offer->current ) ) {
+				$waiting[] = array(
+					'key'      => 'core@' . (string) $offer->current,
+					'kind'     => 'core',
+					'name'     => 'WordPress',
+					'version'  => (string) $offer->current,
+					'security' => false,
+				);
+				break;
+			}
+		}
+
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		// What a waiting update fixes, as the Updates screen's note works it out.
+		$fixes = array();
+
+		foreach ( \BetterShield\Vulnerabilities\UpdateNotes::security_updates() as $update ) {
+			$fixes[ (string) $update['type'] . ':' . ( 'plugin' === $update['type'] ? (string) $update['file'] : (string) $update['slug'] ) . '@' . (string) $update['new_version'] ] = true;
+		}
+
+		$installed = get_plugins();
+		$plugins   = get_site_transient( 'update_plugins' );
+		$offers    = is_object( $plugins ) && isset( $plugins->response ) && is_array( $plugins->response ) ? $plugins->response : array();
+
+		foreach ( $offers as $file => $offer ) {
+			$version = is_object( $offer ) ? (string) ( $offer->new_version ?? '' ) : '';
+
+			if ( '' === $version ) {
+				continue;
+			}
+
+			$waiting[] = array(
+				'key'      => 'plugin:' . (string) $file . '@' . $version,
+				'kind'     => 'plugin',
+				'name'     => sanitize_text_field( (string) ( $installed[ $file ]['Name'] ?? $file ) ),
+				'version'  => sanitize_text_field( $version ),
+				'security' => isset( $fixes[ 'plugin:' . (string) $file . '@' . $version ] ),
+			);
+		}
+
+		$themes = get_site_transient( 'update_themes' );
+		$offers = is_object( $themes ) && isset( $themes->response ) && is_array( $themes->response ) ? $themes->response : array();
+
+		foreach ( $offers as $stylesheet => $offer ) {
+			$version = is_array( $offer ) ? (string) ( $offer['new_version'] ?? '' ) : '';
+
+			if ( '' === $version ) {
+				continue;
+			}
+
+			$waiting[] = array(
+				'key'      => 'theme:' . (string) $stylesheet . '@' . $version,
+				'kind'     => 'theme',
+				'name'     => sanitize_text_field( (string) wp_get_theme( (string) $stylesheet )->get( 'Name' ) ?: (string) $stylesheet ),
+				'version'  => sanitize_text_field( $version ),
+				'security' => isset( $fixes[ 'theme:' . (string) $stylesheet . '@' . $version ] ),
+			);
+		}
+
+		return $waiting;
+	}
+
+	/**
+	 * The updates block: those not named by an earlier summary, and how many
+	 * wait in all.
+	 *
+	 * @return array{new: array<int, array<string, mixed>>, waiting: int}
+	 */
+	private static function updates(): array {
+		// A network's code is updated once, from Network Admin: its main
+		// site's summary says what waits. Every site's said it, each with a
+		// link a site's own administrator cannot open.
+		if ( is_multisite() && ! is_main_site() ) {
+			return array(
+				'new'     => array(),
+				'waiting' => 0,
+			);
+		}
+
+		$waiting  = self::waiting_updates();
+		$reported = get_option( self::UPDATES_REPORTED_OPTION, array() );
+		$reported = is_array( $reported ) ? $reported : array();
+
+		return array(
+			'new'     => array_values( array_filter( $waiting, static fn( array $update ): bool => ! in_array( $update['key'], $reported, true ) ) ),
+			'waiting' => count( $waiting ),
+		);
 	}
 
 	/**
@@ -179,7 +295,10 @@ final class Digest {
 	public static function has_changes( array $digest ): bool {
 		return array() !== $digest['opened']
 			|| array() !== $digest['resolved']
-			|| $digest['activity']['total'] > 0;
+			|| $digest['activity']['total'] > 0
+			// Updates newly waiting are news too: titled a quiet week, the
+			// summary listed them under a line saying nothing happened.
+			|| array() !== (array) ( $digest['updates']['new'] ?? array() );
 	}
 
 	/**
@@ -255,6 +374,40 @@ final class Digest {
 				$lines[] = '  ' . $finding['title'];
 			}
 			$lines = array_merge( $lines, self::and_the_rest( count( $digest['resolved'] ) ) );
+			$lines[] = '';
+		}
+
+		// Updates: those that started waiting since the last summary, by name
+		// and version, then how many wait in all (#2727).
+		$updates = (array) ( $digest['updates'] ?? array() );
+
+		if ( ! empty( $updates['waiting'] ) ) {
+			if ( ! empty( $updates['new'] ) ) {
+				$lines[] = __( 'Updates waiting since the last summary:', 'bettershield' );
+				foreach ( array_slice( (array) $updates['new'], 0, self::MAX_LISTED ) as $update ) {
+					$lines[] = ! empty( $update['security'] )
+						? sprintf(
+							/* translators: 1: a plugin's, theme's or WordPress's name, 2: the version waiting. */
+							__( '  %1$s %2$s (fixes a known vulnerability)', 'bettershield' ),
+							(string) $update['name'],
+							(string) $update['version']
+						)
+						: sprintf(
+							/* translators: 1: a plugin's, theme's or WordPress's name, 2: the version waiting. */
+							__( '  %1$s %2$s', 'bettershield' ),
+							(string) $update['name'],
+							(string) $update['version']
+						);
+				}
+				$lines = array_merge( $lines, self::and_the_rest( count( (array) $updates['new'] ) ) );
+			}
+
+			$lines[] = sprintf(
+				/* translators: %d: how many updates are waiting. */
+				_n( '%d update is waiting in total. Update it under Dashboard › Updates:', '%d updates are waiting in total. Update them under Dashboard › Updates:', (int) $updates['waiting'], 'bettershield' ),
+				(int) $updates['waiting']
+			);
+			$lines[] = '  ' . ( is_multisite() ? network_admin_url( 'update-core.php' ) : admin_url( 'update-core.php' ) );
 			$lines[] = '';
 		}
 
@@ -431,8 +584,20 @@ final class Digest {
 	 * Move the window on. Every send does this, however it was triggered:
 	 * what has been reported has been reported.
 	 */
-	public static function mark_sent(): void {
+	public static function mark_sent( ?array $digest = null ): void {
 		update_option( self::LAST_SENT_OPTION, self::stamp(), false );
+
+		// The updates this summary named are reported, and those no longer
+		// waiting drop off, so the list holds only what still waits. Read
+		// from the summary that went out where there is one, so an update
+		// that started waiting since it was built is named next time.
+		$named   = null !== $digest && isset( $digest['updates']['new'] ) ? array_column( (array) $digest['updates']['new'], 'key' ) : array();
+		$current = array_column( self::waiting_updates(), 'key' );
+		$kept    = get_option( self::UPDATES_REPORTED_OPTION, array() );
+		$kept    = is_array( $kept ) ? $kept : array();
+		$named   = null === $digest ? $current : $named;
+
+		update_option( self::UPDATES_REPORTED_OPTION, array_values( array_intersect( array_unique( array_merge( $kept, $named ) ), $current ) ), false );
 	}
 
 	/**

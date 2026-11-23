@@ -1673,6 +1673,16 @@ final class Protection {
 	}
 
 	/**
+	 * Mark the failure core is about to report as no guess: a sign-in refused
+	 * after both of its factors were proved, by a check hooked after the
+	 * two-factor step. It still reaches every `wp_login_failed` listener; it
+	 * just doesn't count toward the attempt limit or the puzzle here.
+	 */
+	public function not_a_guess(): void {
+		$this->refused = true;
+	}
+
+	/**
 	 * Test seam: a new request, as far as the refusal memory is concerned.
 	 */
 	public function reset_request_state(): void {

@@ -46,6 +46,18 @@
 	gap: var(--bs-ds-space-xs);
 }
 
+/* What switching costs on a card, said on the card rather than in its tip. */
+.bs-ds-setup-coex__costs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-setup-coex__costs strong {
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
 .bs-ds-setup-coex__tip strong {
 	font-weight: 500;
 	color: var(--bs-ds-color-text-primary);

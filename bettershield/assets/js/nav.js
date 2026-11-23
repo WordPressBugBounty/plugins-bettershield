@@ -28,6 +28,9 @@ export const brandLogo = 'string' === typeof model.brandLogo ? model.brandLogo :
 export const branded = true === model.branded;
 export const helpLinks = false !== model.helpLinks;
 
+/** The support forum, as the server names it; '' where it was not given. */
+export const supportUrl = 'string' === typeof model.supportUrl ? model.supportUrl : '';
+
 /*
  * The hub connection, for the top bar's way to it: whether the site holds
  * one, and the hub's address where it may be opened ('' where the address

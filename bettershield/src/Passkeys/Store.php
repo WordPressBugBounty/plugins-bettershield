@@ -811,6 +811,60 @@ final class Store {
 		return true === self::remove_checked( $user_id, $id );
 	}
 
+	/**
+	 * Why removing this passkey would be refused, before anything is asked of
+	 * the person: a code checked first and then refused here was spent on a
+	 * change that never happened. The removal itself asks again, under the
+	 * account claim.
+	 */
+	public static function removal_refusal( int $user_id, int $id ): ?\WP_Error {
+		global $wpdb;
+
+		if ( ! Schema::ready( 'passkey_verification' ) ) {
+			return self::verification_unavailable();
+		}
+
+		$rows = self::rows_for_user( $user_id );
+
+		if ( '' !== $wpdb->last_error ) {
+			return self::verification_unavailable();
+		}
+
+		return self::removal_refused_among( $rows, $user_id, $id );
+	}
+
+	/**
+	 * The removal rules, over the account's passkeys as read.
+	 *
+	 * @param array<int, object> $rows
+	 */
+	private static function removal_refused_among( array $rows, int $user_id, int $id ): ?\WP_Error {
+		$target = null; $remaining = 0; $verified = 0;
+		foreach ( $rows as $row ) {
+			if ( (int) $row->id === $id ) { $target = $row; continue; }
+			if ( self::signs_in( $row ) ) {
+				++$remaining;
+				if ( 1 === (int) $row->user_verified ) { ++$verified; }
+			}
+		}
+		if ( null === $target ) { return new \WP_Error( 'bettershield_passkey_unknown', __( 'That passkey is not on this account.', 'bettershield' ), array( 'status' => 404 ) ); }
+		$user = get_userdata( $user_id );
+		/**
+		 * Whether this person may remove their own passkey. Counted while
+		 * holding the account claim, so a second removal cannot reuse it.
+		 * @param bool $allowed Whether removal is allowed.
+		 * @param \WP_User $user The account.
+		 * @param int $remaining Credentials held before this removal.
+		 */
+		if ( $user instanceof \WP_User && ! apply_filters( 'bettershield_passkey_self_remove_allowed', true, $user, count( $rows ) ) ) {
+			return new \WP_Error( 'bettershield_passkey_required_by_policy', __( 'Your role requires a passkey, so the last one cannot be removed. Add another first, or ask an administrator.', 'bettershield' ), array( 'status' => 403 ) );
+		}
+		if ( $user instanceof \WP_User && Policy::instance()->applies_to( $user ) && $remaining > 0 && 0 === $verified && ( null === $target->user_verified || 1 === (int) $target->user_verified ) && self::signs_in( $target ) ) {
+			return new \WP_Error( 'bettershield_passkey_verified_required', __( 'Removing this would leave no passkey that checks your fingerprint, face or PIN. Add one, or verify with another passkey first.', 'bettershield' ), array( 'status' => 409 ) );
+		}
+		return null;
+	}
+
 	/** @return true|\WP_Error Keep another verified way in when a passkey-only account retains credentials. */
 	public static function remove_checked( int $user_id, int $id ) {
 		global $wpdb;
@@ -819,29 +873,8 @@ final class Store {
 		try {
 			$rows = self::rows_for_user( $user_id );
 			if ( '' !== $wpdb->last_error ) { return self::verification_unavailable(); }
-			$target = null; $remaining = 0; $verified = 0;
-			foreach ( $rows as $row ) {
-				if ( (int) $row->id === $id ) { $target = $row; continue; }
-				if ( self::signs_in( $row ) ) {
-					++$remaining;
-					if ( 1 === (int) $row->user_verified ) { ++$verified; }
-				}
-			}
-			if ( null === $target ) { return new \WP_Error( 'bettershield_passkey_unknown', __( 'That passkey is not on this account.', 'bettershield' ), array( 'status' => 404 ) ); }
-			$user = get_userdata( $user_id );
-			/**
-			 * Whether this person may remove their own passkey. Counted while
-			 * holding the account claim, so a second removal cannot reuse it.
-			 * @param bool $allowed Whether removal is allowed.
-			 * @param \WP_User $user The account.
-			 * @param int $remaining Credentials held before this removal.
-			 */
-			if ( $user instanceof \WP_User && ! apply_filters( 'bettershield_passkey_self_remove_allowed', true, $user, count( $rows ) ) ) {
-				return new \WP_Error( 'bettershield_passkey_required_by_policy', __( 'Your role requires a passkey, so the last one cannot be removed. Add another first, or ask an administrator.', 'bettershield' ), array( 'status' => 403 ) );
-			}
-			if ( $user instanceof \WP_User && Policy::instance()->applies_to( $user ) && $remaining > 0 && 0 === $verified && ( null === $target->user_verified || 1 === (int) $target->user_verified ) && self::signs_in( $target ) ) {
-				return new \WP_Error( 'bettershield_passkey_verified_required', __( 'Removing this would leave no passkey that checks your fingerprint, face or PIN. Add one, or verify with another passkey first.', 'bettershield' ), array( 'status' => 409 ) );
-			}
+			$refused = self::removal_refused_among( $rows, $user_id, $id );
+			if ( null !== $refused ) { return $refused; }
 
 			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- account_where() is a literal or a site predicate of integers assembled by Schema::site_where(); nothing from a request reaches the string.
 			$deleted = $wpdb->query(

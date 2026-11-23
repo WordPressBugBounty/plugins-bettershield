@@ -1,10 +1,10 @@
-=== BetterShield – Security Audit, Hardening, 2FA & Passkeys ===
+=== BetterShield – Security Audit, Hardening, 2FA, Passkeys & Activity Log ===
 Contributors: wpdevteam
 Tags: 2fa, passkeys, hardening, activity log, two factor authentication
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.10
+Stable tag: 1.1.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -263,7 +263,7 @@ Yes. Customers can set up two-factor, add passkeys and see where they are signed
 
 = Does it work on multisite? =
 
-Yes. Each site keeps its own findings, settings and fixes. The network admin gets every site's score and open findings in one table, 200 sites at a time, two-factor and passkey rules set once as a floor under every site, and a recovery link for the network.
+Yes. Each site keeps its own findings, settings and fixes, and counts wrong passwords and lockouts on its own sign-in page, so a lockout on one site does not carry to the others. The network admin gets every site's score and open findings in one table, 200 sites at a time, two-factor and passkey rules set once as a floor under every site, and a recovery link for the network.
 
 = Do I need BetterShield Hub? =
 
@@ -366,6 +366,19 @@ Everything BetterShield keeps about a person is stored on your own server, with 
 Everything that runs is readable in the plugin folder. The PHP in `src/` is not generated, compiled or minified. The admin interface is compiled into `assets/build/` from the sources in `assets/js/` and `assets/css/`, which ship next to it. To rebuild, run `npm install` and then `npm run build`, which uses @wordpress/scripts from the included `package.json`.
 
 == Changelog ==
+
+= 1.1.11 - 23/11/2026 =
+
+- Added: Alerts | The weekly summary now lists newly waiting WordPress, plugin and theme updates, and urgent alerts are marked "Action needed"
+- Improved: Passkeys | Clearer passkey removal, and a canceled passkey change no longer uses up a code
+- Improved: Agents | A proposal already done another way closes on its own, and refusals are reported as Refused
+- Fixed: Login & Access | A right password refused by a sign-in rule is explained and no longer counted as a failed attempt by other plugins
+- Fixed: Two-Factor | Smoother sign-in beside other sign-in, store and membership plugins, and a double-click signs in only once
+- Fixed: Passwords | Password rules now apply to membership plugin reset forms, and a refused reset says why
+- Fixed: Recovery | Reusing a printed recovery code during safe mode no longer counts as a failure
+- Fixed: Hardening | On a network, shared files are left to network administrators, and uploads folder guards hold where PHP in uploads is blocked
+- Fixed: Audit | More accurate PHP security-fix and shared-proxy findings
+- Fixed: Overview | The first scan resumes if it stops partway
 
 = 1.1.10 - 19/11/2026 =
 
@@ -661,6 +674,10 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 - Added: Multisite | Every site's score in one table and rules a network can set once
 
 == Upgrade Notice ==
+
+= 1.1.11 =
+
+Two-factor sign-in now works smoothly beside other sign-in plugins, and the weekly summary names the updates waiting on your site. Using BetterShield Ultra? Update it to 1.0.12 too. Recommended for all sites.
 
 = 1.1.10 =
 

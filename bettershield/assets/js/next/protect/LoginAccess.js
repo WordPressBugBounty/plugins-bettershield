@@ -677,7 +677,11 @@ function ProtectionSettings( { saved, defaults, scopeNote, publicScopeNote, proo
 					className="bs-ds-attempts"
 					focusKey="attempt_limit"
 					title={ __( 'Sign-in attempt limits', 'bettershield' ) }
-					help={ __( 'After too many wrong passwords from one address, that address can’t sign in for a while.', 'bettershield' ) }
+					help={
+						window.bettershield?.multisite
+							? __( 'After too many wrong passwords from one address, that address can’t sign in for a while. On a network each site counts and locks out on its own.', 'bettershield' )
+							: __( 'After too many wrong passwords from one address, that address can’t sign in for a while.', 'bettershield' )
+					}
 					checked={ value.attempt_limit }
 					saved={ Boolean( saved.attempt_limit ) }
 					disabled={ saving }

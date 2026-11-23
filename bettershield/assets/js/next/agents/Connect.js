@@ -1118,7 +1118,7 @@ function ConnectScreen( { surface } ) {
 
 	if ( ! writes ) {
 		scopeHelp = __(
-			'It can only look until you turn on “Let AI assistants fix things”.',
+			'It can only look until you turn on “Let AI assistants fix things.”',
 			'bettershield'
 		);
 	} else if ( ! capability ) {

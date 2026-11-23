@@ -1217,7 +1217,7 @@ function RunSetupAgain( { url } ) {
 		<SettingRow
 			title={ __( 'Quick Setup', 'bettershield' ) }
 			about={ __(
-				'Go through setup again: the account recovery link, two-factor sign-in and recommended fixes.',
+				'Go through setup again: other security plugins, recommended protections and the hub.',
 				'bettershield'
 			) }
 			tip={ __( 'It opens with your current settings and changes only what you change. Usage sharing is set under Privacy & sharing.', 'bettershield' ) }

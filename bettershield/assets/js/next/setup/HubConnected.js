@@ -10,13 +10,15 @@
 import './HubConnected.css';
 
 import { Modal } from '@wordpress/components';
-import { useId } from '@wordpress/element';
+import { useId, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import brand from './brand';
 import { pageModel } from './api';
 import leave from './leave';
+import viaCore from './core';
+import { announce } from '../../ui/announce';
 import { listOf } from '../../setup/format';
 
 export function HubLink() {
@@ -61,9 +63,11 @@ function changedRows( summary ) {
 
 		rows.push( {
 			icon: 'shield-check',
+			// Counts every protection that is on, some on before the setup
+			// ran, so it says "on" rather than "switched on" (#2996).
 			title: sprintf(
 				/* translators: %d: how many protections are on. */
-				_n( '%d protection switched on', '%d protections switched on', on.length, 'bettershield' ),
+				_n( '%d protection on', '%d protections on', on.length, 'bettershield' ),
 				on.length
 			),
 			about:
@@ -87,6 +91,29 @@ function changedRows( summary ) {
 				applied
 			),
 			about: _n( 'It can be undone from Protection', 'Each one can be undone from Protection', applied, 'bettershield' ),
+		} );
+	}
+
+	// The plugins the Ecosystem step installed, and the ones Coexistence
+	// switched off with the way back on, as the Ecosystem step lists them.
+	const installed = ( summary.installed || [] ).filter( Boolean );
+
+	if ( installed.length ) {
+		rows.push( {
+			icon: 'package',
+			title: _n( 'Plugin installed and activated', 'Plugins installed and activated', installed.length, 'bettershield' ),
+			about: listOf( installed ),
+		} );
+	}
+
+	const deactivated = ( summary.deactivated || [] ).filter( Boolean );
+
+	if ( deactivated.length ) {
+		rows.push( {
+			icon: 'power',
+			title: _n( 'Plugin deactivated', 'Plugins deactivated', deactivated.length, 'bettershield' ),
+			about: listOf( deactivated ),
+			reactivate: ( summary.reactivate || [] ).filter( ( entry ) => entry && entry.activate_url ),
 		} );
 	}
 
@@ -131,6 +158,29 @@ export function SetupDoneDialog( { onClose, doneLabel = '', findings = '', summa
 	}
 
 	const titleId = useId();
+	// The plugins turned back on from here, and the one turning on now.
+	const [ backOn, setBackOn ] = useState( [] );
+	const [ turning, setTurning ] = useState( '' );
+
+	const [ failed, setFailed ] = useState( [] );
+
+	const turnBackOn = ( entry ) => {
+		setTurning( entry.file );
+		/* translators: %s: a plugin's name. */
+		announce( sprintf( __( 'Turning %s back on…', 'bettershield' ), entry.name ) );
+		viaCore( entry.activate_url )
+			.then( () => {
+				setBackOn( ( list ) => [ ...list, entry.file ] );
+				/* translators: %s: a plugin's name. */
+				announce( sprintf( __( '%s is on again.', 'bettershield' ), entry.name ) );
+			} )
+			.catch( () => {
+				setFailed( ( list ) => [ ...list, entry.file ] );
+				/* translators: %s: a plugin's name. */
+				announce( sprintf( __( '%s could not be turned back on here. Activate it from the Plugins screen.', 'bettershield' ), entry.name ), 'assertive' );
+			} )
+			.finally( () => setTurning( '' ) );
+	};
 	const assets = window.bettershield?.assetsUrl || '';
 	const rows = changedRows( summary );
 	const host = pageModel().host || window.location.host;
@@ -145,13 +195,13 @@ export function SetupDoneDialog( { onClose, doneLabel = '', findings = '', summa
 			<div className="bs-ds-setup-done__body">
 				<div className="bs-ds-setup-done__heading">
 					<h2 id={ titleId } className="bs-ds-setup-done__title">
-						{ __( 'Quick setup complete', 'bettershield' ) }
+						{ __( 'Quick Setup Complete', 'bettershield' ) }
 					</h2>
 					{ rows.length ? (
 						<p className="bs-ds-setup-done__text">
 							{ sprintf(
 								/* translators: %s: the site's address. */
-								__( '%s is protected. Here’s what setup changed on your site.', 'bettershield' ),
+								__( 'Here’s what Quick Setup changed on %s.', 'bettershield' ),
 								host
 							) }
 						</p>
@@ -168,6 +218,34 @@ export function SetupDoneDialog( { onClose, doneLabel = '', findings = '', summa
 								<span className="bs-ds-setup-done__change">
 									<span className="bs-ds-setup-done__change-title">{ row.title }</span>
 									{ row.about ? <span className="bs-ds-setup-done__change-about">{ row.about }</span> : null }
+									{ ( row.reactivate || [] ).map( ( entry ) =>
+										backOn.includes( entry.file ) ? (
+											<span key={ entry.file } className="bs-ds-setup-done__change-about" role="status">
+												{ sprintf( /* translators: %s: a plugin's name. */ __( '%s is on again.', 'bettershield' ), entry.name ) }
+											</span>
+										) : failed.includes( entry.file ) ? (
+											<span key={ entry.file } className="bs-ds-setup-done__change-about" role="status">
+												{ sprintf( /* translators: %s: a plugin's name. */ __( '%s could not be turned back on here. Activate it from the Plugins screen.', 'bettershield' ), entry.name ) }
+											</span>
+										) : (
+											<Button
+												key={ entry.file }
+												type="secondary"
+												size="sm"
+												className="bs-ds-setup-done__back"
+												isBusy={ turning === entry.file }
+												disabled={ '' !== turning }
+												/* translators: %s: a plugin's name. */
+												aria-label={ sprintf( __( 'Turn %s Back On', 'bettershield' ), entry.name ) }
+												onClick={ () => turnBackOn( entry ) }
+											>
+												{ row.reactivate.length > 1
+													? /* translators: %s: a plugin's name. */
+													  sprintf( __( 'Turn %s Back On', 'bettershield' ), entry.name )
+													: __( 'Turn It Back On', 'bettershield' ) }
+											</Button>
+										)
+									) }
 								</span>
 							</li>
 						) ) }
@@ -177,11 +255,11 @@ export function SetupDoneDialog( { onClose, doneLabel = '', findings = '', summa
 			<div className="bs-ds-app bs-ds-setup-done__actions">
 				{ findings ? (
 					<Button type="secondary" size="md" className="bs-ds-setup-done__review" onClick={ () => leave( findings ) }>
-						{ __( 'Review findings', 'bettershield' ) }
+						{ __( 'Review Findings', 'bettershield' ) }
 					</Button>
 				) : null }
 				<Button type="primary" size="md" className="bs-ds-setup-done__go" onClick={ onClose }>
-					{ doneLabel || __( 'Go to dashboard', 'bettershield' ) }
+					{ doneLabel || __( 'Go to Dashboard', 'bettershield' ) }
 				</Button>
 			</div>
 		</Modal>

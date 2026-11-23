@@ -245,7 +245,7 @@ function Proposal( { proposal, now, capability, sudoRequired, passwordReason, on
 		madePhrase( proposal.proposed_at, now ),
 		// A deadline is a fact about a row that is still waiting; beside
 		// "Used" it reads as a contradiction.
-		'spent' === status || 'withdrawn' === status || 'declined' === status ? null : expiryPhrase( proposal.expires_at, now ),
+		'spent' === status || 'withdrawn' === status || 'declined' === status || 'done_elsewhere' === status ? null : expiryPhrase( proposal.expires_at, now ),
 		'spent' === status && proposal.spent_at
 			? sprintf(
 					/* translators: %s: when the change was made, e.g. "today, 5:14 PM". */

@@ -108,7 +108,11 @@ final class HardeningController {
 			array(
 				'methods'             => \WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'revert' ),
-				'permission_callback' => $interactive_manage,
+				'permission_callback' => static function ( \WP_REST_Request $request ) use ( $interactive_manage ) {
+					$allowed = $interactive_manage( $request );
+
+					return true === $allowed ? Permissions::shared_files( (string) $request['item'] ) : $allowed;
+				},
 			)
 		);
 
@@ -132,7 +136,9 @@ final class HardeningController {
 					'source'    => self::arg( array( 'type' => 'string', 'maxLength' => 300 ) ),
 				),
 				'permission_callback' => static function ( \WP_REST_Request $request ) {
-					return Permissions::interactive_manage_if( ! Items::adds_protection( (string) $request['item'], (string) $request['action'] ) );
+					$allowed = Permissions::interactive_manage_if( ! Items::adds_protection( (string) $request['item'], (string) $request['action'] ) );
+
+					return true === $allowed ? Permissions::shared_files( (string) $request['item'] ) : $allowed;
 				},
 			)
 		);
@@ -149,8 +155,34 @@ final class HardeningController {
 	 * @return array{items: array<int, array<string, mixed>>, groups: array<string, mixed>}
 	 */
 	private static function listed(): array {
+		// A header left to the server is asked about again soon, in the
+		// background, so a row never stays on for a header nobody sends.
+		Manager::recheck_credited_headers();
+
+		// An item this person may not change here says who can, rather than
+		// offering a switch that answers 403 (#2994).
+		$items = array_map(
+			static function ( array $item ): array {
+				$shared = Permissions::shared_files( (string) ( $item['id'] ?? '' ) );
+
+				return true === $shared || empty( $item['available'] ) ? $item : array_merge(
+					$item,
+					array(
+						'available'           => false,
+						'availability_reason' => 'network_admin',
+						// Changed from this screen, by a network administrator:
+						// there is no network screen for it to point to.
+						'availability_label'  => __( 'Network Administrators Only', 'bettershield' ),
+						'availability_note'   => $shared->get_error_message(),
+						'availability_url'    => null,
+					)
+				);
+			},
+			Manager::instance()->describe_all()
+		);
+
 		return array(
-			'items'  => Manager::instance()->describe_all(),
+			'items'  => $items,
 			'groups' => Items::groups(),
 			'count'  => \BetterShield\Hardening\ProtectionCount::all(),
 		);

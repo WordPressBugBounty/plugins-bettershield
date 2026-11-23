@@ -309,7 +309,9 @@ export default function Ready() {
 	}
 
 	const fixes = summary.fixes;
-	const choices = ( summary.coexistence || [] ).filter( ( row ) => 'choice' === row.kind );
+	// A job kept with the other plugin is not something the setup changed,
+	// so only the jobs handed to BetterShield are listed (#2997).
+	const choices = ( summary.coexistence || [] ).filter( ( row ) => 'choice' === row.kind && 'bettershield' === row.choice );
 
 	/*
 	 * Every step skipped, or left as it was: no fix on, no way back in
@@ -517,7 +519,7 @@ export default function Ready() {
 									*/ }
 									{ sprintf(
 										/* translators: %d: how many safe fixes Quick Setup turned on, always two or more. */
-										_n( 'Turn Off the %d Fix Quick Setup Applied', 'Turn Off All %d Fixes Quick Setup Applied', fixes.set.length, 'bettershield' ),
+										_n( 'Undo This %d Fix', 'Undo These %d Fixes', fixes.set.length, 'bettershield' ),
 										fixes.set.length
 									) }
 								</Button>
