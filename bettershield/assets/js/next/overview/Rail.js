@@ -183,7 +183,7 @@ export function ProtectionTray( { protection } ) {
 					const label = item.scope
 						? sprintf(
 								/* translators: 1: a protection's name, 2: the narrower choice it was applied with, such as "pingbacks only". */
-								__( '%1$s — %2$s', 'bettershield' ),
+								__( '%1$s: %2$s', 'bettershield' ),
 								item.label,
 								item.scope
 						  )

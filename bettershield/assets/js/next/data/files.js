@@ -9,7 +9,7 @@ import { formatCount } from '../../ui/count';
 import { mayChangeSharedCode } from '../../nav';
 
 /** How many files a group lists before the rest wait behind "Show all". */
-export const GROUP_SHOWN = 10;
+export const GROUP_SHOWN = 5;
 
 /**
  * What kind of difference this is, in words rather than a code.
@@ -128,6 +128,10 @@ export function groupLabel( change ) {
 
 	if ( claimFor( change.context ) ) {
 		return __( 'Changed files with no official copy to compare (your theme, plugins from outside WordPress.org, settings files)', 'bettershield' );
+	}
+
+	if ( 'licensed' === change.why_code ) {
+		return __( 'Changed files whose official copy needs your license', 'bettershield' );
 	}
 
 	if ( ! change.version ) {

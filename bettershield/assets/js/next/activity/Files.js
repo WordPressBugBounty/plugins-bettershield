@@ -25,11 +25,10 @@ import apiFetch from '@wordpress/api-fetch';
 import { useCallback, useEffect, useMemo, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { mayChangeSharedCode, mayManage } from '../../nav';
-import { formatTime, isPast, isWorking, useStore } from '../../store';
+import { formatTime, isWorking, useStore } from '../../store';
 import { downloadBytes } from '../../ui/download';
 import { atLeast, SCAN_HOLD, SLICE_GAP } from '../../ui/hold';
 import { BreakablePath } from '../../ui/path';
-import { scanProgress } from '../../ui/scan';
 import { announce } from '../../ui/announce';
 import useMutationFocus from '../../ui/useMutationFocus';
 import { whenPhrase } from '../../ui/when';
@@ -37,20 +36,21 @@ import Alert from '../ui/Alert';
 import Armed from '../ui/Armed';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
-import { Card, CardHead } from '../ui/Card';
+import { Card, CardHead, Tray } from '../ui/Card';
 import { focusIfLost, useFocusAfter } from '../ui/focus';
-import InfoTip from '../ui/InfoTip';
 import Skeleton, { CardBone, StatsBone } from '../ui/Skeleton';
 import { ErrorState } from '../ui/States';
 import Stats from '../ui/Stats';
-import Table, { Cell, Row, TitleMeta, WholeRow } from '../ui/Table';
-import { SEVERITY } from '../findings/Rows';
 import { changeLabel, changeSeverity, chunk, claimFor, filteredAnswer, filterOptions, filterParams, filterQuery, GROUP_SHOWN, groupChanges, isFiltered, KEPT_AT_ONCE, MARK_AT_ONCE, MATCHING_AT_ONCE, NAMED_CODE, NO_FILTER, packageCounts, REMOVE_AT_ONCE, RESTORE_AT_ONCE, RESTORE_CHUNK, screenOrder, selectableChange, selectionCounts, selectionPhrase, toggled } from '../data/files';
 import Checkbox from '../ui/Checkbox';
-import Field from '../ui/Field';
+import Menu from '../ui/Menu';
+import Tabs from '../ui/Tabs';
+import { panelProps } from '../ui/tabKeys';
+import { AcceptDialog, CheckProgress, FileDetail, FilterChip, GroupBand, PluginTable, SeverityMeter, fileName, folderOf } from './FileCheck';
 import Icon from '../ui/Icon';
 import { formatCount } from '../../ui/count';
 import { SelectionBar, SelectionDock, SelectionQuestion, SelectionReceipt } from './Selection';
+import brand from '../setup/brand';
 
 /**
  * One named sign of compromise an added file showed, in words (#685).
@@ -76,23 +76,6 @@ function Path( { path } ) {
 		<span className="bs-ds-files__path">
 			<BreakablePath path={ path } />
 		</span>
-	);
-}
-
-/**
- * The severity a difference is drawn with: the word on the tone, never the
- * tone alone.
- *
- * @param {Object} props
- * @param {string} props.severity One of the five.
- */
-function SeverityBadge( { severity } ) {
-	const shown = SEVERITY[ severity ] || SEVERITY.info;
-
-	return (
-		<Badge tone={ shown.tone } icon={ shown.icon }>
-			{ shown.label() }
-		</Badge>
 	);
 }
 
@@ -128,27 +111,11 @@ function Difference( { html, partial = false, onWhole = null, working = false } 
 }
 
 /**
- * The column a row's checkbox sits in: named for assistive technology, as
- * narrow as the box.
- *
- * @param {boolean} straight The rows sit straight in the table, on its
- *                           tracks, and their padding comes out of this one.
- * @return {Object} The column.
- */
-function selectColumn( straight = false ) {
-	return {
-		key: 'select',
-		label: <span className="screen-reader-text">{ __( 'Select', 'bettershield' ) }</span>,
-		width: straight ? 'calc(var(--bs-ds-space-ml) + 24px)' : '24px',
-	};
-}
-
-/**
- * The cell a row's checkbox sits in, where the table has the column: empty on
- * a row that cannot be picked, so every row keeps the table's columns.
+ * A row's checkbox, in selection mode: empty on a row that cannot be picked,
+ * so every row keeps the list's columns.
  *
  * @param {Object}   props
- * @param {boolean}  props.column   Whether the table has the column.
+ * @param {boolean}  props.column   Whether the list is in selection mode.
  * @param {string}   props.label    Which row the checkbox picks.
  * @param {?boolean} props.state    Whether the row is picked; null for a row that cannot be.
  * @param {Function} props.onChange Picks the row, or lets it go.
@@ -158,18 +125,13 @@ function SelectCell( { column, label = '', state = null, onChange } ) {
 		return null;
 	}
 
-	return <Cell>{ null === state ? null : <Checkbox label={ label } state={ state } onChange={ onChange } /> }</Cell>;
+	return (
+		<span className="bs-ds-fcrow__pick" role="cell">
+			{ null === state ? null : <Checkbox label={ label } state={ state } onChange={ onChange } /> }
+		</span>
+	);
 }
 
-/**
- * What was displaced, and the three things an owner can do about it.
- *
- * The mechanism has always kept these files; there was simply no way to look.
- * Download is the forensics path and is logged, because handing somebody the
- * bytes of a file that was displaced for being altered is a security-relevant
- * act. Delete is the one irreversible thing on this screen, so it arms first
- * and says what it means before it does it.
- */
 /**
  * A file's size as people read it: bytes, then KB, then MB.
  *
@@ -212,11 +174,21 @@ function codeLine( code ) {
 		: differs;
 }
 
-function Quarantined( { items, note, hasMore, onMore, loadingMore, onDownload, onPutBack, onDelete, isBusy, column = false, picked = new Set(), onPick = () => {}, dock = null } ) {
+/**
+ * The In quarantine tab: what was displaced, and the three things an owner
+ * can do about each.
+ *
+ * The mechanism has always kept these files; there was simply no way to look.
+ * Download is the forensics path and is logged, because handing somebody the
+ * bytes of a file that was displaced for being altered is a security-relevant
+ * act. Delete is the one irreversible thing on this screen, so it arms first
+ * and says what it means before it does it.
+ */
+function QuarantineRows( { items, note, hasMore, onMore, loadingMore, onDownload, onPutBack, onDelete, isBusy, column = false, canPick = false, onPickMode = () => {}, picked = new Set(), onPick = () => {} } ) {
 	const [ puttingBack, setPuttingBack ] = useState( null );
 	const deleteRefs = useRef( new Map() );
 	// Show older quarantined files goes once the last page is in: focus
-	// comes back to it, or to the card's heading (#2028).
+	// comes back to it, or to the tab (#2028).
 	const older = useRef( null );
 	const title = useRef( null );
 
@@ -235,10 +207,6 @@ function Quarantined( { items, note, hasMore, onMore, loadingMore, onDownload, o
 		}
 	}, [ items, puttingBack, settled ] );
 
-	if ( ! items.length ) {
-		return null;
-	}
-
 	// Only a copy still kept can be picked: one removed has nothing left to act on.
 	const choosable = column ? items.filter( ( entry ) => entry.present ) : [];
 	const on = choosable.filter( ( entry ) => picked.has( entry.token ) ).length;
@@ -249,211 +217,243 @@ function Quarantined( { items, note, hasMore, onMore, loadingMore, onDownload, o
 	);
 
 	return (
-		<Card className="bs-ds-quarantine" aria-labelledby="bs-ds-quarantine-title">
-			<CardHead
-				icon="archive"
-				title={
-					<span ref={ title } tabIndex={ -1 }>
-						{ __( 'Quarantine', 'bettershield' ) }
-					</span>
-				}
-				id="bs-ds-quarantine-title"
-			/>
-			<p className="bs-ds-files__intro">
-				{ __(
-					'Files BetterShield moved or replaced are stored here, where visitors can’t open them. You can put each one back.',
-					'bettershield'
-				) }
-			</p>
+		<div className="bs-ds-quarantine">
+			<span ref={ title } tabIndex={ -1 } className="screen-reader-text">
+				{ __( 'Quarantine', 'bettershield' ) }
+			</span>
 
-			{ /*
-			   What the buttons below answered, said beside them. Everything
-			   above this card is within a screen of the block that reports it;
-			   this list sits after every recorded difference, which on a site
-			   with a history is tens of thousands of pixels of scrolling away
-			   from the top of the page.
-
-			   Keyed on the tone so a refusal replaces an outcome with a new
-			   element rather than changing the role of the one already there,
-			   which is what makes it interrupt.
-			*/ }
+			{ /* What the buttons below answered, said beside them. Keyed on the
+			     tone so a refusal replaces an outcome with a new element rather
+			     than changing the role of the one already there. */ }
 			{ note ? (
-				<div key={ note.tone } className="bs-ds-quarantine__note" role={ 'alert' === note.tone ? 'alert' : 'status' }>
-					<Alert layout="default" tone={ 'alert' === note.tone ? 'error' : 'success' } desc={ note.text } />
+				<div key={ note.tone } className="bs-ds-fcnote" role={ 'alert' === note.tone ? 'alert' : 'status' }>
+					<Alert tone={ 'alert' === note.tone ? 'error' : 'success' } desc={ note.text } />
 				</div>
 			) : null }
 
-			<Table
-				label={ __( 'Quarantine', 'bettershield' ) }
-				columns={ [
-					...( column ? [ selectColumn( true ) ] : [] ),
-					{ key: 'path', label: __( 'Path', 'bettershield' ) },
-					{ key: 'actions', label: __( 'Actions', 'bettershield' ), width: 'auto', align: 'end' },
-				] }
-			>
-				{ choosable.length ? (
-					<WholeRow kind="note">
-						<Checkbox
-							label={ allShown }
-							state={ on === choosable.length ? true : on > 0 && 'mixed' }
-							onChange={ () => onPick( choosable.map( ( entry ) => entry.token ), on !== choosable.length ) }
-						/>
-						<span aria-hidden="true">{ allShown }</span>
-					</WholeRow>
+			<div className="bs-ds-fclist" role="table" aria-label={ __( 'Quarantine', 'bettershield' ) }>
+				<div className={ `bs-ds-fcrow__summary bs-ds-fcrow__summary--head${ column ? ' bs-ds-fcrow__summary--pick' : '' }` } role="row">
+					{ column ? (
+						<span className="bs-ds-fcrow__pick" role="columnheader">
+							{ choosable.length ? (
+								<Checkbox label={ allShown } state={ on === choosable.length ? true : on > 0 && 'mixed' } onChange={ () => onPick( choosable.map( ( entry ) => entry.token ), on !== choosable.length ) } />
+							) : null }
+						</span>
+					) : null }
+					<span className="bs-ds-fcrow__slot" aria-hidden="true" />
+					<span role="columnheader">{ __( 'File', 'bettershield' ) }</span>
+					<span role="columnheader" />
+					<span role="columnheader" className="bs-ds-fcrow__end">
+						{ __( 'Actions', 'bettershield' ) }
+					</span>
+				</div>
+
+				{ ! items.length ? (
+					<div className="bs-ds-fcempty" role="row">
+						<span role="cell">
+							<span className="bs-ds-fcempty__title">{ __( 'Nothing in quarantine.', 'bettershield' ) }</span>{ ' ' }
+							{ __( 'Files BetterShield moves or replaces are kept here, where visitors can’t open them.', 'bettershield' ) }
+						</span>
+					</div>
 				) : null }
 
 				{ items.map( ( item ) => (
-					<Row key={ item.token } className="bs-ds-quarantine__item" selected={ picked.has( item.token ) }>
-						<SelectCell
-							column={ column }
-							label={ sprintf(
-								/* translators: %s: a file's path. */
-								__( 'Select %s', 'bettershield' ),
-								item.path
-							) }
-							state={ item.present ? picked.has( item.token ) : null }
-							onChange={ () => onPick( [ item.token ], ! picked.has( item.token ) ) }
-						/>
-						<Cell>
-							<TitleMeta
-								title={ <Path path={ item.path } /> }
-								meta={
-									<span className="bs-ds-quarantine__meta">
-										{ ! item.present && __( 'No longer on this site.', 'bettershield' ) }
-										{ item.present && ! item.restored && sprintf(
-											/* translators: 1: file size, e.g. "12 KB", 2: date and time. */
-											__( '%1$s, moved %2$s', 'bettershield' ),
-											fileSize( item.size ),
-											formatTime( item.at )
-										) }
-										{ item.code ? <span className="bs-ds-quarantine__code">{ codeLine( item.code ) }</span> : null }
-										{ item.present && item.restored && sprintf(
-											/* translators: 1: file size, e.g. "12 KB", 2: date and time it was moved, 3: date and time it was put back. */
-											__( '%1$s, moved %2$s. Put back %3$s. A copy is still stored here.', 'bettershield' ),
-											fileSize( item.size ),
-											formatTime( item.at ),
-											formatTime( item.restored_at )
-										) }
-									</span>
-								}
+					<div key={ item.token } className={ `bs-ds-fcrow bs-ds-quarantine__item${ picked.has( item.token ) ? ' is-selected' : '' }` } role="rowgroup">
+						<div className={ `bs-ds-fcrow__summary${ column ? ' bs-ds-fcrow__summary--pick' : '' }` } role="row">
+							<SelectCell
+								column={ column }
+								label={ sprintf(
+									/* translators: %s: a file's path. */
+									__( 'Select %s', 'bettershield' ),
+									item.path
+								) }
+								state={ item.present ? picked.has( item.token ) : null }
+								onChange={ () => onPick( [ item.token ], ! picked.has( item.token ) ) }
 							/>
-						</Cell>
-						<Cell align="end">
-							{ /* Each of these answers only an account that may manage
-							     the plugin; a reader is shown what is kept, not offered
-							     to move it. Each is named with its file: the same three
-							     buttons sit on every entry, and by ear they were one. */ }
-							{ item.present && mayChangeSharedCode() ? (
-								<>
-									<Button
-										type="ghost"
-										size="sm"
-										icon="download"
-										iconTone="1"
-										disabled={ isBusy( item.token ) }
-										aria-label={ sprintf(
-											/* translators: %s: the file's path. */
-											__( 'Download a copy of %s', 'bettershield' ),
-											item.path
-										) }
-										onClick={ () => onDownload( item ) }
-									>
-										{ __( 'Download a Copy', 'bettershield' ) }
-									</Button>
-
-									{ /* The undo every restore promised: the file
-									     that was here goes back, byte for byte,
-									     through the writer that displaced it. Once
-									     it has, the undo is spent and pressing it
-									     again could only be refused. */ }
-									{ /* Altered code a check or a response took out
-									     is asked about first, by what it differs from
-									     and which incident removed it: one press wrote
-									     it back over the official file (#2244). */ }
-									{ ! item.restored && item.code ? (
-										<Armed
-											type="secondary"
-											label={ __( 'Put This File Back', 'bettershield' ) }
-											aria-label={ sprintf(
-												/* translators: %s: the path the file goes back to. */
-												__( 'Put This File Back at %s', 'bettershield' ),
-												item.path
-											) }
-											consequence={ __( 'This puts the changed code back in place of the current file, and that code will run on your site.', 'bettershield' ) }
-											confirm={ __( 'Yes, Put the Code Back', 'bettershield' ) }
-											busy={ isBusy( item.token ) }
-											onConfirm={ () => {
-												setPuttingBack( item.token );
-												onPutBack( item );
-											} }
-										/>
-									) : null }
-									{ ! item.restored && ! item.code ? (
+							{ canPick && item.present ? (
+								<RowMore
+									name={ fileName( item.path ) }
+									items={ [
+										{
+											key: 'select',
+											label: picked.has( item.token ) ? __( 'Unselect', 'bettershield' ) : __( 'Select', 'bettershield' ),
+											onClick: () => {
+												onPickMode();
+												onPick( [ item.token ], ! picked.has( item.token ) );
+											},
+										},
+									] }
+								/>
+							) : (
+								<span className="bs-ds-fcrow__slot" aria-hidden="true" />
+							) }
+							<span className="bs-ds-fcrow__file" role="cell">
+								<span className="bs-ds-fcrow__name" title={ item.path }>
+									{ fileName( item.path ) }
+								</span>
+								<span className="bs-ds-fcrow__meta">
+									<span className="screen-reader-text">{ item.path } </span>
+									{ ! item.present && __( 'No longer on this site.', 'bettershield' ) }
+									{ item.present && ! item.restored && sprintf(
+										/* translators: 1: file size, e.g. "12 KB", 2: date and time. */
+										__( '%1$s, moved %2$s', 'bettershield' ),
+										fileSize( item.size ),
+										formatTime( item.at )
+									) }
+									{ item.present && item.restored && sprintf(
+										/* translators: 1: file size, e.g. "12 KB", 2: date and time it was moved, 3: date and time it was put back. */
+										__( '%1$s, moved %2$s. Put back %3$s. A copy is still stored here.', 'bettershield' ),
+										fileSize( item.size ),
+										formatTime( item.at ),
+										formatTime( item.restored_at )
+									) }
+									{ item.code ? <span className="bs-ds-quarantine__code">{ codeLine( item.code ) }</span> : null }
+								</span>
+							</span>
+							<span role="cell" />
+							<span className="bs-ds-fcrow__actions" role="cell">
+								{ /* Each of these answers only an account that may manage
+								     the plugin; a reader is shown what is kept, not offered
+								     to move it. Each is named with its file. */ }
+								{ item.present && mayChangeSharedCode() ? (
+									<>
 										<Button
-											type="secondary"
+											type="ghost"
 											size="sm"
-											isBusy={ isBusy( item.token ) }
+											icon="download"
+											iconTone="1"
 											disabled={ isBusy( item.token ) }
 											aria-label={ sprintf(
-												/* translators: %s: the path the file goes back to. */
-												__( 'Put This File Back at %s', 'bettershield' ),
+												/* translators: %s: the file's path. */
+												__( 'Download a copy of %s', 'bettershield' ),
 												item.path
 											) }
-											onClick={ () => {
-												setPuttingBack( item.token );
-												onPutBack( item );
-											} }
+											onClick={ () => onDownload( item ) }
 										>
-											{ __( 'Put This File Back', 'bettershield' ) }
+											{ __( 'Download a Copy', 'bettershield' ) }
 										</Button>
-									) : null }
 
-									{ /* Held through the request and after a refusal,
-									     so a retry is the one press it was before. */ }
-									<Armed
-										ref={ ( node ) => {
-											if ( node ) {
-												deleteRefs.current.set( item.token, node );
-											} else {
-												deleteRefs.current.delete( item.token );
-											}
-										} }
-										type="ghost"
-										held
-										label={ __( 'Delete', 'bettershield' ) }
-										aria-label={ sprintf(
-											/* translators: %s: the file's path. */
-											__( 'Delete %s', 'bettershield' ),
-											item.path
-										) }
-										consequence={ __( 'This permanently deletes the stored copy. Your live site isn’t affected.', 'bettershield' ) }
-										confirm={ __( 'Yes, Delete Permanently', 'bettershield' ) }
-										busy={ isBusy( item.token ) }
-										onConfirm={ () => onDelete( item ) }
-									/>
-								</>
-							) : null }
-						</Cell>
-					</Row>
+										{ /* Altered code a check or a response took out
+										     is asked about first (#2244). */ }
+										{ ! item.restored && item.code ? (
+											<Armed
+												type="secondary"
+												label={ __( 'Put This File Back', 'bettershield' ) }
+												aria-label={ sprintf(
+													/* translators: %s: the path the file goes back to. */
+													__( 'Put This File Back at %s', 'bettershield' ),
+													item.path
+												) }
+												consequence={ __( 'This puts the changed code back in place of the current file, and that code will run on your site.', 'bettershield' ) }
+												confirm={ __( 'Yes, Put the Code Back', 'bettershield' ) }
+												busy={ isBusy( item.token ) }
+												onConfirm={ () => {
+													setPuttingBack( item.token );
+													onPutBack( item );
+												} }
+											/>
+										) : null }
+										{ ! item.restored && ! item.code ? (
+											<Button
+												type="secondary"
+												size="sm"
+												icon="undo-2"
+												iconTone="1"
+												isBusy={ isBusy( item.token ) }
+												disabled={ isBusy( item.token ) }
+												aria-label={ sprintf(
+													/* translators: %s: the path the file goes back to. */
+													__( 'Put This File Back at %s', 'bettershield' ),
+													item.path
+												) }
+												onClick={ () => {
+													setPuttingBack( item.token );
+													onPutBack( item );
+												} }
+											>
+												{ __( 'Put This File Back', 'bettershield' ) }
+											</Button>
+										) : null }
+
+										{ /* Held through the request and after a refusal,
+										     so a retry is the one press it was before. */ }
+										<Armed
+											ref={ ( node ) => {
+												if ( node ) {
+													deleteRefs.current.set( item.token, node );
+												} else {
+													deleteRefs.current.delete( item.token );
+												}
+											} }
+											type="ghost"
+											held
+											label={ __( 'Delete', 'bettershield' ) }
+											aria-label={ sprintf(
+												/* translators: %s: the file's path. */
+												__( 'Delete %s', 'bettershield' ),
+												item.path
+											) }
+											consequence={ __( 'This permanently deletes the stored copy. Your live site isn’t affected.', 'bettershield' ) }
+											confirm={ __( 'Yes, Delete Permanently', 'bettershield' ) }
+											busy={ isBusy( item.token ) }
+											onConfirm={ () => onDelete( item ) }
+										/>
+									</>
+								) : null }
+							</span>
+						</div>
+					</div>
 				) ) }
 
-				{ /*
-				   The ledger is read a page at a time, and a page that filled up
-				   is not the end of it. Without this the oldest entries were
-				   unreachable from the one surface that is a person looking at
-				   them, and nothing on the screen said they existed.
-				 */ }
+				{ /* The ledger is read a page at a time, and a page that filled up
+				     is not the end of it. */ }
 				{ hasMore ? (
-					<WholeRow kind="foot">
-						<Button ref={ older } type="secondary" size="sm" isBusy={ loadingMore } disabled={ loadingMore } onClick={ onMore }>
-							{ __( 'Show Older Quarantined Files', 'bettershield' ) }
-						</Button>
-					</WholeRow>
+					<div className="bs-ds-fcmore" role="row">
+						<span role="cell">
+							<Button ref={ older } type="ghost" size="sm" trailing="chevron-down" trailingTone="3" isBusy={ loadingMore } disabled={ loadingMore } onClick={ onMore }>
+								{ __( 'Show Older Quarantined Files', 'bettershield' ) }
+							</Button>
+						</span>
+					</div>
 				) : null }
-			</Table>
+			</div>
+		</div>
+	);
+}
 
-			{ dock }
-		</Card>
+/**
+ * The ⋯ that opens a row's details, and in selection mode picks it too
+ * (Toggle, 27:43472).
+ *
+ * @param {Object}   props
+ * @param {string}   props.name    The row's file, for the control's name.
+ * @param {Array}    props.items   The menu's choices.
+ * @param {boolean}  props.disabled The row's own actions wait.
+ */
+function RowMore( { name, items, disabled = false } ) {
+	return (
+		<span className="bs-ds-fcrow__slot" role="cell">
+			<Menu
+				placement="bottom-start"
+				items={ items }
+				renderToggle={ ( { isOpen, onToggle } ) => (
+					<button
+						type="button"
+						className="bs-ds-fmore"
+						disabled={ disabled }
+						aria-expanded={ isOpen }
+						aria-label={ sprintf(
+							/* translators: %s: a file's name. */
+							__( 'More for %s', 'bettershield' ),
+							name
+						) }
+						onClick={ onToggle }
+					>
+						<Icon name="ellipsis" size={ 16 } tone="2" />
+					</button>
+				) }
+			/>
+		</span>
 	);
 }
 
@@ -461,21 +461,15 @@ function Quarantined( { items, note, hasMore, onMore, loadingMore, onDownload, o
  * A whole package that did not match the copy its publisher published.
  *
  * Noticed while an update was being unpacked, one moment before it became the
- * site. It is a different shape from the rows above it: not one file with one
- * comparison, but a version with a list of files, each of which can be looked
- * at on its own.
- *
- * And it is the one row here with an answer that is not "put it back". A
- * plugin built from source, or patched for one site, differs at every update
- * for as long as it is installed — so the owner can say the copy is theirs,
- * which quiets exactly that version and nothing else.
+ * site. Not one file with one comparison, but a version with a list of files,
+ * each of which can be looked at on its own; and its answer is not "put it
+ * back" but trusting that version, which quiets exactly it and nothing else.
  */
 function PackageRow( { change, onAdopt, busy, column = false } ) {
 	/*
 	 * The paths live beside the row rather than on it, so a row can outlive
 	 * them — a half-restored database, a hand edit. The finding is still true
-	 * and still has to be shown; what is missing is the list, and the row says
-	 * nothing about files rather than claiming there are none.
+	 * and still has to be shown; what is missing is the list.
 	 */
 	const pkg = change.package || {
 		slug: change.slug,
@@ -485,12 +479,20 @@ function PackageRow( { change, onAdopt, busy, column = false } ) {
 		adopted_changed: false,
 		changed: [],
 	};
+	// Open from the start, as the files of a release that differs always were.
+	const [ open, setOpen ] = useState( true );
 	const [ shown, setShown ] = useState( null );
 	const [ diff, setDiff ] = useState( null );
 	const [ partial, setPartial ] = useState( false );
 	const [ loading, setLoading ] = useState( null );
 	const [ diffError, setDiffError ] = useState( null );
 	const diffId = `bs-ds-filediff-${ change.id }`;
+	const title = sprintf(
+		/* translators: 1: a plugin name, 2: its version. */
+		__( '%1$s %2$s doesn’t match the official download', 'bettershield' ),
+		pkg.name || pkg.slug,
+		pkg.version
+	);
 
 	const showDiff = ( path ) => {
 		if ( shown === path ) {
@@ -512,13 +514,7 @@ function PackageRow( { change, onAdopt, busy, column = false } ) {
 				setDiff( data.diff );
 				setPartial( Boolean( data.partial ) );
 			} )
-			.catch( ( error ) =>
-				setDiffError(
-					error && error.message
-						? error.message
-						: __( 'The comparison could not be fetched.', 'bettershield' )
-				)
-			)
+			.catch( ( error ) => setDiffError( error && error.message ? error.message : __( 'The comparison could not be fetched.', 'bettershield' ) ) )
 			.finally( () => setLoading( null ) );
 	};
 
@@ -541,291 +537,138 @@ function PackageRow( { change, onAdopt, busy, column = false } ) {
 	};
 
 	return (
-		<>
-			<Row id={ `bs-ds-filerow-${ change.id }` } tabIndex={ -1 } open={ Boolean( diff ) } className="bs-ds-filerow">
-				{ /* Answered by adopting it, never as one of a selection. */ }
+		<div className={ `bs-ds-fcrow${ open || diff ? ' is-open' : '' }` } role="rowgroup">
+			<div id={ `bs-ds-filerow-${ change.id }` } tabIndex={ -1 } className={ `bs-ds-fcrow__summary bs-ds-filerow${ column ? ' bs-ds-fcrow__summary--pick' : '' }` } role="row">
+				{ /* Answered by trusting it, never as one of a selection. */ }
 				<SelectCell column={ column } />
-				<Cell>
-					<SeverityBadge severity="high" />
-				</Cell>
-				<Cell>
-					<TitleMeta
-						title={
-							// A sentence rather than a path: what differs here is
-							// a release, and the files it differs in are listed under it.
-							<span className="bs-ds-files__pkgtitle">
-								{ sprintf(
-									/* translators: 1: a plugin name, 2: its version. */
-									__( '%1$s %2$s doesn’t match the official download', 'bettershield' ),
-									pkg.name || pkg.slug,
-									pkg.version
-								) }
-							</span>
-						}
-						meta={
-							<span className="bs-ds-files__meta">
-								<span>{ __( 'Whole plugin', 'bettershield' ) }</span>
-								<span>
-									{ sprintf(
-										/* translators: %s: date and time. */
-										__( 'Found %s', 'bettershield' ),
-										formatTime( change.detected_at )
-									) }
-									{ pkg.total ? ' · ' : null }
-									{ pkg.total
-										? sprintf(
-												/* translators: %s: number of files. */
-												_n(
-													'%s file differs from the WordPress.org download.',
-													'%s files differ from the WordPress.org download.',
-													pkg.total,
-													'bettershield'
-												),
-												formatCount( pkg.total )
-										  )
-										: null }
-								</span>
-							</span>
-						}
-					/>
-				</Cell>
-				<Cell align="end">
+				<RowMore
+					name={ title }
+					items={ [ { key: 'files', label: open ? __( 'Hide Its Files', 'bettershield' ) : __( 'Show Its Files', 'bettershield' ), onClick: () => setOpen( ( was ) => ! was ) } ] }
+				/>
+				<span className="bs-ds-fcrow__file" role="cell">
+					<span className="bs-ds-fcrow__name">{ title }</span>
+					<span className="bs-ds-fcrow__meta">
+						{ [
+							__( 'Whole plugin', 'bettershield' ),
+							sprintf(
+								/* translators: %s: date and time. */
+								__( 'Found %s', 'bettershield' ),
+								formatTime( change.detected_at )
+							),
+							pkg.total
+								? sprintf(
+										/* translators: %s: number of files. */
+										_n( '%s file differs from the WordPress.org download', '%s files differ from the WordPress.org download', pkg.total, 'bettershield' ),
+										formatCount( pkg.total )
+								  )
+								: '',
+						]
+							.filter( Boolean )
+							.join( ' · ' ) }
+					</span>
+				</span>
+				<span role="cell">
+					<SeverityMeter severity="high" />
+				</span>
+				<span className="bs-ds-fcrow__actions" role="cell">
 					{ mayChangeSharedCode() ? (
-						<Button type="secondary" size="sm" isBusy={ busy } disabled={ busy } onClick={ () => onAdopt( change ) }>
+						<Button type="secondary" size="sm" icon="check" iconTone="1" isBusy={ busy } disabled={ busy } onClick={ () => onAdopt( change ) }>
 							{ __( 'Trust This Version', 'bettershield' ) }
 						</Button>
 					) : null }
-				</Cell>
-			</Row>
-			<div className={ `bs-ds-files__under${ diff ? ' bs-ds-files__under--open' : '' }` } role="row">
-				<div role="cell" className="bs-ds-files__undercell" id={ diffId }>
-					{ /* Not a verdict about what the change means — the paths, and a
-					     way to read the lines of each one. */ }
-					{ pkg.files.length ? (
-						<ul className="bs-ds-files__pkgfiles">
-							{ pkg.files.map( ( file ) => (
-								<li key={ file.path } className="bs-ds-files__pkgfile">
-									<Path path={ file.path } />
-									{ mayManage() ? (
-										<Button
-											type="ghost"
-											size="sm"
-											trailing={ shown === file.path ? 'chevron-up' : 'chevron-down' }
-											trailingTone="3"
-											isBusy={ loading === file.path }
-											disabled={ null !== loading }
-											aria-expanded={ shown === file.path }
-											aria-label={ sprintf(
-												shown === file.path
-													? /* translators: %s: the file's path. */
-													  __( 'Hide the difference for %s', 'bettershield' )
-													: /* translators: %s: the file's path. */
-													  __( 'Show the difference for %s', 'bettershield' ),
-												file.path
-											) }
-											onClick={ () => showDiff( file.path ) }
-										>
-											{ shown === file.path
-												? __( 'Hide the Difference', 'bettershield' )
-												: __( 'Show the Difference', 'bettershield' ) }
-										</Button>
-									) : null }
-								</li>
-							) ) }
-						</ul>
-					) : null }
-
-					{ pkg.total > pkg.files.length ? (
-						<p className="bs-ds-files__line">
-							{ sprintf(
-								/* translators: %s: number of files listed. */
-								__( 'Showing the first %s files.', 'bettershield' ),
-								formatCount( pkg.files.length )
-							) }
-						</p>
-					) : null }
-
-					{ /* The half a bare mismatch cannot say: this is not a copy nobody
-					     looked at, it is the copy you looked at, changed since. */ }
-					{ pkg.adopted_changed ? (
-						<p className="bs-ds-files__line">
-							{ __(
-								'These files changed after you trusted this version:',
-								'bettershield'
-							) }
-							{ ' ' }
-							{ pkg.changed.join( ', ' ) }
-						</p>
-					) : null }
-
-					<p className="bs-ds-files__line">
-						{ __(
-							'If you or your developer edited this plugin, trust this version to stop the alert. It comes back if one of its files changes.',
-							'bettershield'
-						) }
-					</p>
-
-					{ diffError ? <p className="bs-ds-files__line">{ diffError }</p> : null }
-
-					{ diff ? <Difference html={ diff } partial={ partial } onWhole={ showWhole } working={ null !== loading } /> : null }
-				</div>
-			</div>
-		</>
-	);
-}
-
-/**
- * What marking one group expected would cover, asked before it is done: the
- * counts, and each added file that can run as code, named, because one
- * injected file among a release's changes is what a batch could hide.
- */
-function PackagePreview( { id, preview, busy, onConfirm, onCancel } ) {
-	const more = ( preview.added_code_total || 0 ) - ( preview.added_code || [] ).length;
-	// Inside the folder the heading already names, so each line is the part
-	// that differs.
-	const folder = `wp-content/${ 'theme' === preview.context ? 'themes' : 'plugins' }/${ preview.slug }/`;
-	const inside = ( path ) => ( path.startsWith( folder ) ? path.slice( folder.length ) : path );
-
-	return (
-		<div className="bs-ds-files__under bs-ds-files__under--open" role="row">
-			<div role="cell" className="bs-ds-files__undercell bs-ds-files__preview" id={ id }>
-				<p className="bs-ds-files__lead">
-					{ sprintf(
-						/* translators: 1: number of changes, 2: a plugin name, 3: its version, 4: the changes by kind. */
-						_n(
-							'This accepts %1$s change to %2$s %3$s (%4$s). You can undo it in one step. New changes are still shown.',
-							'This accepts %1$s changes to %2$s %3$s (%4$s). You can undo it in one step. New changes are still shown.',
-							preview.total,
-							'bettershield'
-						),
-						formatCount( preview.total ),
-						preview.name,
-						preview.version,
-						packageCounts( preview )
-					) }
-				</p>
-
-				{ preview.added_code_total ? (
-					<Alert
-						layout="default"
-						tone="warning"
-						desc={
-							<>
-								<p>
-									{ sprintf(
-										/* translators: %s: number of added files that can run as code. */
-										_n(
-											'%s added file is a script that could run on your site. Look at it before you accept:',
-											'%s added files are scripts that could run on your site. Look at them before you accept:',
-											preview.added_code_total,
-											'bettershield'
-										),
-										formatCount( preview.added_code_total )
-									) }
-								</p>
-								<ul className="bs-ds-files__code">
-									{ preview.added_code.map( ( path ) => (
-										<li key={ path }>
-											<Path path={ inside( path ) } />
-										</li>
-									) ) }
-								</ul>
-								{ more > 0 ? (
-									<p>
-										{ sprintf(
-											/* translators: %s: number of added code files not listed. */
-											_n( 'And %s more.', 'And %s more.', more, 'bettershield' ),
-											formatCount( more )
-										) }
-									</p>
-								) : null }
-							</>
-						}
-					/>
-				) : null }
-
-				<div className="bs-ds-files__confirm">
-					<Button type="primary" size="sm" isBusy={ busy } disabled={ busy } onClick={ onConfirm }>
-						{ sprintf(
-							/* translators: %s: number of changes. */
-							_n( 'Accept This %s Change', 'Accept These %s Changes', preview.total, 'bettershield' ),
-							formatCount( preview.total )
-						) }
-					</Button>
-					<Button type="ghost" size="sm" onClick={ onCancel }>
-						{ __( 'Cancel', 'bettershield' ) }
-					</Button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-/**
- * One plugin or theme at one recorded version, with what can be done to its
- * changes at once: a group row, and the preview of a marking under it.
- */
-function PackageGroup( { pkg, preview, busy, onRecheck, onPreview, onConfirm, onCancel } ) {
-	const panelId = `bs-ds-package-${ pkg.context }-${ pkg.slug }`;
-
-	return (
-		<div role="rowgroup" aria-label={ pkg.name } className="bs-ds-files__package">
-			<WholeRow
-				kind="group"
-				aside={
-					mayChangeSharedCode() ? (
-						<>
-							{ 'plugin' === pkg.context ? (
-								<Button type="secondary" size="sm" icon="refresh-cw" iconTone="2" isBusy={ busy.recheck } disabled={ busy.recheck } onClick={ onRecheck }>
-									{ busy.recheck ? __( 'Checking…', 'bettershield' ) : __( 'Check Again', 'bettershield' ) }
-								</Button>
-							) : null }
-							<Button
-								type="ghost"
-								size="sm"
-								trailing={ preview ? 'chevron-up' : 'chevron-down' }
-								trailingTone="3"
-								aria-expanded={ !! preview }
-								aria-controls={ preview ? panelId : undefined }
-								isBusy={ busy.preview }
-								disabled={ busy.preview }
-								onClick={ onPreview }
-							>
-								{ sprintf(
-									/* translators: %s: number of changes. */
-									_n( 'Review and Accept %s Change…', 'Review and Accept %s Changes…', pkg.total, 'bettershield' ),
-									formatCount( pkg.total )
-								) }
-							</Button>
-						</>
-					) : null
-				}
-			>
-				<span className="bs-ds-files__pkgname">
-					<span className="bs-ds-files__pkgtitle">{ pkg.name }</span>
-					<span className="bs-ds-files__pkgmeta">
-						{ sprintf(
-							/* translators: 1: a version number, 2: the changes by kind. */
-							__( 'Version %1$s: %2$s', 'bettershield' ),
-							pkg.version || __( 'unknown', 'bettershield' ),
-							packageCounts( pkg )
-						) }
-					</span>
 				</span>
-			</WholeRow>
-			{ preview ? <PackagePreview id={ panelId } preview={ preview } busy={ busy.expect } onConfirm={ onConfirm } onCancel={ onCancel } /> : null }
+			</div>
+			{ open || diff ? (
+				<div className="bs-ds-files__under" role="row">
+					<div role="cell" className="bs-ds-files__undercell" id={ diffId }>
+						{ pkg.files.length ? (
+							<ul className="bs-ds-files__pkgfiles">
+								{ pkg.files.map( ( file ) => (
+									<li key={ file.path } className="bs-ds-files__pkgfile">
+										<Path path={ file.path } />
+										{ mayManage() ? (
+											<Button
+												type="secondary"
+												size="sm"
+												icon="code"
+												iconTone="1"
+												isBusy={ loading === file.path }
+												disabled={ null !== loading }
+												aria-expanded={ shown === file.path }
+												aria-label={ sprintf(
+													shown === file.path
+														? /* translators: %s: the file's path. */
+														  __( 'Hide the difference for %s', 'bettershield' )
+														: /* translators: %s: the file's path. */
+														  __( 'Show the difference for %s', 'bettershield' ),
+													file.path
+												) }
+												onClick={ () => showDiff( file.path ) }
+											>
+												{ shown === file.path ? __( 'Hide Difference', 'bettershield' ) : __( 'Show Difference', 'bettershield' ) }
+											</Button>
+										) : null }
+									</li>
+								) ) }
+							</ul>
+						) : null }
+
+						{ pkg.total > pkg.files.length ? (
+							<p className="bs-ds-files__line">
+								{ sprintf(
+									/* translators: %s: number of files listed. */
+									__( 'Showing the first %s files.', 'bettershield' ),
+									formatCount( pkg.files.length )
+								) }
+							</p>
+						) : null }
+
+						{ /* The half a bare mismatch cannot say: this is not a copy nobody
+						     looked at, it is the copy you looked at, changed since. */ }
+						{ pkg.adopted_changed ? (
+							<p className="bs-ds-files__line">
+								{ __( 'These files changed after you trusted this version:', 'bettershield' ) } { pkg.changed.join( ', ' ) }
+							</p>
+						) : null }
+
+						<p className="bs-ds-files__line">
+							{ __( 'If you or your developer edited this plugin, trust this version to stop the alert. It comes back if one of its files changes.', 'bettershield' ) }
+						</p>
+
+						{ diffError ? <p className="bs-ds-files__line">{ diffError }</p> : null }
+
+						{ diff ? <Difference html={ diff } partial={ partial } onWhole={ showWhole } working={ null !== loading } /> : null }
+					</div>
+				</div>
+			) : null }
 		</div>
 	);
 }
 
 /**
- * One changed file: its severity, its path with what kind of change it is and
- * what it was compared against, and what can be done about it. The lines that
- * differ open under it.
+ * One changed file (Table/Row, 27:43471): the ⋯ that opens its details, its
+ * name over what kind of change it is and where it sits, its severity, and
+ * what can be done about it. The four cards and the lines that differ open
+ * under it.
  */
-function FileRow( { change, onRestore, onSuppress, onQuarantine = null, busy, sharedWhy = false, column = false, picked = false, onPick = () => {} } ) {
+function FileRow( {
+	change,
+	name = '',
+	older = false,
+	checked = null,
+	onRestore,
+	onSuppress,
+	onQuarantine = null,
+	busy,
+	column = false,
+	canPick = false,
+	picked = false,
+	onPick = () => {},
+	onPickMode = () => {},
+} ) {
+	const [ open, setOpen ] = useState( false );
 	const [ diff, setDiff ] = useState( null );
-	// Keep in quarantine asks once, under the row, before it moves anything.
+	// Move to quarantine asks once, under the row, before it moves anything.
 	const [ keeping, setKeeping ] = useState( false );
 	// Cancel takes the question away, and focus back to what asked it.
 	const keepToggle = useRef( null );
@@ -835,6 +678,10 @@ function FileRow( { change, onRestore, onSuppress, onQuarantine = null, busy, sh
 	const [ loadingDiff, setLoadingDiff ] = useState( false );
 	const [ diffError, setDiffError ] = useState( null );
 	const diffId = `bs-ds-filediff-${ change.id }`;
+	const detailId = `bs-ds-filedetail-${ change.id }`;
+	const severity = changeSeverity( change.change_type, change.severity );
+	const file = fileName( change.path );
+	const pickable = canPick && selectableChange( change );
 
 	const showDiff = () => {
 		if ( diff ) {
@@ -850,13 +697,7 @@ function FileRow( { change, onRestore, onSuppress, onQuarantine = null, busy, sh
 				setDiff( data.diff );
 				setPartial( Boolean( data.partial ) );
 			} )
-			.catch( ( error ) =>
-				setDiffError(
-					error && error.message
-						? error.message
-						: __( 'The comparison could not be fetched.', 'bettershield' )
-				)
-			)
+			.catch( ( error ) => setDiffError( error && error.message ? error.message : __( 'The comparison could not be fetched.', 'bettershield' ) ) )
 			.finally( () => setLoadingDiff( false ) );
 	};
 
@@ -874,9 +715,42 @@ function FileRow( { change, onRestore, onSuppress, onQuarantine = null, busy, sh
 			.finally( () => setLoadingDiff( false ) );
 	};
 
+	// One sentence per shape, so a translator can reorder it.
+	let when = sprintf(
+		/* translators: %s: date and time. */
+		__( 'Found %s', 'bettershield' ),
+		formatTime( change.detected_at )
+	);
+
+	if ( claimFor( change.context ) ) {
+		when = sprintf(
+			/* translators: 1: date and time, 2: what the file was compared with, e.g. "compared with what it was here before". */
+			__( 'Found %1$s · %2$s', 'bettershield' ),
+			formatTime( change.detected_at ),
+			claimFor( change.context )
+		);
+	} else if ( older && change.version ) {
+		when = sprintf(
+			/* translators: %s: a version number. */
+			__( 'compared with %s', 'bettershield' ),
+			change.version
+		);
+	}
+
+	const meta = [
+		changeLabel( change.change_type ),
+		// Which rows the Overview's "added files can run as code" counts (#1968).
+		change.can_run ? __( 'Can run as code', 'bettershield' ) : '',
+		// What an added file was seen doing, by line, never its text (#685).
+		...( change.signals || [] ).map( signWords ),
+		name,
+		folderOf( change ),
+		when,
+	].filter( Boolean );
+
 	return (
-		<>
-			<Row id={ `bs-ds-filerow-${ change.id }` } tabIndex={ -1 } open={ Boolean( diff ) } selected={ picked } className="bs-ds-filerow">
+		<div className={ `bs-ds-fcrow${ open ? ' is-open' : '' }${ picked ? ' is-selected' : '' }` } role="rowgroup">
+			<div id={ `bs-ds-filerow-${ change.id }` } tabIndex={ -1 } className={ `bs-ds-fcrow__summary bs-ds-filerow${ column ? ' bs-ds-fcrow__summary--pick' : '' }` } role="row">
 				<SelectCell
 					column={ column }
 					label={ sprintf(
@@ -884,156 +758,138 @@ function FileRow( { change, onRestore, onSuppress, onQuarantine = null, busy, sh
 						__( 'Select %s', 'bettershield' ),
 						change.path
 					) }
-					state={ picked }
+					state={ pickable ? picked : null }
 					onChange={ onPick }
 				/>
-				<Cell>
-					<SeverityBadge severity={ changeSeverity( change.change_type, change.severity ) } />
-				</Cell>
-				<Cell>
-					<TitleMeta
-						title={ <Path path={ change.path } /> }
-						meta={
-							<>
-								<span className="bs-ds-files__meta">
-									<span>{ changeLabel( change.change_type ) }</span>
-									{ /* Which rows the Overview's "added files can run as
-									     code" counts: nothing here said (#1968). */ }
-									{ change.can_run ? (
-										<span>
-											<Badge tone="orange">{ __( 'Can run as code', 'bettershield' ) }</Badge>
-										</span>
-									) : null }
-									{ /* What an added file was seen doing, by line, never
-									     its text: worth a look, not a verdict (#685). */ }
-									{ ( change.signals || [] ).map( ( sign ) => (
-										<span key={ sign.test + sign.line }>{ signWords( sign ) }</span>
-									) ) }
-									<span>
-										{ /* One sentence per shape, so a translator can
-										     reorder it and keeps the separator. */ }
-										{ claimFor( change.context )
-											? sprintf(
-													/* translators: 1: date and time, 2: what the file was compared with, e.g. "compared with what it was here before". */
-													__( 'Found %1$s · %2$s', 'bettershield' ),
-													formatTime( change.detected_at ),
-													claimFor( change.context )
-											  )
-											: change.version
-											? sprintf(
-													/* translators: 1: date and time, 2: a version number. */
-													__( 'Found %1$s · compared with version %2$s', 'bettershield' ),
-													formatTime( change.detected_at ),
-													change.version
-											  )
-											: sprintf(
-													/* translators: %s: date and time. */
-													__( 'Found %s', 'bettershield' ),
-													formatTime( change.detected_at )
-											  ) }
-									</span>
-								</span>
-								{ /* Said by the group heading instead when every file
-								     under it shares the reason. */ }
-								{ ! change.restorable && change.why_not && ! sharedWhy ? (
-									<span className="bs-ds-files__why">{ change.why_not }</span>
-								) : null }
-							</>
-						}
-					/>
-				</Cell>
-				<Cell align="end">
+				{ /* The design's disclosure: a chevron that opens the row's
+				     details in place. Selecting starts from "Select Files"
+				     beside the filters, so the row needs no menu for it. */ }
+				<span className="bs-ds-fcrow__slot" role="cell">
+					<button
+						type="button"
+						className="bs-ds-fmore bs-ds-fdisclose"
+						aria-expanded={ open }
+						aria-controls={ open ? detailId : undefined }
+						aria-label={ sprintf(
+							open
+								? /* translators: %s: a file's name. */
+								  __( 'Hide details for %s', 'bettershield' )
+								: /* translators: %s: a file's name. */
+								  __( 'Show details for %s', 'bettershield' ),
+							file
+						) }
+						onClick={ () => setOpen( ( was ) => ! was ) }
+					>
+						<Icon name={ open ? 'chevron-down' : 'chevron-right' } size={ 16 } tone="2" />
+					</button>
+				</span>
+				<span className="bs-ds-fcrow__file" role="cell">
+					{ /* The file's own name, the path behind it for anybody who
+					     needs it: a path is one long word, and on every row it
+					     pushed the actions off the line. */ }
+					<span className="bs-ds-fcrow__name" title={ change.path }>
+						{ file }
+					</span>
+					<span className="bs-ds-fcrow__meta">
+						<span className="screen-reader-text">{ change.path } </span>
+						{ meta.join( ' · ' ) }
+					</span>
+				</span>
+				<span role="cell">
+					<SeverityMeter severity={ severity } />
+				</span>
+				<span className="bs-ds-fcrow__actions" role="cell">
 					{ /* Every action here answers only an account that may manage
 					     the plugin; a reader is shown the change and offered none.
 					     Each is named with its file: the same buttons sit on every
-					     row, and by ear "Expected" eleven times named nothing. */ }
-					{ mayManage() ? (
-						<>
-							{ change.restorable ? (
-								<>
-									<Button
-										type="ghost"
-										size="sm"
-										trailing={ diff ? 'chevron-up' : 'chevron-down' }
-										trailingTone="3"
-										onClick={ showDiff }
-										isBusy={ loadingDiff }
-										disabled={ loadingDiff }
-										aria-expanded={ Boolean( diff ) }
-										aria-controls={ diff ? diffId : undefined }
-										aria-label={ sprintf(
-											diff
-												? /* translators: %s: the file's path. */
-												  __( 'Hide the difference for %s', 'bettershield' )
-												: /* translators: %s: the file's path. */
-												  __( 'Show the difference for %s', 'bettershield' ),
-											change.path
-										) }
-									>
-										{ diff ? __( 'Hide the Difference', 'bettershield' ) : __( 'Show the Difference', 'bettershield' ) }
-									</Button>
-									{ mayChangeSharedCode() ? (
-									<Button
-										type="secondary"
-										size="sm"
-										isBusy={ busy }
-										disabled={ busy }
-										aria-label={ sprintf(
-											/* translators: %s: the file's path. */
-											__( 'Restore the official file at %s', 'bettershield' ),
-											change.path
-										) }
-										onClick={ () => onRestore( change ) }
-									>
-										{ __( 'Restore Official File', 'bettershield' ) }
-									</Button>
-									) : null }
-								</>
-							) : null }
-
-							{ /* A file nobody published: its own way out of the site,
-							     kept rather than deleted (#1971). */ }
-							{ keepable && mayChangeSharedCode() ? (
-								<Button
-									ref={ keepToggle }
-									type="secondary"
-									size="sm"
-									disabled={ busy }
-									aria-expanded={ keeping }
-									aria-controls={ keeping ? keepId : undefined }
-									aria-label={ sprintf(
-										/* translators: %s: the file's path. */
-										__( 'Move %s to quarantine', 'bettershield' ),
-										change.path
-									) }
-									onClick={ () => setKeeping( ( was ) => ! was ) }
-								>
-									{ __( 'Move to Quarantine', 'bettershield' ) }
-								</Button>
-							) : null }
-							{ mayChangeSharedCode() ? (
-								<Button
-									type="ghost"
-									size="sm"
-									isBusy={ busy }
-									disabled={ busy }
-									aria-label={ sprintf(
-										/* translators: %s: the file's path. */
-										__( 'Accept the change to %s', 'bettershield' ),
-										change.path
-									) }
-									title={ __( 'Stop listing it until the file changes again', 'bettershield' ) }
-									onClick={ () => onSuppress( change ) }
-								>
-									{ __( 'Accept Change', 'bettershield' ) }
-								</Button>
-							) : null }
-						</>
+					     row, and by ear "Accept Change" eleven times named nothing. */ }
+					{ mayManage() && change.restorable ? (
+						<Button
+							type="secondary"
+							size="sm"
+							icon="code"
+							iconTone="1"
+							onClick={ showDiff }
+							isBusy={ loadingDiff }
+							disabled={ loadingDiff }
+							aria-expanded={ Boolean( diff ) }
+							aria-controls={ diff ? diffId : undefined }
+							aria-label={ sprintf(
+								diff
+									? /* translators: %s: the file's path. */
+									  __( 'Hide the difference for %s', 'bettershield' )
+									: /* translators: %s: the file's path. */
+									  __( 'Show the difference for %s', 'bettershield' ),
+								change.path
+							) }
+						>
+							{ diff ? __( 'Hide Difference', 'bettershield' ) : __( 'Show Difference', 'bettershield' ) }
+						</Button>
 					) : null }
-				</Cell>
-			</Row>
+					{ change.restorable && mayChangeSharedCode() ? (
+						<Button
+							type="ghost"
+							size="sm"
+							icon="undo-2"
+							iconTone="1"
+							isBusy={ busy }
+							disabled={ busy }
+							aria-label={ sprintf(
+								/* translators: %s: the file's path. */
+								__( 'Restore the official file at %s', 'bettershield' ),
+								change.path
+							) }
+							onClick={ () => onRestore( change ) }
+						>
+							{ __( 'Restore Official File', 'bettershield' ) }
+						</Button>
+					) : null }
+					{ /* A file nobody published: its own way out of the site,
+					     kept rather than deleted (#1971). */ }
+					{ keepable && mayChangeSharedCode() ? (
+						<Button
+							ref={ keepToggle }
+							type="secondary"
+							size="sm"
+							icon="folder"
+							iconTone="1"
+							disabled={ busy }
+							aria-expanded={ keeping }
+							aria-controls={ keeping ? keepId : undefined }
+							aria-label={ sprintf(
+								/* translators: %s: the file's path. */
+								__( 'Move %s to quarantine', 'bettershield' ),
+								change.path
+							) }
+							onClick={ () => setKeeping( ( was ) => ! was ) }
+						>
+							{ __( 'Move to Quarantine', 'bettershield' ) }
+						</Button>
+					) : null }
+					{ mayChangeSharedCode() ? (
+						<Button
+							type="ghost"
+							size="sm"
+							icon="check"
+							iconTone="1"
+							isBusy={ busy }
+							disabled={ busy }
+							aria-label={ sprintf(
+								/* translators: %s: the file's path. */
+								__( 'Accept the change to %s', 'bettershield' ),
+								change.path
+							) }
+							title={ __( 'Stop listing it until the file changes again', 'bettershield' ) }
+							onClick={ () => onSuppress( change ) }
+						>
+							{ __( 'Accept Change', 'bettershield' ) }
+						</Button>
+					) : null }
+				</span>
+			</div>
+			{ open ? <FileDetail change={ change } name={ name || __( 'WordPress', 'bettershield' ) } severity={ severity } checked={ checked } id={ detailId } /> : null }
 			{ keepable && keeping ? (
-				<div className="bs-ds-files__under bs-ds-files__under--open" role="row">
+				<div className="bs-ds-files__under" role="row">
 					<div role="cell" className="bs-ds-files__undercell" id={ keepId }>
 						<p className="bs-ds-files__line">
 							{ __( 'Moves this file to quarantine and leaves an empty placeholder. Anything that uses the file may stop working. You can put it back anytime.', 'bettershield' ) }
@@ -1069,25 +925,17 @@ function FileRow( { change, onRestore, onSuppress, onQuarantine = null, busy, sh
 				</div>
 			) : null }
 			{ diffError || diff ? (
-				<div className={ `bs-ds-files__under${ diff ? ' bs-ds-files__under--open' : '' }` } role="row">
+				<div className="bs-ds-files__under" role="row">
 					<div role="cell" className="bs-ds-files__undercell" id={ diffId }>
 						{ diffError ? <p className="bs-ds-files__line">{ diffError }</p> : null }
 						{ diff ? <Difference html={ diff } partial={ partial } onWhole={ showWhole } working={ loadingDiff } /> : null }
 					</div>
 				</div>
 			) : null }
-		</>
+		</div>
 	);
 }
 
-/**
- * A group's own row: its name and how many it holds, as the heading the
- * rows under it are read beneath.
- *
- * @param {Object} props
- * @param {string} props.label The group's name.
- * @param {number} props.count How many it holds.
- */
 /**
  * What a group's badge says.
  *
@@ -1141,30 +989,53 @@ function groupCount( group, changes, report ) {
 }
 
 /**
- * A group's heading, with how many it holds, and the checkbox that picks
- * every loaded row of it where any can be picked.
+ * A group's band as the design names it, its icon, and the note under it
+ * where the design has one.
  *
- * @param {Object}  props
- * @param {string}  props.label The group's name.
- * @param {*}       props.count How many it holds.
- * @param {?Object} props.pick  { label, state, onChange }: the checkbox that picks every loaded row of it.
+ * @param {Object} group A group from groupChanges().
+ * @return {{label: string, icon: string, kind: string}} How it is drawn.
  */
-function GroupHead( { label, count, pick = null } ) {
-	return (
-		<WholeRow kind="group">
-			{ pick ? <Checkbox label={ pick.label } state={ pick.state } onChange={ pick.onChange } /> : null }
-			<h3 className="bs-ds-files__group">
-				{ label }
-				<Badge>{ 'number' === typeof count ? formatCount( count ) : count }</Badge>
-			</h3>
-		</WholeRow>
-	);
+function groupLook( group ) {
+	const first = group.changes[ 0 ] || {};
+
+	if ( 'restorable' === group.key ) {
+		return { label: __( 'Can be restored', 'bettershield' ), icon: 'undo-2', kind: 'restorable' };
+	}
+
+	if ( 'package' === group.key ) {
+		return { label: group.label, icon: 'package', kind: 'package' };
+	}
+
+	if ( group.key.startsWith( 'core:' ) ) {
+		return { label: group.label, icon: 'file', kind: 'core' };
+	}
+
+	if ( 'added' === first.change_type ) {
+		return { label: __( 'Added, not in the official release', 'bettershield' ), icon: 'plus', kind: 'added' };
+	}
+
+	if ( 'removed' === first.change_type ) {
+		return { label: __( 'Missing files', 'bettershield' ), icon: 'circle-dashed', kind: 'removed' };
+	}
+
+	if ( 'unreadable' === first.change_type ) {
+		return { label: group.label, icon: 'file', kind: 'other' };
+	}
+
+	// Only files whose reason is the version: a copy behind a license, or
+	// any other reason a file can't be put back, is not "older" and a check
+	// again would not change it.
+	if ( 'older' === first.why_code && ! claimFor( first.context ) && first.version ) {
+		return { label: __( 'Compared with an older version', 'bettershield' ), icon: 'refresh-cw', kind: 'older' };
+	}
+
+	return { label: group.label, icon: 'file', kind: 'other' };
 }
 
 /** The four facts' names, shared by the strip and the tab's stand-in. */
-function glanceLabels() {
+function glanceLabels( running = false ) {
 	return {
-		checked: __( 'Last check', 'bettershield' ),
+		checked: running ? __( 'File check', 'bettershield' ) : __( 'Last check', 'bettershield' ),
 		open: __( 'Changed files to review', 'bettershield' ),
 		restorable: __( 'Can be restored', 'bettershield' ),
 		quarantine: __( 'In quarantine', 'bettershield' ),
@@ -1172,10 +1043,10 @@ function glanceLabels() {
 }
 
 /**
- * The file check in four facts: when it last looked, how much it found
- * unresolved, how much of that can be put back, and what is kept aside.
- * Read from the report the screen already holds, so it cannot disagree with
- * the list under it.
+ * The file check in four facts (File summary, 1:1667): where the check
+ * stands, how much it found unresolved, how much of that can be put back,
+ * and what is kept aside. Read from the report the screen already holds, so
+ * it cannot disagree with the list under it.
  *
  * @param {Object}   props
  * @param {Object}   props.report         The integrity report.
@@ -1183,132 +1054,58 @@ function glanceLabels() {
  * @param {Object[]} props.quarantined    The quarantined files loaded so far.
  * @param {boolean}  props.quarantineMore Whether more are kept than are loaded.
  * @param {string}   props.quarantineRead Where the quarantine's own read stands: loading, ready or error.
+ * @param {boolean}  props.parked         The run is paused partway.
  */
-function FilesGlance( { report, changes, quarantined, quarantineMore, quarantineRead = 'ready' } ) {
-	const labels = glanceLabels();
+function FilesGlance( { report, changes, quarantined, quarantineMore, quarantineRead = 'ready', parked = false } ) {
+	const labels = glanceLabels( report.running );
 	const open = report.open_changes && report.open_changes.total ? report.open_changes.total : changes.length;
 	/* Counted by the server across every page. The rows loaded so far are a
 	   page or a few of them, and on a site with many newer unpublished files
 	   they held none of these, so the tile led with 0. */
 	const counted = Number.isInteger( report.open_changes?.restorable );
 	const restorable = counted ? report.open_changes.restorable : changes.filter( ( change ) => change.restorable ).length;
+	const progress = report.running && report.progress && report.progress.targets ? report.progress : null;
+	let checked = __( 'Never', 'bettershield' );
 
-	let next = __( 'No check is scheduled', 'bettershield' );
+	if ( progress ) {
+		const done = formatCount( Math.min( Number( progress.target ) || 0, Number( progress.targets ) ) );
 
-	if ( report.running ) {
-		next = scanProgress( report.progress );
-	} else if ( report.next_run_at && ! isPast( report.next_run_at ) ) {
-		next = sprintf(
-			/* translators: %s: when the next check runs, e.g. "today, 4:02 PM". */
-			__( 'Next check %s', 'bettershield' ),
-			whenPhrase( report.next_run_at )
-		);
+		checked = parked
+			? sprintf(
+					/* translators: 1: how many parts of the site are checked, 2: how many there are. */
+					__( 'Paused, %1$s of %2$s', 'bettershield' ),
+					done,
+					formatCount( progress.targets )
+			  )
+			: sprintf(
+					/* translators: 1: how many parts of the site are checked, 2: how many there are. */
+					__( 'Checking, %1$s of %2$s', 'bettershield' ),
+					done,
+					formatCount( progress.targets )
+			  );
+	} else if ( report.ever_run ) {
+		checked = whenPhrase( report.last_run_at );
 	}
 
-	/*
-	 * A first check still under way, or paused between steps: it has already
-	 * compared files and listed changes, so the tiles say how far it got
-	 * rather than "Never" and "Nothing compared yet" (#2633).
-	 */
-	const first = ! report.ever_run && report.progress && report.progress.targets ? report.progress : null;
-
 	const tiles = [
-		{
-			key: 'checked',
-			icon: 'clock',
-			label: labels.checked,
-			value: report.ever_run
-				? whenPhrase( report.last_run_at )
-				: first
-				? sprintf(
-						/* translators: 1: how many parts of the site are checked, 2: how many there are. */
-						__( 'In progress, %1$s of %2$s', 'bettershield' ),
-						formatCount( Math.min( Number( first.target ) || 0, Number( first.targets ) ) ),
-						formatCount( first.targets )
-				  )
-				: __( 'Never', 'bettershield' ),
-			text: true,
-			tone: report.ever_run || first ? undefined : 'caution',
-			detail: next,
-		},
-		{
-			key: 'open',
-			icon: 'file-diff',
-			label: labels.open,
-			value: formatCount( open ),
-			tone: open ? 'caution' : 'good',
-			detail:
-				report.ever_run && report.stats
-					? sprintf(
-							/* translators: %s: number of files compared. */
-							_n( 'Across %s file compared', 'Across %s files compared', report.stats.checked, 'bettershield' ),
-							formatCount( report.stats.checked )
-					  )
-					: first && Number( first.checked ) > 0
-					? sprintf(
-							/* translators: %s: number of files compared so far. */
-							_n( 'Across %s file so far', 'Across %s files so far', Number( first.checked ), 'bettershield' ),
-							formatCount( Number( first.checked ) )
-					  )
-					: __( 'Nothing compared yet', 'bettershield' ),
-		},
-		{
-			key: 'restorable',
-			icon: 'undo-2',
-			label: labels.restorable,
-			value: formatCount( restorable ),
-			detail: counted
-				? sprintf(
-						/* translators: %s: number of unresolved file changes. */
-						_n( 'Of %s to review', 'Of %s to review', open, 'bettershield' ),
-						formatCount( open )
-				  )
-				: sprintf(
-						/* translators: %s: number of changes listed on screen. */
-						_n( 'Of the %s shown below', 'Of the %s shown below', changes.length, 'bettershield' ),
-						formatCount( changes.length )
-				  ),
-		},
+		{ key: 'checked', icon: 'refresh-cw', label: labels.checked, value: checked, text: true },
+		{ key: 'open', icon: 'refresh-cw', label: labels.open, value: formatCount( open ) },
+		{ key: 'restorable', icon: 'refresh-cw', label: labels.restorable, value: formatCount( restorable ) },
 		{
 			key: 'quarantine',
-			icon: 'archive',
+			icon: 'refresh-cw',
 			label: labels.quarantine,
 			/*
 			 * The quarantine is a read of its own. Before it lands, "0" would
 			 * be a claim about files nobody has counted yet, so the tile holds
 			 * its place; after a read that failed it has no number to give.
 			 */
-			value:
-				'error' === quarantineRead
-					? '—'
-					: quarantineMore
-					? `${ quarantined.length }+`
-					: formatCount( quarantined.length ),
-			detail: __( 'Moved out of use, not deleted unless you choose', 'bettershield' ),
+			value: 'error' === quarantineRead ? '—' : quarantineMore ? `${ quarantined.length }+` : formatCount( quarantined.length ),
 			pending: 'loading' === quarantineRead,
 		},
 	];
 
 	return <Stats label={ __( 'Files at a glance', 'bettershield' ) } tiles={ tiles } />;
-}
-
-/**
- * What a part-finished check is waiting for, when nothing on the screen is
- * carrying it on: the scheduled check, or a press of Continue check.
- *
- * @param {Object} report The integrity report.
- * @return {string} One sentence.
- */
-function parkedNote( report ) {
-	if ( report.next_run_at && ! isPast( report.next_run_at ) ) {
-		return sprintf(
-			/* translators: %s: when the next scheduled check runs, e.g. "today, 4:02 PM". */
-			__( 'The check is paused partway. It resumes %s, or press Continue Check to resume now.', 'bettershield' ),
-			whenPhrase( report.next_run_at )
-		);
-	}
-
-	return __( 'The check is paused partway. Press Continue Check to finish it.', 'bettershield' );
 }
 
 /**
@@ -1330,6 +1127,16 @@ export default function Files() {
 	const choosing = mayChangeSharedCode();
 	// Why parts of the site were not compared, opened on request.
 	const [ whyOpen, setWhyOpen ] = useState( false );
+	// Which list is shown: the changes to review, the accepted ones, or what is in quarantine.
+	const [ tab, setTab ] = useState( 'review' );
+	// Selection mode, opened from a row's ⋯: the checkboxes and the bar.
+	const [ selecting, setSelecting ] = useState( false );
+	// The group notes put away, by the group they head.
+	const [ dismissed, setDismissed ] = useState( () => new Set() );
+	// What a check that just finished changed: { matched, still }.
+	const [ finished, setFinished ] = useState( null );
+	// The open changes when the run being watched began.
+	const openAtStart = useRef( null );
 	// The groups opened past their first few files, by group key.
 	const [ openGroups, setOpenGroups ] = useState( () => new Set() );
 	const toggleGroup = ( key ) =>
@@ -1476,9 +1283,6 @@ export default function Files() {
 			setRowNote( null );
 		}
 	}, [ done, notice ] );
-	// The changes marked expected, folded away until asked for: they are
-	// the exception, and a long list of them would push the open ones down.
-	const [ expectedOpen, setExpectedOpen ] = useState( false );
 	// The one group whose marking is being previewed, and what it would cover.
 	const [ packagePreview, setPackagePreview ] = useState( null );
 	/*
@@ -1652,6 +1456,36 @@ export default function Files() {
 	 * exists instead of. Reading the state is a read and costs a query.
 	 */
 	const running = !! ( report && report.running );
+
+	/*
+	 * A run ending says what it changed: how many files now match and drop
+	 * off the list, and how many still don't. Counted against the open
+	 * changes when the run was first seen, which a run in progress does not
+	 * move: its answers carry the run's own fields only.
+	 */
+	useEffect( () => {
+		if ( ! report ) {
+			return;
+		}
+
+		const total = Number( report.open_changes?.total ) || 0;
+
+		if ( running ) {
+			if ( null === openAtStart.current ) {
+				openAtStart.current = total;
+			}
+
+			setFinished( null );
+
+			return;
+		}
+
+		if ( null !== openAtStart.current ) {
+			setFinished( { matched: Math.max( 0, openAtStart.current - total ), still: total } );
+			openAtStart.current = null;
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- the run ending is the trigger.
+	}, [ running ] );
 
 	// Whether this screen is carrying a check on: see the effect after this one.
 	const [ driving, setDriving ] = useState( false );
@@ -2617,7 +2451,7 @@ export default function Files() {
 		} )
 			.then( ( data ) => {
 				if ( mounted.current ) {
-					setPackagePreview( { key: packageKey( pkg ), data } );
+					setPackagePreview( { key: packageKey( pkg ), data, pkg } );
 				}
 			} )
 			.catch( ( error ) => {
@@ -2652,8 +2486,8 @@ export default function Files() {
 				sprintf(
 					/* translators: %s: number of changes. */
 					_n(
-						'Accepted %s change. To undo, use “Accepted in bulk” below.',
-						'Accepted %s changes. To undo, use “Accepted in bulk” below.',
+						'Accepted %s change. To undo, open the Accepted tab.',
+						'Accepted %s changes. To undo, open the Accepted tab.',
 						data.expected?.count || preview.total,
 						'bettershield'
 					),
@@ -2672,7 +2506,7 @@ export default function Files() {
 		const key = `recheck-${ packageKey( pkg ) }`;
 
 		if ( ! claim( key ) ) {
-			return;
+			return Promise.resolve();
 		}
 
 		aimAtSummary();
@@ -2697,7 +2531,7 @@ export default function Files() {
 				return data.rechecked.left > 0 && data.rechecked.after > 0 && mounted.current ? step( data.rechecked.after ) : data;
 			} );
 
-		step( 0 )
+		return step( 0 )
 			.then( afterMutation( ( data ) => {
 				if ( ! mounted.current ) {
 					return;
@@ -2953,21 +2787,6 @@ export default function Files() {
 	// was sent counts what it carries.
 	const expectedTotal = Math.max( Number( report.suppressed_total ) || 0, ( report.suppressed || [] ).length );
 	const batchesTotal = Math.max( Number( report.batches_total ) || 0, ( report.batches || [] ).length );
-
-	// One state at a time. While a check runs it says so, with its bar and
-	// count; the time of the last finished check comes back when it ends.
-	// Both at once read as two states competing for the same line.
-	let checkState = __( 'Never checked', 'bettershield' );
-
-	if ( report.running ) {
-		checkState = __( 'Checking files', 'bettershield' );
-	} else if ( report.ever_run ) {
-		checkState = sprintf(
-			/* translators: %s: date and time. */
-			__( 'Last checked %s', 'bettershield' ),
-			formatTime( report.last_run_at )
-		);
-	}
 
 	const changes = report.changes || [];
 	const packages = report.packages || [];
@@ -3225,7 +3044,7 @@ export default function Files() {
 						  )
 						: __( 'No file was put back.', 'bettershield' ),
 					desc: tail( [
-						outcome.count ? __( 'The files that were there are kept in quarantine, below.', 'bettershield' ) : '',
+						outcome.count ? __( 'The files that were there are kept in the In quarantine tab.', 'bettershield' ) : '',
 						outcome.more
 							? sprintf(
 									/* translators: %s: how many more matching files have an official copy. */
@@ -3488,8 +3307,8 @@ export default function Files() {
 				sprintf(
 					/* translators: %s: how many file changes are marked expected. */
 					_n(
-						'%s accepted change is listed below. Files with no official copy to compare are listed above.',
-						'%s accepted changes are listed below. Files with no official copy to compare are listed above.',
+						'%s accepted change is in the Accepted tab.',
+						'%s accepted changes are in the Accepted tab.',
 						expectedTotal,
 						'bettershield'
 					),
@@ -3505,38 +3324,223 @@ export default function Files() {
 	}
 
 	const compared = report.ever_run && report.stats;
-	const foot = report.next_cursor || compared;
+	// Selection mode: opened from a row's ⋯, and kept while anything is picked.
+	const column = choosing && ( selecting || picked.size > 0 || Boolean( everything ) || pickedKept.size > 0 );
+	const doneSelecting = () => {
+		setSelecting( false );
+		setAsking( null );
+		setEverything( null );
+		setPicked( new Set() );
+		setPickedKept( new Set() );
+	};
 
-	return (
-		<>
-			<FilesGlance
-				report={ report }
-				changes={ changes }
-				quarantined={ quarantined }
-				quarantineMore={ quarantineMore }
-				quarantineRead={ quarantineRead }
-			/>
+	// The plugin, theme or WordPress a change belongs to, by name.
+	const nameOf = ( change ) => {
+		if ( 'core' === change.context ) {
+			return __( 'WordPress', 'bettershield' );
+		}
 
-			<Card className="bs-ds-files" aria-labelledby="bs-ds-files-title">
-				<CardHead icon="file-diff" title={ __( 'File check', 'bettershield' ) } id="bs-ds-files-title">
-					{ mayManage() && ! ( report && report.elsewhere ) ? (
-						// A scan, so it says so the way the audit does.
-						<Button
-							type="secondary"
-							size="sm"
-							icon="refresh-cw"
-							iconTone="2"
-							isBusy={ scanning }
-							disabled={ scanning }
-							onClick={ () => act( '/bettershield/v1/integrity/scan', 'scan', undefined, () => setDriving( true ) ) }
-						>
-							{ scanning && __( 'Checking…', 'bettershield' ) }
-							{ ! scanning && ( parked ? __( 'Continue Check', 'bettershield' ) : __( 'Check Now', 'bettershield' ) ) }
-						</Button>
-					) : null }
-				</CardHead>
+		const owner = packages.find( ( pkg ) => pkg.slug === change.slug && pkg.context === change.context ) || packages.find( ( pkg ) => pkg.slug === change.slug );
+
+		return owner ? owner.name : change.slug || '';
+	};
+
+	// Every plugin's files compared again, one plugin after another.
+	const recheckAll = () => {
+		if ( ! claim( 'recheck-all' ) ) {
+			return;
+		}
+
+		const plugins = packages.filter( ( pkg ) => 'theme' !== pkg.context );
+
+		plugins
+			.reduce( ( chain, pkg ) => chain.then( () => recheckPackage( pkg ) ), Promise.resolve() )
+			.finally( () => release( 'recheck-all' ) );
+	};
+
+	const dismissNote = ( key ) =>
+		setDismissed( ( current ) => {
+			const next = new Set( current );
+
+			next.add( key );
+
+			return next;
+		} );
+
+	// The note under a group's band, where the design has one.
+	const groupNote = ( group, look ) => {
+		if ( dismissed.has( group.key ) ) {
+			return null;
+		}
+
+		if ( 'added' === look.kind ) {
+			return (
+				<Alert
+					tone="info"
+					title={ mayChangeSharedCode() ? __( 'Not yours? Move it to quarantine.', 'bettershield' ) : __( 'These files aren’t in the official release.', 'bettershield' ) }
+					desc={ mayChangeSharedCode() ? __( 'Nothing is deleted, and you can put it back.', 'bettershield' ) : group.note }
+					onDismiss={ () => dismissNote( group.key ) }
+				/>
+			);
+		}
+
+		if ( 'removed' === look.kind ) {
+			return (
+				<Alert
+					tone="info"
+					title={ sprintf(
+						/* translators: %s: the plugin’s name, or the label the site owner gave it. */
+						__( '%s can’t recreate missing files.', 'bettershield' ),
+						brand()
+					) }
+					desc={ __( 'Reinstall the plugin, theme or WordPress version it came from, then check again.', 'bettershield' ) }
+					onDismiss={ () => dismissNote( group.key ) }
+				/>
+			);
+		}
+
+		if ( 'older' === look.kind ) {
+			const first = group.changes[ 0 ];
+			const owner = packages.find( ( pkg ) => pkg.slug === first.slug && pkg.context === first.context && pkg.version === first.version );
+			const title =
+				owner && owner.installed
+					? sprintf(
+							/* translators: 1: a plugin's name, 2: the version installed now, 3: the version the files were compared with. */
+							__( '%1$s %2$s is installed now, not %3$s.', 'bettershield' ),
+							owner.name,
+							owner.installed,
+							first.version
+					  )
+					: sprintf(
+							/* translators: %s: the version the files were compared with. */
+							__( 'A different version is installed now, not %s.', 'bettershield' ),
+							first.version
+					  );
+
+			return (
+				<Alert
+					tone="warning"
+					title={ title }
+					desc={ __( 'Check again so these files are compared with the right version.', 'bettershield' ) }
+					actions={
+						owner && mayChangeSharedCode() && 'theme' !== owner.context ? (
+							<Button
+								type="secondary"
+								size="sm"
+								icon="refresh-cw"
+								iconTone="1"
+								className="bs-ds-files__alertbtn"
+								isBusy={ isBusy( `recheck-${ packageKey( owner ) }` ) }
+								disabled={ isBusy( `recheck-${ packageKey( owner ) }` ) }
+								onClick={ () => recheckPackage( owner ) }
+							>
+								{ __( 'Check Again', 'bettershield' ) }
+							</Button>
+						) : null
+					}
+				/>
+			);
+		}
+
+		if ( 'restorable' === look.kind || ! group.note ) {
+			return null;
+		}
+
+		return <Alert tone="info" desc={ group.note } onDismiss={ () => dismissNote( group.key ) } />;
+	};
+
+	const severityOptions = filterOptions().severity.map( ( option ) => ( '' === option.value ? { ...option, label: __( 'Any', 'bettershield' ) } : option ) );
+	const filters =
+		'review' === tab && report.ever_run && ( filtered || report.open_changes?.total > 0 ) ? (
+			<span className="bs-ds-files__filters" role="search" aria-label={ __( 'Filter file changes', 'bettershield' ) }>
+				<FilterChip label={ __( 'Type', 'bettershield' ) } value={ filter.change_type } options={ filterOptions().change_type } onChange={ ( type ) => narrow( { change_type: type } ) } />
+				<FilterChip label={ __( 'Location', 'bettershield' ) } value={ filter.place } options={ filterOptions().place } onChange={ ( place ) => narrow( { place } ) } />
+				<FilterChip label={ __( 'Severity', 'bettershield' ) } value={ filter.severity } options={ severityOptions } onChange={ ( severity ) => narrow( { severity } ) } />
+				<label className="bs-ds-files__search">
+					<Icon name="search" size={ 16 } tone="2" />
+					<input
+						ref={ searchField }
+						type="search"
+						value={ typed }
+						maxLength={ 200 }
+						placeholder={ __( 'Search by path', 'bettershield' ) }
+						aria-label={ __( 'Search file changes by path', 'bettershield' ) }
+						onChange={ ( event ) => setTyped( event.target.value ) }
+					/>
+				</label>
+				{ filtered || typed ? (
+					<Button type="ghost" size="sm" icon="x" iconTone="2" onClick={ clearFilters }>
+						{ __( 'Clear Filters', 'bettershield' ) }
+					</Button>
+				) : null }
+				{ /* Where selecting starts, now a row's chevron only opens it. */ }
+				{ choosing && ! column && changes.some( selectableChange ) ? (
+					<Button type="ghost" size="sm" icon="list-checks" iconTone="2" onClick={ () => setSelecting( true ) }>
+						{ __( 'Select Files', 'bettershield' ) }
+					</Button>
+				) : null }
+			</span>
+		) : null;
+
+	const head = ( pickAll = null ) => (
+		<div className={ `bs-ds-fcrow__summary bs-ds-fcrow__summary--head${ column ? ' bs-ds-fcrow__summary--pick' : '' }` } role="row">
+			{ column ? (
+				<span className="bs-ds-fcrow__pick" role="columnheader">
+					{ pickAll }
+				</span>
+			) : null }
+			<span className="bs-ds-fcrow__slot" aria-hidden="true" />
+			<span role="columnheader">{ __( 'File', 'bettershield' ) }</span>
+			<span role="columnheader">{ __( 'Severity', 'bettershield' ) }</span>
+			<span role="columnheader" className="bs-ds-fcrow__end">
+				{ __( 'Actions', 'bettershield' ) }
+			</span>
+		</div>
+	);
+
+	const watchedNote = watched.length
+		? sprintf(
+				/* translators: %s: how many plugins have no published copy. */
+				_n(
+					'%s plugin isn’t on WordPress.org, so its files are compared with how they were when BetterShield first checked them.',
+					'%s plugins aren’t on WordPress.org, so their files are compared with how they were when BetterShield first checked them.',
+					watched.length,
+					'bettershield'
+				),
+				formatCount( watched.length )
+		  )
+		: '';
+	const missedNote = notCompared.length
+		? sprintf(
+				/* translators: %s: how many plugins or WordPress versions could not be compared. */
+				_n( '%s plugin, theme or WordPress version could not be checked.', '%s plugins, themes or WordPress versions could not be checked.', notCompared.length, 'bettershield' ),
+				formatCount( notCompared.length )
+		  )
+		: '';
+	const checkNote = [ watchedNote, missedNote ].filter( Boolean ).join( ' ' );
+
+	const checkCard = (
+		<Card className="bs-ds-files" aria-labelledby="bs-ds-files-title">
+			<CardHead icon="scan-search" title={ __( 'File check', 'bettershield' ) } id="bs-ds-files-title" line>
+				{ mayManage() && ! ( report && report.elsewhere ) ? (
+					// A scan, so it says so the way the audit does.
+					<Button
+						type="secondary"
+						size="sm"
+						icon="refresh-cw"
+						iconTone="1"
+						isBusy={ scanning }
+						disabled={ scanning }
+						onClick={ () => act( '/bettershield/v1/integrity/scan', 'scan', undefined, () => setDriving( true ) ) }
+					>
+						{ scanning && __( 'Checking…', 'bettershield' ) }
+						{ ! scanning && ( parked ? __( 'Continue Check', 'bettershield' ) : __( 'Check Now', 'bettershield' ) ) }
+					</Button>
+				) : null }
+			</CardHead>
+			<div className="bs-ds-files__body">
 				<p className="bs-ds-files__intro">
-					{ __( 'Compares your WordPress and plugin files with the official copies, so you can spot changes you did not make.', 'bettershield' ) }
+					{ __( 'Compares your WordPress and plugin files with the official copies, so you can spot changes you didn’t make.', 'bettershield' ) }
 				</p>
 				{ report && report.elsewhere ? (
 					<p className="bs-ds-files__intro">
@@ -3551,384 +3555,192 @@ export default function Files() {
 					</p>
 				) : null }
 
-				{ /* Freshness beside the control that refreshes it. A screen that
-				     cannot say when it last looked cannot be trusted to say a site
-				     is clean, so the date is at the top of the card rather than
-				     somewhere down the page. */ }
-				<div className="bs-ds-files__state">
-					{ /*
-					   A heading, not a line of text. This is where focus lands
-					   when a row is resolved and the control that had it is gone,
-					   and a screen reader arriving on a paragraph is told nothing
-					   about where it now is.
-					*/ }
-					<h3 className="bs-ds-files__when" ref={ summaryHeading } tabIndex={ -1 }>
-						{ checkState }
-					</h3>
+				{ report.changes_error ? (
+					<div role="alert">
+						<Alert tone="error" desc={ report.changes_error } />
+					</div>
+				) : null }
 
-					{ /*
-					   A bar rather than a spinner. This is the longest thing the
-					   plugin does, and an indeterminate spinner on a multi-minute
-					   job reads as hung — and what somebody does about a hung page
-					   is reload it, which starts the run again. Coarse on purpose:
-					   targets finished only ever goes up, where a percentage
-					   derived from a position inside one target would stall for
-					   whole minutes on a big plugin. Here beside the count it
-					   measures, on a track that does not change length as the
-					   count's wording does.
-					*/ }
-					{ report.running && report.progress && report.progress.targets ? (
-						<div
-							className="bs-ds-files__bar"
-							role="progressbar"
-							aria-valuemin={ 0 }
-							aria-valuemax={ report.progress.targets }
-							aria-valuenow={ report.progress.target }
-							aria-valuetext={ scanProgress( report.progress ) }
-						>
-							<span
-								className="bs-ds-files__bardone"
-								style={ {
-									width: `${ Math.round(
-										( Math.min( report.progress.target, report.progress.targets ) / report.progress.targets ) * 100
-									) }%`,
-								} }
-							/>
-						</div>
-					) : null }
-					{ /* The next check's time is the Last check tile's, just above;
-					     said here too it was the same time twice in one view
-					     (#2820). A running check's progress stays beside its bar. */ }
-					{ report.running ? (
-						<p className="bs-ds-files__next">{ scanProgress( report.progress ) + ( parked ? ' ' + parkedNote( report ) : '' ) }</p>
+				{ core ? (
+					<div role="note">
+						<Alert
+							tone="warning"
+							desc={ sprintf(
+								/* translators: 1: a WordPress version, 2: the changes by kind, e.g. "1 altered". */
+								__( 'WordPress core %1$s: %2$s. Core files are listed first in Changed files.', 'bettershield' ),
+								core.version || __( 'an unknown version', 'bettershield' ),
+								packageCounts( core )
+							) }
+						/>
+					</div>
+				) : null }
+
+				<CheckProgress report={ report } parked={ parked } headingRef={ summaryHeading } />
+
+				{ whyOpen && unverifiable.length ? (
+					<ul className="bs-ds-files__unverifiable" id="bs-ds-files-why">
+						{ unverifiable.map( ( item ) => (
+							<li key={ `${ item.context }:${ item.slug }:${ item.version }:${ item.reason }` }>
+								{ item.slug
+									? sprintf(
+											/* translators: 1: a plugin name, 2: its version. */
+											__( '%1$s %2$s', 'bettershield' ),
+											item.name || item.slug,
+											item.version
+									  )
+									: sprintf(
+											/* translators: %s: a WordPress version. */
+											__( 'WordPress %s', 'bettershield' ),
+											item.version
+									  ) }
+								{ ' — ' }
+								{ item.message }
+							</li>
+						) ) }
+					</ul>
+				) : null }
+			</div>
+		</Card>
+	);
+
+	const reviewPanel = (
+		<>
+			{ /* Narrowed, the count is said as it arrives (announce()), so the
+			     line is not a second live region saying it again. */ }
+			{ filtered || ( column && report.next_cursor ) ? (
+				<div className="bs-ds-fcline">
+					<p role={ filtered ? undefined : 'status' }>
+						{ filtered
+							? sprintf(
+									/* translators: 1: loaded rows, 2: open file changes the filter matches. */
+									_n( 'Showing %1$s of %2$s matching file change.', 'Showing %1$s of %2$s matching file changes.', Number( report.matching ) || 0, 'bettershield' ),
+									formatCount( changes.length ),
+									formatCount( Number( report.matching ) || 0 )
+							  )
+							: sprintf(
+									/* translators: 1: loaded rows, 2: total unresolved file changes at the last read. */
+									__( 'Showing %1$s of %2$s changed files. Files that can be restored come first, then the newest.', 'bettershield' ),
+									formatCount( changes.length ),
+									formatCount( report.open_changes?.total || changes.length )
+							  ) }
+					</p>
+					{ column && report.next_cursor && ! everything && matchingTotal > 0 ? (
+						<Button type="linksub" size="sm" className="bs-ds-btn--inline" isBusy={ isBusy( 'matching' ) } disabled={ isBusy( 'matching' ) } onClick={ selectEverything }>
+							{ sprintf(
+								/* translators: %s: how many open changes match. */
+								__( 'Select All %s Matching Changes', 'bettershield' ),
+								formatCount( matchingTotal )
+							) }
+						</Button>
 					) : null }
 				</div>
+			) : null }
 
-				{ /* Every note in the card, the core one too, inside the one padded
-				   column, so none of them runs to the card's edges (#2467). */ }
-				{ notice || done || ( report.unverifiable && report.unverifiable.length ) || report.changes_error || core ? (
-					<div className="bs-ds-files__notes">
-						{ notice ? (
-							<div role="alert">
-								<Alert layout="default" tone="error" desc={ notice } onDismiss={ () => setNotice( null ) } />
-							</div>
-						) : null }
+			{ column && ! chosen.length && ! everything ? (
+				<div className="bs-ds-fcline">
+					<p>{ __( 'Select files to restore, accept or quarantine them together.', 'bettershield' ) }</p>
+					<Button type="ghost" size="sm" icon="x" iconTone="2" onClick={ doneSelecting }>
+						{ __( 'Done Selecting', 'bettershield' ) }
+					</Button>
+				</div>
+			) : null }
 
-						{ done ? (
-							<div className="bs-ds-files__done" role="status">
-								<Alert
-									layout="default"
-									tone="success"
-									desc={ done }
-									actions={
-										// The adoption's undo, beside the adoption's own
-										// sentence only. Any later outcome replaces the
-										// sentence, and an Undo left beside it read as that
-										// outcome's while it took back the earlier adoption.
-										adopted && adopted.said === done ? (
-											<Button
-												type="secondary"
-												size="sm"
-												isBusy={ isBusy( `package-${ adopted.slug }` ) }
-												disabled={ isBusy( `package-${ adopted.slug }` ) }
-												onClick={ () => withdrawAdoption( adopted ) }
-											>
-												{ __( 'Undo', 'bettershield' ) }
-											</Button>
-										) : null
-									}
-								/>
-							</div>
-						) : null }
+			<div className="bs-ds-fclist" role="table" aria-label={ __( 'File changes', 'bettershield' ) }>
+				{ head() }
+				{ groupChanges( changes ).map( ( group ) => {
+					const look = groupLook( group );
+					const pick = column ? groupPick( group ) : null;
+					const note = groupNote( group, look );
 
-						{ /*
-						   Never let silence read as approval. The lead line says only
-						   that the comparison did not happen — the entries arrive for
-						   more than one reason (nothing published these files to
-						   compare them against, or the location holds more files than
-						   one pass walks), and each carries the server's own sentence
-						   saying which.
-						*/ }
-						{ unverifiable.length ? (
-							<div role="status">
-								<Alert
-									layout="default"
-									tone="info"
-									desc={
-										<>
-											{ /* The gap is always said, its reasons one press away.
-											     A plugin nothing publishes is watched against the copy
-											     first seen, and its changes are listed below: it was
-											     said to be "not compared" with them in view (#1969). */ }
-											{ watched.length ? (
-												<p>
-													{ sprintf(
-														/* translators: %s: how many plugins have no published copy. */
-														_n(
-															'%s plugin isn’t on WordPress.org, so its files are compared with how they were when BetterShield first checked them.',
-															'%s plugins aren’t on WordPress.org, so their files are compared with how they were when BetterShield first checked them.',
-															watched.length,
-															'bettershield'
-														),
-														formatCount( watched.length )
-													) }
-												</p>
-											) : null }
-											<p>
-												{ notCompared.length
-													? sprintf(
-															/* translators: %s: how many plugins or WordPress versions could not be compared. */
-															_n( '%s plugin, theme or WordPress version could not be checked.', '%s plugins, themes or WordPress versions could not be checked.', notCompared.length, 'bettershield' ),
-															formatCount( notCompared.length )
-													  )
-													: null }{ notCompared.length ? ' ' : null }
-												<Button type="linksub" size="sm" className="bs-ds-btn--inline" aria-expanded={ whyOpen } aria-controls={ whyOpen ? 'bs-ds-files-why' : undefined } onClick={ () => setWhyOpen( ( was ) => ! was ) }>
-													{ whyOpen ? __( 'Hide Why', 'bettershield' ) : __( 'Why?', 'bettershield' ) }
-												</Button>
-											</p>
-											{ whyOpen ? (
-											<ul className="bs-ds-files__unverifiable" id="bs-ds-files-why">
-												{ report.unverifiable.map( ( item ) => (
-													<li key={ `${ item.context }:${ item.slug }:${ item.version }:${ item.reason }` }>
-														{ item.slug
-															? sprintf(
-																	/* translators: 1: a plugin name, 2: its version. */
-																	__( '%1$s %2$s', 'bettershield' ),
-																	item.name || item.slug,
-																	item.version
-															  )
-															: sprintf(
-																	/* translators: %s: a WordPress version. */
-																	__( 'WordPress %s', 'bettershield' ),
-																	item.version
-															  ) }
-														{ ' — ' }
-														{ item.message }
-													</li>
-												) ) }
-											</ul>
-											) : null }
-										</>
-									}
-								/>
-							</div>
-						) : null }
-
-						{ report.changes_error ? (
-							<div role="alert">
-								<Alert layout="default" tone="error" desc={ report.changes_error } />
-							</div>
-						) : null }
-
-						{ core ? (
-							<div role="note">
-								<Alert
-									layout="default"
-									tone="warning"
-									desc={ sprintf(
-										/* translators: 1: a WordPress version, 2: the changes by kind, e.g. "1 altered". */
-										__( 'WordPress core %1$s: %2$s. Core files are listed first below.', 'bettershield' ),
-										core.version || __( 'an unknown version', 'bettershield' ),
-										packageCounts( core )
-									) }
-								/>
-							</div>
-						) : null }
-					</div>
-				) : null }
-
-				{ packages.length ? (
-					<section className="bs-ds-files__packages" aria-labelledby="bs-ds-files-packages">
-						<div className="bs-ds-files__section">
-							<h3 className="bs-ds-files__group">
-								{ /* The section is named by these words alone, not
-								     by the count and the ⓘ's own name beside them. */ }
-								<span id="bs-ds-files-packages">{ __( 'Changes grouped by plugin', 'bettershield' ) }</span>
-								<Badge>{ packages.length }</Badge>
-								{ /* The why behind an ⓘ, the one thing to do in sight (#1325). */ }
-								<InfoTip label={ __( 'About plugins by version', 'bettershield' ) }>
-									{ __(
-										'Files that match the official copy again drop off this list. For a plugin that was edited or isn’t on WordPress.org, accept each version once.',
-										'bettershield'
-									) }
-								</InfoTip>
-							</h3>
-							{ mayChangeSharedCode() ? <p className="bs-ds-files__line">{ __( 'Just updated a plugin? Press Check Again so its files are compared with the new version.', 'bettershield' ) }</p> : null }
-						</div>
-						<Table label={ __( 'Changes grouped by plugin', 'bettershield' ) } head={ false } columns={ [ { key: 'package', label: __( 'Plugin', 'bettershield' ) } ] }>
-							{ packages.map( ( pkg ) => (
-								<PackageGroup
-									key={ packageKey( pkg ) }
-									pkg={ pkg }
-									preview={ packagePreview?.key === packageKey( pkg ) ? packagePreview.data : null }
-									busy={ {
-										recheck: isBusy( `recheck-${ packageKey( pkg ) }` ),
-										preview: isBusy( `preview-${ packageKey( pkg ) }` ),
-										expect: isBusy( `package-${ pkg.slug }` ),
-									} }
-									onRecheck={ () => recheckPackage( pkg ) }
-									onPreview={ () => previewPackage( pkg ) }
-									onConfirm={ () => expectPackage( pkg ) }
-									onCancel={ () => setPackagePreview( null ) }
-								/>
-							) ) }
-						</Table>
-					</section>
-				) : null }
-
-				{ /* Narrowed on the site, so every page is narrowed, not only
-				     the rows loaded. Shown once there is something to narrow. */ }
-				{ report.ever_run && ( filtered || report.open_changes?.total > 0 ) ? (
-					<div className="bs-ds-files__filters" role="search" aria-label={ __( 'Filter file changes', 'bettershield' ) }>
-						<label className="bs-ds-files__search">
-							<Icon name="search" size={ 16 } tone="3" />
-							<input
-								ref={ searchField }
-								type="search"
-								value={ typed }
-								maxLength={ 200 }
-								placeholder={ __( 'Search by path', 'bettershield' ) }
-								aria-label={ __( 'Search file changes by path', 'bettershield' ) }
-								onChange={ ( event ) => setTyped( event.target.value ) }
+					return (
+						<div key={ group.key } role="rowgroup" aria-label={ look.label } className="bs-ds-files__rows">
+							<GroupBand
+								icon={ look.icon }
+								label={ look.label }
+								count={ groupCount( group, changes, report ) }
+								pick={ pick ? <Checkbox label={ pick.label } state={ pick.state } onChange={ pick.onChange } /> : null }
 							/>
-						</label>
-						<Field kind="select" width="sm" label={ __( 'Location', 'bettershield' ) } value={ filter.place } options={ filterOptions().place } onChange={ ( place ) => narrow( { place } ) } />
-						<Field kind="select" width="sm" label={ __( 'Type of change', 'bettershield' ) } value={ filter.change_type } options={ filterOptions().change_type } onChange={ ( type ) => narrow( { change_type: type } ) } />
-						<Field kind="select" width="sm" label={ __( 'Severity', 'bettershield' ) } value={ filter.severity } options={ filterOptions().severity } onChange={ ( severity ) => narrow( { severity } ) } />
-						{ filtered || typed ? (
-							<Button type="ghost" size="sm" icon="x" iconTone="2" onClick={ clearFilters }>
-								{ __( 'Clear Filters', 'bettershield' ) }
-							</Button>
-						) : null }
-					</div>
-				) : null }
+							{ rowNote && rowNote.group === group.key ? (
+								<div className="bs-ds-fcnote" role="row">
+									<span key={ rowNote.text } className="bs-ds-files__rownote" role={ 'alert' === rowNote.tone ? 'alert' : 'status' }>
+										<Alert tone={ 'alert' === rowNote.tone ? 'error' : 'success' } desc={ rowNote.text } onDismiss={ () => setRowNote( null ) } />
+									</span>
+								</div>
+							) : null }
+							{ note ? (
+								<div className="bs-ds-fcnote" role="row">
+									<span role="cell">{ note }</span>
+								</div>
+							) : null }
+							{ ( openGroups.has( group.key ) ? group.changes : group.changes.slice( 0, GROUP_SHOWN ) ).map( ( change ) =>
+								'package_mismatch' === change.change_type ? (
+									<PackageRow key={ change.id } change={ change } busy={ isBusy( `package-${ change.slug }` ) } onAdopt={ adoptThisCopy } column={ column } />
+								) : (
+									<FileRow
+										key={ change.id }
+										change={ change }
+										name={ nameOf( change ) }
+										older={ 'older' === look.kind }
+										checked={ report.last_run_at }
+										busy={ isBusy( `change-${ change.id }` ) }
+										column={ column }
+										canPick={ choosing }
+										picked={ Boolean( everything ) || picked.has( change.id ) }
+										onPick={ () => pickChanges( [ change.id ], ! everything && ! picked.has( change.id ) ) }
+										onPickMode={ () => setSelecting( true ) }
+										onRestore={ ( item ) => {
+											// Restoring resolves the row too, so focus has
+											// the same place to go as marking one expected.
+											aimAfter( item.id );
 
-				{ filtered || report.open_changes?.total > changes.length || report.next_cursor ? (
-					<div className="bs-ds-files__showing">
-						{ /* Narrowed, the count is said as it arrives (announce()),
-						     so the line is not a second live region saying it again. */ }
-						<p role={ filtered ? undefined : 'status' }>
-							{ filtered
-								? sprintf(
-										/* translators: 1: loaded rows, 2: open file changes the filter matches. */
-										_n( 'Showing %1$s of %2$s matching file change.', 'Showing %1$s of %2$s matching file changes.', Number( report.matching ) || 0, 'bettershield' ),
-										formatCount( changes.length ),
-										formatCount( Number( report.matching ) || 0 )
-								  )
-								: sprintf(
-										/* translators: 1: loaded rows, 2: total unresolved file changes at the last read. */
-										__( 'Showing %1$s of %2$s changed files. Files that can be restored come first, then the newest.', 'bettershield' ),
-										formatCount( changes.length ),
-										formatCount( report.open_changes?.total || changes.length )
-								  ) }
-						</p>
-						{ choosing && report.next_cursor && ! everything && matchingTotal > 0 ? (
-							<Button type="linksub" size="sm" className="bs-ds-btn--inline" isBusy={ isBusy( 'matching' ) } disabled={ isBusy( 'matching' ) } onClick={ selectEverything }>
-								{ sprintf(
-									/* translators: %s: how many open changes match. */
-									__( 'Select All %s Matching Changes', 'bettershield' ),
-									formatCount( matchingTotal )
-								) }
-							</Button>
-						) : null }
-					</div>
-				) : null }
+											return act(
+												`/bettershield/v1/integrity/changes/${ item.id }/restore`,
+												`change-${ item.id }`,
+												__( 'The official file is restored. Your old version is in the In quarantine tab, where you can put it back.', 'bettershield' ),
+												loadQuarantine,
+												{
+													group: groupOf( item.id ),
+													said: sprintf(
+														/* translators: %s: the file's path. */
+														__( 'Restored: %s. Your old version is in the In quarantine tab, where you can put it back.', 'bettershield' ),
+														item.path
+													),
+												}
+											);
+										} }
+										onSuppress={ acceptChange }
+										onQuarantine={ ( item ) => {
+											aimAfter( item.id );
 
-				{ changes.length || empty || batches.length || suppressed.length || foot ? (
-					<Table
-						label={ __( 'File changes', 'bettershield' ) }
-						className="bs-ds-files__table bs-ds-tbl--grouped"
-						columns={ [
-							...( choosing ? [ selectColumn() ] : [] ),
-							{ key: 'severity', label: __( 'Severity', 'bettershield' ), width: '112px' },
-							// The path keeps room to be read: once it is down to its floor,
-							// a changed file's three buttons wrap in their cell rather than
-							// take it (#2555). With room to spare they stay on one line.
-							{ key: 'change', label: __( 'Change', 'bettershield' ), width: 'minmax(220px, 1fr)' },
-							{ key: 'actions', label: __( 'Actions', 'bettershield' ), width: 'auto', align: 'end' },
-						] }
-					>
-						{ groupChanges( changes ).map( ( group ) => (
-							<div key={ group.key } role="rowgroup" aria-label={ group.label } className="bs-ds-files__rows">
-								<GroupHead label={ group.label } count={ groupCount( group, changes, report ) } pick={ groupPick( group ) } />
-								{ rowNote && rowNote.group === group.key ? (
-									<WholeRow kind="note">
-										<span key={ rowNote.text } className="bs-ds-files__rownote" role={ 'alert' === rowNote.tone ? 'alert' : 'status' }>
-											<Alert layout="default" tone={ 'alert' === rowNote.tone ? 'error' : 'success' } desc={ rowNote.text } onDismiss={ () => setRowNote( null ) } />
-										</span>
-									</WholeRow>
-								) : null }
-								{ group.note ? <WholeRow kind="note">{ group.note }</WholeRow> : null }
-								{ ( openGroups.has( group.key ) ? group.changes : group.changes.slice( 0, GROUP_SHOWN ) ).map( ( change ) =>
-									'package_mismatch' === change.change_type ? (
-										<PackageRow
-											key={ change.id }
-											change={ change }
-											busy={ isBusy( `package-${ change.slug }` ) }
-											onAdopt={ adoptThisCopy }
-											column={ choosing }
-										/>
-									) : (
-										<FileRow
-											key={ change.id }
-											change={ change }
-											sharedWhy={ null !== group.note && group.note === change.why_not }
-											busy={ isBusy( `change-${ change.id }` ) }
-											column={ choosing }
-											picked={ Boolean( everything ) || picked.has( change.id ) }
-											onPick={ () => pickChanges( [ change.id ], ! everything && ! picked.has( change.id ) ) }
-											onRestore={ ( item ) => {
-												// Restoring resolves the row too, so focus has
-												// the same place to go as marking one expected.
-												aimAfter( item.id );
-
-												return act(
-													`/bettershield/v1/integrity/changes/${ item.id }/restore`,
-													`change-${ item.id }`,
-													__( 'The official file is restored. Your old version is in Quarantine below, where you can put it back.', 'bettershield' ),
-													loadQuarantine,
-													{
-														group: groupOf( item.id ),
-														said: sprintf(
-															/* translators: %s: the file's path. */
-															__( 'Restored: %s. Your old version is in Quarantine below, where you can put it back.', 'bettershield' ),
-															item.path
-														),
-													}
-												);
-											} }
-											onSuppress={ acceptChange }
-											onQuarantine={ ( item ) => {
-												aimAfter( item.id );
-
-												return act(
-													`/bettershield/v1/integrity/changes/${ item.id }/quarantine`,
-													`change-${ item.id }`,
-													__( 'File moved to quarantine. To undo, use Put This File Back in the Quarantine list below.', 'bettershield' ),
-													loadQuarantine,
-													{
-														group: groupOf( item.id ),
-														said: sprintf(
-															/* translators: %s: the file's path. */
-															__( 'Moved to quarantine: %s. You can put it back from the Quarantine list below.', 'bettershield' ),
-															item.path
-														),
-													}
-												);
-											} }
-										/>
-									)
-								) }
-								{ /* The rest of a long group waits behind one control, so
-								     the next group is a scroll away rather than a
-								     hundred rows away. */ }
-								{ group.changes.length > GROUP_SHOWN ? (
-									<WholeRow kind="foot">
+											return act(
+												`/bettershield/v1/integrity/changes/${ item.id }/quarantine`,
+												`change-${ item.id }`,
+												__( 'File moved to quarantine. To undo, use Put This File Back in the In quarantine tab.', 'bettershield' ),
+												loadQuarantine,
+												{
+													group: groupOf( item.id ),
+													said: sprintf(
+														/* translators: %s: the file's path. */
+														__( 'Moved to quarantine: %s. You can put it back from the In quarantine tab.', 'bettershield' ),
+														item.path
+													),
+												}
+											);
+										} }
+									/>
+								)
+							) }
+							{ /* The rest of a long group waits behind one control, so
+							     the next group is a scroll away rather than a
+							     hundred rows away. */ }
+							{ group.changes.length > GROUP_SHOWN ? (
+								<div className="bs-ds-fcmore" role="row">
+									<span role="cell">
 										<Button
 											type="ghost"
 											size="sm"
 											trailing={ openGroups.has( group.key ) ? 'chevron-up' : 'chevron-down' }
-											trailingTone="3"
+											trailingTone="2"
 											aria-expanded={ openGroups.has( group.key ) }
 											onClick={ () => toggleGroup( group.key ) }
 										>
@@ -3950,209 +3762,160 @@ export default function Files() {
 														formatCount( group.changes.length )
 												  ) }
 										</Button>
-									</WholeRow>
-								) : null }
-							</div>
-						) ) }
-
-						{ empty ? (
-							<WholeRow kind="empty">
-								<span className="bs-ds-files__empty">
-									<span className="bs-ds-files__emptytitle">{ empty[ 0 ] }</span> { empty[ 1 ] }
-								</span>
-							</WholeRow>
-						) : null }
-
-						{ batches.length ? (
-							<div role="rowgroup" aria-label={ __( 'Accepted in bulk', 'bettershield' ) } className="bs-ds-files__rows">
-								<GroupHead label={ __( 'Accepted in bulk', 'bettershield' ) } count={ batchesTotal } />
-								<WholeRow kind="note">
-									{ __( 'Show a group in the list again to bring back the changes it accepted.', 'bettershield' ) }
-								</WholeRow>
-								{ batches.map( ( batch ) => (
-									<Row key={ batch.undo } className="bs-ds-files__batch">
-										<SelectCell column={ choosing } />
-										<Cell />
-										<Cell>
-											<TitleMeta
-												title={
-													// A selection names no version: its name says what it is.
-													batch.version
-														? sprintf(
-																/* translators: 1: a plugin name, 2: its version. */
-																__( '%1$s %2$s', 'bettershield' ),
-																batch.name,
-																batch.version
-														  )
-														: batch.name
-												}
-												meta={ sprintf(
-													/* translators: 1: number of changes, 2: when, e.g. "today, 2:14 PM". */
-													_n( '%1$s change, accepted %2$s', '%1$s changes, accepted %2$s', batch.count, 'bettershield' ),
-													formatCount( batch.count ),
-													whenPhrase( batch.at )
-												) }
-											/>
-										</Cell>
-										<Cell align="end">
-											{ mayChangeSharedCode() ? (
-												<Button
-													type="secondary"
-													size="sm"
-													isBusy={ isBusy( `batch-${ batch.undo }` ) }
-													disabled={ isBusy( `batch-${ batch.undo }` ) }
-													onClick={ () => unmarkBatch( batch ) }
-												>
-													{ __( 'Show in List Again', 'bettershield' ) }
-												</Button>
-											) : null }
-										</Cell>
-									</Row>
-								) ) }
-								{ report.batches_next ? (
-									<WholeRow
-										kind="foot"
-										aside={
-											<Button
-												type="secondary"
-												size="sm"
-												isBusy={ isBusy( 'more-batches' ) }
-												disabled={ isBusy( 'more-batches' ) }
-												onClick={ moreBatches }
-											>
-												{ __( 'Show More Groups', 'bettershield' ) }
-											</Button>
-										}
-									>
-										{ sprintf(
-											/* translators: 1: groups listed so far, 2: groups marked expected in all. */
-											__( 'Showing %1$s of %2$s.', 'bettershield' ),
-											formatCount( batches.length ),
-											formatCount( batchesTotal )
-										) }
-									</WholeRow>
-								) : null }
-							</div>
-						) : null }
-
-						{ suppressed.length ? (
-							<div role="rowgroup" aria-label={ __( 'Accepted changes', 'bettershield' ) } className="bs-ds-files__rows">
-								<GroupHead label={ __( 'Accepted changes', 'bettershield' ) } count={ expectedTotal } />
-								<WholeRow kind="note">
-									{ __( 'Changes you accepted. They come back only if the file changes again.', 'bettershield' ) }
-								</WholeRow>
-
-								{ expectedOpen
-									? suppressed.map( ( change ) => (
-											<Row key={ change.id } className="bs-ds-filerow">
-												<SelectCell column={ choosing } />
-												<Cell />
-												<Cell>
-													<TitleMeta title={ <Path path={ change.path } /> } meta={ changeLabel( change.change_type ) } />
-												</Cell>
-												<Cell align="end">
-													{ mayChangeSharedCode() ? (
-														<Button
-															type="secondary"
-															size="sm"
-															isBusy={ isBusy( `change-${ change.id }` ) }
-															disabled={ isBusy( `change-${ change.id }` ) }
-															aria-label={ sprintf(
-																/* translators: %s: a file path. */
-																__( 'Show %s in the list again', 'bettershield' ),
-																change.path
-															) }
-															onClick={ () => stopExpecting( change ) }
-														>
-															{ __( 'Show in List Again', 'bettershield' ) }
-														</Button>
-													) : null }
-												</Cell>
-											</Row>
-									  ) )
-									: null }
-
-								{ expectedOpen && report.suppressed_next ? (
-									<WholeRow
-										kind="foot"
-										aside={
-											<Button
-												type="secondary"
-												size="sm"
-												isBusy={ isBusy( 'more-expected' ) }
-												disabled={ isBusy( 'more-expected' ) }
-												onClick={ moreExpected }
-											>
-												{ __( 'Show More Files', 'bettershield' ) }
-											</Button>
-										}
-									>
-										{ sprintf(
-											/* translators: 1: files listed so far, 2: files marked expected in all. */
-											__( 'Showing %1$s of %2$s.', 'bettershield' ),
-											formatCount( suppressed.length ),
-											formatCount( expectedTotal )
-										) }
-									</WholeRow>
-								) : null }
-
-								<WholeRow kind="foot">
-									<Button
-										type="ghost"
-										size="sm"
-										trailing={ expectedOpen ? 'chevron-up' : 'chevron-down' }
-										trailingTone="3"
-										aria-expanded={ expectedOpen }
-										onClick={ () => setExpectedOpen( ! expectedOpen ) }
-									>
-										{ expectedOpen
-											? __( 'Hide Them', 'bettershield' )
-											: sprintf(
-													/* translators: %s: number of files marked expected. */
-													_n( 'Show the %s File', 'Show All %s Files', expectedTotal, 'bettershield' ),
-													formatCount( expectedTotal )
-											  ) }
-									</Button>
-								</WholeRow>
-							</div>
-						) : null }
-
-						{ foot ? (
-							<WholeRow
-								kind="foot"
-								aside={
-									report.next_cursor ? (
-										<Button
-											type="secondary"
-											size="sm"
-											isBusy={ isBusy( 'more-changes' ) }
-											disabled={ isBusy( 'more-changes' ) }
-											onClick={ moreChanges }
-										>
-											{ __( 'Load Older Changes', 'bettershield' ) }
-										</Button>
-									) : null
-								}
-							>
-								{ compared ? (
-									<span className="bs-ds-files__compared">
-										{ sprintf(
-											/* translators: %s: number of files compared. */
-											_n( '%s file compared.', '%s files compared.', report.stats.checked, 'bettershield' ),
-											formatCount( report.stats.checked )
-										) }{ ' ' }
-										{ mayChangeSharedCode() ? __( 'When you restore a file, the old version is kept in quarantine below.', 'bettershield' ) : null }
 									</span>
-								) : null }
-							</WholeRow>
-						) : null }
-					</Table>
+								</div>
+							) : null }
+						</div>
+					);
+				} ) }
+
+				{ empty ? (
+					<div className="bs-ds-fcempty" role="row">
+						<span role="cell">
+							<span className="bs-ds-fcempty__title">{ empty[ 0 ] }</span> { empty[ 1 ] }
+						</span>
+					</div>
 				) : null }
+			</div>
 
-				{ dockFor( 'changes', everything && choosing ? everythingBar( everything ) : chosen.length ? changeBar( chosen ) : null, __( 'Selected file changes', 'bettershield' ) ) }
-			</Card>
+			{ dockFor( 'changes', everything && choosing ? everythingBar( everything ) : chosen.length ? changeBar( chosen ) : null, __( 'Selected file changes', 'bettershield' ) ) }
+		</>
+	);
 
-			<Quarantined
+	const acceptedPanel = (
+		<div className="bs-ds-fclist" role="table" aria-label={ __( 'Accepted changes', 'bettershield' ) }>
+			{ head() }
+			{ batches.length ? (
+				<div role="rowgroup" aria-label={ __( 'Accepted in bulk', 'bettershield' ) } className="bs-ds-files__rows">
+					<GroupBand icon="package" label={ __( 'Accepted in bulk', 'bettershield' ) } count={ batchesTotal } />
+					{ batches.map( ( batch ) => (
+						<div key={ batch.undo } className="bs-ds-fcrow bs-ds-files__batch" role="rowgroup">
+							<div className={ `bs-ds-fcrow__summary${ column ? ' bs-ds-fcrow__summary--pick' : '' }` } role="row">
+								<SelectCell column={ column } />
+								<span className="bs-ds-fcrow__slot" aria-hidden="true" />
+								<span className="bs-ds-fcrow__file" role="cell">
+									<span className="bs-ds-fcrow__name">
+										{ /* A selection names no version: its name says what it is. */ }
+										{ batch.version
+											? sprintf(
+													/* translators: 1: a plugin name, 2: its version. */
+													__( '%1$s %2$s', 'bettershield' ),
+													batch.name,
+													batch.version
+											  )
+											: batch.name }
+									</span>
+									<span className="bs-ds-fcrow__meta">
+										{ sprintf(
+											/* translators: 1: number of changes, 2: when, e.g. "today, 2:14 PM". */
+											_n( '%1$s change, accepted %2$s', '%1$s changes, accepted %2$s', batch.count, 'bettershield' ),
+											formatCount( batch.count ),
+											whenPhrase( batch.at )
+										) }
+									</span>
+								</span>
+								<span role="cell" />
+								<span className="bs-ds-fcrow__actions" role="cell">
+									{ mayChangeSharedCode() ? (
+										<Button type="ghost" size="sm" icon="undo-2" iconTone="1" isBusy={ isBusy( `batch-${ batch.undo }` ) } disabled={ isBusy( `batch-${ batch.undo }` ) } onClick={ () => unmarkBatch( batch ) }>
+											{ __( 'Show in List Again', 'bettershield' ) }
+										</Button>
+									) : null }
+								</span>
+							</div>
+						</div>
+					) ) }
+					{ report.batches_next ? (
+						<div className="bs-ds-fcmore" role="row">
+							<span role="cell">
+								<Button type="ghost" size="sm" trailing="chevron-down" trailingTone="2" isBusy={ isBusy( 'more-batches' ) } disabled={ isBusy( 'more-batches' ) } onClick={ moreBatches }>
+									{ sprintf(
+										/* translators: 1: groups listed so far, 2: groups marked expected in all. */
+										__( 'Show More Groups (%1$s of %2$s)', 'bettershield' ),
+										formatCount( batches.length ),
+										formatCount( batchesTotal )
+									) }
+								</Button>
+							</span>
+						</div>
+					) : null }
+				</div>
+			) : null }
+
+			{ suppressed.length ? (
+				<div role="rowgroup" aria-label={ __( 'Accepted changes', 'bettershield' ) } className="bs-ds-files__rows">
+					<GroupBand icon="check" label={ __( 'Accepted one at a time', 'bettershield' ) } count={ expectedTotal } />
+					{ suppressed.map( ( change ) => (
+						<div key={ change.id } className="bs-ds-fcrow" role="rowgroup">
+							<div className={ `bs-ds-fcrow__summary bs-ds-filerow${ column ? ' bs-ds-fcrow__summary--pick' : '' }` } role="row">
+								<SelectCell column={ column } />
+								<span className="bs-ds-fcrow__slot" aria-hidden="true" />
+								<span className="bs-ds-fcrow__file" role="cell">
+									<span className="bs-ds-fcrow__name" title={ change.path }>
+										{ fileName( change.path ) }
+									</span>
+									<span className="bs-ds-fcrow__meta">
+										<span className="screen-reader-text">{ change.path } </span>
+										{ [ changeLabel( change.change_type ), nameOf( change ), folderOf( change ) ].filter( Boolean ).join( ' · ' ) }
+									</span>
+								</span>
+								<span role="cell">
+									<SeverityMeter severity={ changeSeverity( change.change_type, change.severity ) } />
+								</span>
+								<span className="bs-ds-fcrow__actions" role="cell">
+									{ mayChangeSharedCode() ? (
+										<Button
+											type="ghost"
+											size="sm"
+											icon="undo-2"
+											iconTone="1"
+											isBusy={ isBusy( `change-${ change.id }` ) }
+											disabled={ isBusy( `change-${ change.id }` ) }
+											aria-label={ sprintf(
+												/* translators: %s: a file path. */
+												__( 'Show %s in the list again', 'bettershield' ),
+												change.path
+											) }
+											onClick={ () => stopExpecting( change ) }
+										>
+											{ __( 'Show in List Again', 'bettershield' ) }
+										</Button>
+									) : null }
+								</span>
+							</div>
+						</div>
+					) ) }
+					{ report.suppressed_next ? (
+						<div className="bs-ds-fcmore" role="row">
+							<span role="cell">
+								<Button type="ghost" size="sm" trailing="chevron-down" trailingTone="2" isBusy={ isBusy( 'more-expected' ) } disabled={ isBusy( 'more-expected' ) } onClick={ moreExpected }>
+									{ sprintf(
+										/* translators: 1: files listed so far, 2: files marked expected in all. */
+										__( 'Show More Files (%1$s of %2$s)', 'bettershield' ),
+										formatCount( suppressed.length ),
+										formatCount( expectedTotal )
+									) }
+								</Button>
+							</span>
+						</div>
+					) : null }
+				</div>
+			) : null }
+
+			{ ! batches.length && ! suppressed.length ? (
+				<div className="bs-ds-fcempty" role="row">
+					<span role="cell">
+						<span className="bs-ds-fcempty__title">{ __( 'No accepted changes.', 'bettershield' ) }</span>{ ' ' }
+						{ __( 'Changes you accept are listed here, and come back only if the file changes again.', 'bettershield' ) }
+					</span>
+				</div>
+			) : null }
+		</div>
+	);
+
+	const quarantinePanel = (
+		<>
+			<QuarantineRows
 				items={ quarantined }
 				note={ quarantineNote }
 				hasMore={ quarantineMore }
@@ -4162,11 +3925,162 @@ export default function Files() {
 				onDownload={ downloadQuarantined }
 				onPutBack={ putBackQuarantined }
 				onDelete={ deleteQuarantined }
-				column={ choosing }
+				column={ column }
+				canPick={ choosing }
+				onPickMode={ () => setSelecting( true ) }
 				picked={ pickedKept }
 				onPick={ pickKept }
-				dock={ dockFor( 'kept', keptChosen.length ? keptBar( keptChosen ) : null, __( 'Selected copies', 'bettershield' ) ) }
 			/>
+			{ dockFor( 'kept', keptChosen.length ? keptBar( keptChosen ) : null, __( 'Selected copies', 'bettershield' ) ) }
+		</>
+	);
+
+	const footNotes = {
+		review: compared
+			? sprintf(
+					/* translators: %s: number of files compared. */
+					_n( '%s file compared.', '%s files compared.', report.stats.checked, 'bettershield' ),
+					formatCount( report.stats.checked )
+			  ) + ( mayChangeSharedCode() ? ' ' + __( 'When you restore a file, your version is kept in quarantine, so nothing is lost.', 'bettershield' ) : '' )
+			: __( 'When you restore a file, your version is kept in quarantine, so nothing is lost.', 'bettershield' ),
+		accepted: __( 'An accepted change comes back only if its file changes again.', 'bettershield' ),
+		quarantine: __( 'Visitors can’t open files kept here. You can put each one back.', 'bettershield' ),
+	};
+
+	return (
+		<>
+			{ finished ? (
+				<div role="status">
+					<Alert
+						tone="success"
+						title={ __( 'Check finished', 'bettershield' ) }
+						desc={
+							finished.matched
+								? sprintf(
+										/* translators: 1: files that match their official copy again, 2: files that still differ. */
+										_n( '%1$s file now matches, so it’s off the list. %2$s still don’t match.', '%1$s files now match, so they’re off the list. %2$s still don’t match.', finished.matched, 'bettershield' ),
+										formatCount( finished.matched ),
+										formatCount( finished.still )
+								  )
+								: sprintf(
+										/* translators: %s: files that still differ from their official copies. */
+										_n( '%s file doesn’t match its official copy.', '%s files don’t match their official copies.', finished.still, 'bettershield' ),
+										formatCount( finished.still )
+								  )
+						}
+						onDismiss={ () => setFinished( null ) }
+					/>
+				</div>
+			) : null }
+
+			{ notice ? (
+				<div role="alert">
+					<Alert tone="error" desc={ notice } onDismiss={ () => setNotice( null ) } />
+				</div>
+			) : null }
+
+			{ done ? (
+				<div className="bs-ds-files__done" role="status">
+					<Alert
+						tone="success"
+						desc={ done }
+						onDismiss={ () => setDone( null ) }
+						actions={
+							// The adoption's undo, beside the adoption's own sentence only.
+							adopted && adopted.said === done ? (
+								<Button type="secondary" size="sm" isBusy={ isBusy( `package-${ adopted.slug }` ) } disabled={ isBusy( `package-${ adopted.slug }` ) } onClick={ () => withdrawAdoption( adopted ) }>
+									{ __( 'Undo', 'bettershield' ) }
+								</Button>
+							) : null
+						}
+					/>
+				</div>
+			) : null }
+
+			<FilesGlance report={ report } changes={ changes } quarantined={ quarantined } quarantineMore={ quarantineMore } quarantineRead={ quarantineRead } parked={ parked } />
+
+			{ checkNote ? (
+				<Tray
+					icon="info"
+					wrap
+					note={ checkNote }
+					action={
+						<Button type="linksub" size="sm" className="bs-ds-t12" aria-expanded={ whyOpen } aria-controls={ whyOpen ? 'bs-ds-files-why' : undefined } onClick={ () => setWhyOpen( ( was ) => ! was ) }>
+							{ whyOpen ? __( 'Hide Why', 'bettershield' ) : __( 'Why?', 'bettershield' ) }
+						</Button>
+					}
+				>
+					{ checkCard }
+				</Tray>
+			) : (
+				checkCard
+			) }
+
+			{ packages.length || ( core && core.total ) ? (
+				<Tray
+					icon="info"
+					wrap
+					note={ mayChangeSharedCode() ? __( 'Just updated a plugin? Check its files again so they’re compared with the version installed now.', 'bettershield' ) : __( 'Each plugin’s files are compared with the official copy of its version.', 'bettershield' ) }
+					action={
+						mayChangeSharedCode() && packages.some( ( pkg ) => 'theme' !== pkg.context ) ? (
+							<Button type="subtle" size="sm" icon="refresh-cw" iconTone="1" isBusy={ isBusy( 'recheck-all' ) } disabled={ isBusy( 'recheck-all' ) } onClick={ recheckAll }>
+								{ __( 'Check All Plugins Again', 'bettershield' ) }
+							</Button>
+						) : null
+					}
+				>
+					<Card className="bs-ds-files__packages" aria-labelledby="bs-ds-files-packages">
+						<CardHead icon="package" title={ __( 'Changes by plugin', 'bettershield' ) } id="bs-ds-files-packages" line>
+							<Badge>{ formatCount( packages.length + ( core && core.total ? 1 : 0 ) ) }</Badge>
+						</CardHead>
+						<PluginTable packages={ packages } core={ core } canAct={ mayChangeSharedCode() } busy={ isBusy } keyOf={ packageKey } onRecheck={ recheckPackage } onReview={ previewPackage } />
+					</Card>
+				</Tray>
+			) : null }
+
+			{ packagePreview ? (
+				<AcceptDialog
+					pkg={ packagePreview.pkg || packages.find( ( pkg ) => packageKey( pkg ) === packagePreview.key ) || {} }
+					preview={ packagePreview.data }
+					busy={ isBusy( `package-${ packagePreview.data.slug }` ) }
+					onConfirm={ () => expectPackage( packagePreview.pkg || packages.find( ( pkg ) => packageKey( pkg ) === packagePreview.key ) ) }
+					onCancel={ () => setPackagePreview( null ) }
+				/>
+			) : null }
+
+			<Tray
+				icon="info"
+				wrap
+				note={ footNotes[ tab ] }
+				action={
+					'review' === tab && report.next_cursor ? (
+						<Button type="secondary" size="sm" isBusy={ isBusy( 'more-changes' ) } disabled={ isBusy( 'more-changes' ) } onClick={ moreChanges }>
+							{ __( 'Load Older Changes', 'bettershield' ) }
+						</Button>
+					) : null
+				}
+			>
+				<Card className="bs-ds-files__changes" aria-labelledby="bs-ds-files-changes">
+					<CardHead icon="file" title={ __( 'Changed files', 'bettershield' ) } id="bs-ds-files-changes" line />
+					<Tabs
+						id="bs-ds-files-tabs"
+						label={ __( 'Changed files', 'bettershield' ) }
+						selected={ tab }
+						onSelect={ setTab }
+						tabs={ [
+							{ key: 'review', label: __( 'To review', 'bettershield' ), count: Number( report.open_changes?.total ) || changes.length },
+							{ key: 'accepted', label: __( 'Accepted', 'bettershield' ), count: expectedTotal + batchesTotal },
+							{ key: 'quarantine', label: __( 'In quarantine', 'bettershield' ), count: 'error' === quarantineRead ? '—' : quarantineMore ? `${ quarantined.length }+` : quarantined.length },
+						] }
+						actions={ filters }
+					/>
+					<div { ...panelProps( 'bs-ds-files-tabs', tab ) } className="bs-ds-files__panel">
+						{ 'review' === tab ? reviewPanel : null }
+						{ 'accepted' === tab ? acceptedPanel : null }
+						{ 'quarantine' === tab ? quarantinePanel : null }
+					</div>
+				</Card>
+			</Tray>
 		</>
 	);
 }

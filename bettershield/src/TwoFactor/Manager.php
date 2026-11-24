@@ -190,6 +190,50 @@ final class Manager {
 	}
 
 	/**
+	 * Who on this site signs in with BetterShield's two-factor: how many
+	 * accounts, and the roles they hold here.
+	 *
+	 * The screen's own card says only whether the person looking has it, so
+	 * accounts brought over from another plugin, or set up by their owners,
+	 * were invisible to the administrator who handed two-factor over: the
+	 * screen read "Off" while they signed in with a code. Counted once per
+	 * request from the secret's meta key, scoped to this site's users.
+	 *
+	 * @return array{accounts: int, roles: string[]}
+	 */
+	public function in_use(): array {
+		$ids = get_users(
+			array(
+				'blog_id'  => get_current_blog_id(),
+				'fields'   => 'ID',
+				'meta_key' => self::META_SECRET, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- one indexed key, read on the settings screen only.
+				'number'   => -1,
+			)
+		);
+
+		$accounts = 0;
+		$roles    = array();
+
+		foreach ( (array) $ids as $id ) {
+			if ( ! $this->enabled( (int) $id ) ) {
+				continue;
+			}
+
+			++$accounts;
+			$user = get_userdata( (int) $id );
+
+			foreach ( $user instanceof \WP_User ? (array) $user->roles : array() as $role ) {
+				$roles[ (string) $role ] = true;
+			}
+		}
+
+		return array(
+			'accounts' => $accounts,
+			'roles'    => array_keys( $roles ),
+		);
+	}
+
+	/**
 	 * @return array{enabled: bool, pending: bool, confirmed: bool, backup_remaining: int, password_turn_off: bool}
 	 */
 	public function status( int $user_id ): array {
@@ -220,12 +264,18 @@ final class Manager {
 		// Another plugin's two-factor already covers this account, and the
 		// gate stands aside for it: a second one here would never be asked
 		// for (#3022).
-		if ( ! $this->enabled( $user->ID ) && '' !== \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user ) ) {
-			return new \WP_Error(
-				'bettershield_2fa_elsewhere',
-				__( 'Another security plugin handles two-factor for this account here. Use it there, or ask your administrator.', 'bettershield' ),
-				array( 'status' => 409 )
-			);
+		$elsewhere = $this->enabled( $user->ID ) ? '' : \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user );
+
+		if ( '' !== $elsewhere ) {
+			// Named, and for whoever runs the site the way to change it,
+			// rather than "ask your administrator" said to the administrator (#3064).
+			$message = user_can( $user, \BetterShield\Capabilities::MANAGE )
+				/* translators: %s: the name of another security plugin. */
+				? __( 'Your two-factor is set up in %s on this site. Use it there, or choose BetterShield for two-factor in Quick Setup.', 'bettershield' )
+				/* translators: %s: the name of another security plugin. */
+				: __( 'Your two-factor is set up in %s on this site. Use it there, or ask your administrator.', 'bettershield' );
+
+			return new \WP_Error( 'bettershield_2fa_elsewhere', sprintf( $message, $elsewhere ), array( 'status' => 409 ) );
 		}
 
 		// Re-enrolling replaces the secret and the backup codes. On an

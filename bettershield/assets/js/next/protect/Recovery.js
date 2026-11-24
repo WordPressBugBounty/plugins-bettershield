@@ -128,7 +128,7 @@ function RecoverySummary( { data } ) {
 	return <Stats label={ __( 'Recovery at a glance', 'bettershield' ) } tiles={ tiles } />;
 }
 
-export function RecoveryLink( { exists, mailed, receipt = '' } ) {
+export function RecoveryLink( { exists, mailed, receipt = '', state = '' } ) {
 	const { generateRecovery, confirmRecoveryReceived, busy } = useStore();
 	const confirming = isWorking( busy, 'recovery-received' );
 	const [ url, setUrl ] = useState( null );
@@ -163,7 +163,8 @@ export function RecoveryLink( { exists, mailed, receipt = '' } ) {
 		);
 
 	// Whether the line saying where the link stands is one to act on.
-	const needsAction = ! exists || false === mailed;
+	const expired = exists && 'expired' === state;
+	const needsAction = ! exists || false === mailed || expired;
 
 	/*
 	 * Worded by what is on record about the link, not by how the plugin was
@@ -175,6 +176,9 @@ export function RecoveryLink( { exists, mailed, receipt = '' } ) {
 
 	if ( ! exists ) {
 		standing = __( 'No link exists yet.', 'bettershield' );
+	} else if ( expired ) {
+		// Refused past its date, so the calm line read as a way in that wasn't (#3059).
+		standing = __( 'The link has expired and no longer works. Generate a new one and store it now.', 'bettershield' );
 	} else if ( false === mailed ) {
 		standing = __(
 			'The link’s email could not be sent. Generate a new one and store it now. This cancels the old one.',
@@ -257,7 +261,10 @@ export function RecoveryLink( { exists, mailed, receipt = '' } ) {
 			{ /* The emailed link counts as a way back in only once the owner
 			     says the email arrived; nothing else on any screen asked
 			     (#2629). */ }
-			{ ! url && 'pending' === receipt && false !== mailed ? (
+			{ /* Only for a link that was emailed: asked of one shown once and
+			     never sent, it asked the owner to confirm an email that
+			     didn't exist (#3059). */ }
+			{ ! url && 'pending' === receipt && true === mailed && ! expired ? (
 				<div className="bs-ds-wayback__state">
 					<Alert
 						layout="default"
@@ -561,7 +568,7 @@ function WayBackIn( { data } ) {
 				</Badge>
 			}
 		>
-			<RecoveryLink exists={ data.recovery_link_exists } mailed={ data.recovery_link_mailed } receipt={ data.recovery_receipt || '' } />
+			<RecoveryLink exists={ data.recovery_link_exists } mailed={ data.recovery_link_mailed } receipt={ data.recovery_receipt || '' } state={ link } />
 			<RecoveryCodes remaining={ data.recovery_codes_left } issued={ Boolean( data.recovery_codes_issued ) } />
 		</SettingsCard>
 	);

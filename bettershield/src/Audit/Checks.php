@@ -1712,6 +1712,14 @@ final class Checks {
 				// out warns on every overview and every findings read.
 				'hardening_item' => null,
 				'title'      => static function (): string {
+					// Past its date it is already refused, so "close to
+					// expiring" told the owner they had time they didn't (#3059).
+					if ( RecoveryLink::expired() ) {
+						return self::passkey_only_in_effect()
+							? __( 'The recovery link has expired, and passwords are switched off', 'bettershield' )
+							: __( 'The recovery link has expired', 'bettershield' );
+					}
+
 					return self::passkey_only_in_effect()
 						? __( 'The recovery link is close to expiring, and passwords are switched off', 'bettershield' )
 						: __( 'The recovery link is close to expiring', 'bettershield' );
@@ -1812,9 +1820,9 @@ final class Checks {
 
 			'lockouts_not_running'  => array(
 				'group'          => Areas::ACCESS,
-				'title'          => __( 'BetterShield can’t tell your visitors apart, so it can’t stop one person guessing passwords', 'bettershield' ),
+				'title'          => __( 'BetterShield can’t tell your visitors apart, so it may not stop one person guessing passwords, or may lock everyone out', 'bettershield' ),
 				'severity'       => 'high',
-				'why'            => __( 'Your host or CDN hides each visitor’s real address. So BetterShield either can’t block whoever keeps getting passwords wrong, or blocks everyone sharing that address, you included.', 'bettershield' ),
+				'why'            => __( 'Your host or CDN hides each visitor’s real address, so BetterShield either can’t block whoever keeps getting passwords wrong, or blocks everyone sharing that address, you included.', 'bettershield' ),
 				'break_note'     => __( 'Press Fix and tell BetterShield which service sits in front of your site, such as Cloudflare. Your host can give you the details.', 'bettershield' ),
 				'hardening_item' => null,
 				'test'           => static function (): ?array {

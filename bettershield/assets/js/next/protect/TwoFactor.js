@@ -498,12 +498,45 @@ function TwoFactorCard( { status, onDone } ) {
 		}
 	}, [ status.enabled ] );
 
+	/*
+	 * Another security plugin has two-factor set up for this account, and
+	 * the server refuses a second one here: the card says where it is rather
+	 * than offering a setup that cannot finish (#3064).
+	 */
+	const elsewhere = ! status.enabled && status.elsewhere ? String( status.elsewhere ) : '';
+
+	let badge = <Badge>{ __( 'Off', 'bettershield' ) }</Badge>;
+
+	if ( status.enabled ) {
+		badge = <Badge tone="brand">{ __( 'On', 'bettershield' ) }</Badge>;
+	} else if ( elsewhere ) {
+		badge = <Badge tone="brand">{ __( 'On elsewhere', 'bettershield' ) }</Badge>;
+	}
+
+	let body = <Enrollment onDone={ onDone } />;
+
+	if ( status.enabled ) {
+		body = <Enabled status={ status } onDone={ onDone } />;
+	} else if ( elsewhere ) {
+		body = (
+			<div className="bs-ds-2fa__body">
+				<p className="bs-ds-2fa__lead">
+					{ sprintf(
+						/* translators: %s: the name of another security plugin. */
+						__( 'Your two-factor is set up in %s, so it isn’t set up again in BetterShield. Use that plugin’s settings to change it.', 'bettershield' ),
+						elsewhere
+					) }
+				</p>
+			</div>
+		);
+	}
+
 	return (
 		<Card ref={ card } tabIndex={ -1 } className="bs-ds-2fa__method" aria-labelledby="bs-ds-2fa-title">
 			<CardHead icon="smartphone" id="bs-ds-2fa-title" title={ __( 'Two-factor authentication', 'bettershield' ) }>
-				{ status.enabled ? <Badge tone="brand">{ __( 'On', 'bettershield' ) }</Badge> : <Badge>{ __( 'Off', 'bettershield' ) }</Badge> }
+				{ badge }
 			</CardHead>
-			{ status.enabled ? <Enabled status={ status } onDone={ onDone } /> : <Enrollment onDone={ onDone } /> }
+			{ body }
 			<Offer />
 		</Card>
 	);
@@ -1154,6 +1187,8 @@ function AtAGlance() {
 
 	const ownReady = Boolean( own.data );
 	const on = ownReady && own.data.enabled;
+	// Set up in another security plugin, which the sign-in gate leaves the account to (#3064).
+	const elsewhere = ownReady && ! on && own.data.elsewhere ? String( own.data.elsewhere ) : '';
 	// The roles enforced here: the site's own and the network's, and those an
 	// add-on asks under its own rules, so nobody asked is left uncounted.
 	const elsewhereRoles = ( required.data && required.data.elsewhere && Array.isArray( required.data.elsewhere.roles ) && required.data.elsewhere.roles ) || [];
@@ -1163,6 +1198,14 @@ function AtAGlance() {
 	// Named roles on a site where passkeys are off are stored, not enforced.
 	const passkeysOff = Boolean( passkeys.data ) && false === passkeys.data.available;
 
+	// Who signs in with a code here, required or not: read with the policy, so
+	// only someone who manages the site sees it. Without it the strip falls
+	// back to the viewer's own state, as before.
+	const inUse = ( required.data && required.data.in_use ) || null;
+	const inUseAccounts = inUse ? Number( inUse.accounts ) || 0 : 0;
+	const inUseRoles = ( inUse && Array.isArray( inUse.roles ) && inUse.roles ) || [];
+	const siteOn = inUseAccounts > 0;
+
 	// A tile whose read is still out holds its place rather than guessing.
 	const waiting = ( resource ) => ! resource.data && 'error' !== resource.status;
 
@@ -1170,25 +1213,65 @@ function AtAGlance() {
 		{
 			key: 'own',
 			icon: 'smartphone',
-			label: __( 'Your two-factor', 'bettershield' ),
-			value: ownReady ? ( on ? __( 'On', 'bettershield' ) : __( 'Off', 'bettershield' ) ) : '—',
-			tone: on ? 'good' : undefined,
-			detail: on
-				? sprintf(
+			label: siteOn ? __( 'Two-factor on this site', 'bettershield' ) : __( 'Your two-factor', 'bettershield' ),
+			value: ownReady ? ( on || elsewhere || siteOn ? __( 'On', 'bettershield' ) : __( 'Off', 'bettershield' ) ) : '—',
+			tone: on || elsewhere || siteOn ? 'good' : undefined,
+			detail: ( () => {
+				// Accounts other than the viewer's sign in with a code: say so,
+				// and whether the viewer's own account is one of them.
+				if ( siteOn && ! ( on && 1 === inUseAccounts ) ) {
+					return on
+						? sprintf(
+								/* translators: %d: number of accounts on this site that use two-factor. */
+								_n( '%d account, including yours', '%d accounts, including yours', inUseAccounts, 'bettershield' ),
+								inUseAccounts
+						  )
+						: sprintf(
+								/* translators: %d: number of accounts on this site that use two-factor. */
+								_n( '%d account. Not set up on yours yet', '%d accounts. Not set up on yours yet', inUseAccounts, 'bettershield' ),
+								inUseAccounts
+						  );
+				}
+
+				if ( on ) {
+					return sprintf(
 						/* translators: %d: number of unused backup codes. */
 						_n( '%d backup code unused', '%d backup codes unused', own.data.backup_remaining, 'bettershield' ),
 						own.data.backup_remaining
-				  )
-				: __( 'Not set up on this account yet', 'bettershield' ),
+					);
+				}
+
+				return elsewhere
+					? sprintf(
+							/* translators: %s: the name of another security plugin. */
+							__( 'Set up in %s', 'bettershield' ),
+							elsewhere
+					  )
+					: __( 'Not set up on this account yet', 'bettershield' );
+			} )(),
 			pending: waiting( own ),
 		},
 		{
 			key: 'required',
 			icon: 'users',
-			label: __( 'Two-factor required for', 'bettershield' ),
-			value: required.data ? roleCount( requiredRoles.length ) : '—',
-			tone: requiredRoles.length > 0 ? 'good' : undefined,
-			detail: requiredRoles.length ? named( requiredRoles, required.data.available_roles ) : __( 'Nobody is asked to set it up yet', 'bettershield' ),
+			// Nothing required yet, but accounts already use it: name their
+			// roles rather than "No roles", and say it is not required.
+			label: ! requiredRoles.length && inUseRoles.length ? __( 'Two-factor in use by', 'bettershield' ) : __( 'Two-factor required for', 'bettershield' ),
+			value: required.data ? roleCount( requiredRoles.length || inUseRoles.length ) : '—',
+			tone: requiredRoles.length > 0 || inUseRoles.length > 0 ? 'good' : undefined,
+			detail: ( () => {
+				if ( requiredRoles.length ) {
+					return named( requiredRoles, required.data.available_roles );
+				}
+
+				return inUseRoles.length
+					? sprintf(
+							/* translators: %s: the roles whose accounts use two-factor, e.g. "Administrator, Editor". */
+							__( '%s. Not required for any role yet', 'bettershield' ),
+							named( inUseRoles, required.data.available_roles )
+					  )
+					: __( 'Nobody is asked to set it up yet', 'bettershield' );
+			} )(),
 			pending: waiting( required ),
 		},
 		{

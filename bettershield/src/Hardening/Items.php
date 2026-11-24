@@ -820,7 +820,7 @@ final class Items {
 				'group'       => 'accounts',
 				'reversible'  => true,
 				'title'       => __( 'Admin-only script and file uploads', 'bettershield' ),
-				'description' => __( 'Accounts below Editor can no longer add scripts to posts, and nobody below administrator can upload any file type. No role is changed.', 'bettershield' ),
+				'description' => __( 'Accounts below editor can no longer add scripts to posts, and nobody below administrator can upload any file type. No role is changed.', 'bettershield' ),
 				'detail'      => __( 'Script in a post runs in the browser of whoever views it, administrators included.', 'bettershield' ),
 				'reverts'     => static function (): array {
 					return array(

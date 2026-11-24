@@ -530,6 +530,14 @@ export function StoreProvider( { children } ) {
 					},
 				} ),
 
+			dismissSwitchOff: ( file ) =>
+				act( {
+					path: '/bettershield/v1/coexistence/notice/dismiss',
+					key: 'switch-off',
+					data: { file },
+					then: () => load( 'overview', { force: true } ),
+				} ),
+
 			dismissUsageReminder: () =>
 				act( {
 					path: '/bettershield/v1/usage/reminder/dismiss',

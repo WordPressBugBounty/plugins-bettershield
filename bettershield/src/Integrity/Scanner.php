@@ -1075,8 +1075,8 @@ final class Scanner {
 		}
 
 		// After the rows above: they're held against what it was before this pass.
-		if ( $complete && Unpublished::CONTEXT_CONFIG === (string) $target['context'] && Unpublished::SLUG_WP_CONFIG === (string) $target['slug'] ) {
-			KnownWrites::remember_config_if_settled( (string) $target['root'] . '/' . Unpublished::SLUG_WP_CONFIG, (string) $target['prefix'] . Unpublished::SLUG_WP_CONFIG );
+		if ( $complete && Unpublished::CONTEXT_CONFIG === (string) $target['context'] && KnownWrites::keeps_shape( (string) $target['slug'] ) ) {
+			KnownWrites::remember_config_if_settled( (string) $target['root'] . '/' . (string) $target['slug'], (string) $target['prefix'] . (string) $target['slug'] );
 		}
 
 		return $state;

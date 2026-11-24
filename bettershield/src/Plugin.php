@@ -432,6 +432,9 @@ final class Plugin {
 		// neither of them finds out.
 		Privacy\PersonalData::register();
 
+		// Which accounts sign in with a code, on the Users screen.
+		TwoFactor\UsersColumn::register();
+
 		// The last moment before an update becomes the site. Reports; never
 		// interrupts — see the class docblock.
 		Integrity\IncomingPackage::register();

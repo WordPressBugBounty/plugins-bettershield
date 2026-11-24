@@ -1177,18 +1177,35 @@ function fillPasskeys( state ) {
 			}
 
 			const drop = button( __( 'Remove', 'bettershield' ) );
-			drop.addEventListener( 'click', () => {
-				if (
-					// eslint-disable-next-line no-alert
-					! window.confirm(
-						__(
-							'Remove this passkey? Your other devices are signed out; this one stays signed in.',
-							'bettershield'
-						)
-					)
-				) {
-					return;
-				}
+
+			/*
+			 * Armed in place, as removing another account's passkeys is,
+			 * rather than the browser's own confirm(): the first press says
+			 * what happens and offers a button named for it, the second does
+			 * it (#3050).
+			 */
+			const yes = button( __( 'Yes, Remove Passkey', 'bettershield' ) );
+			const cancel = button( __( 'Cancel', 'bettershield' ) );
+			const armed = el( 'span', 'bs-profile-passkeys__confirm' );
+
+			armed.append(
+				yes,
+				cancel,
+				el( 'span', 'bs-profile-2fa__note', __( 'Your other devices are signed out; this one stays signed in.', 'bettershield' ) )
+			);
+			armed.style.display = 'none';
+
+			const arm = ( on ) => {
+				armed.style.display = on ? '' : 'none';
+				drop.style.display = on ? 'none' : '';
+				( on ? yes : drop ).focus();
+			};
+
+			drop.addEventListener( 'click', () => arm( true ) );
+			cancel.addEventListener( 'click', () => arm( false ) );
+			yes.addEventListener( 'click', () => {
+				armed.style.display = 'none';
+				drop.style.display = '';
 
 				const dropIt = ( proved = {} ) =>
 					apiFetch( { path: `/bettershield/v1/passkeys/${ passkey.id }`, method: 'DELETE', data: proved } )
@@ -1211,7 +1228,7 @@ function fillPasskeys( state ) {
 				);
 			} );
 
-			item.append( drop );
+			item.append( drop, armed );
 			list.append( item );
 		} );
 

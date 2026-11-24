@@ -4,7 +4,7 @@ Tags: 2fa, passkeys, hardening, activity log, two factor authentication
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.11
+Stable tag: 1.1.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -367,6 +367,15 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 
 == Changelog ==
 
+= 1.1.12 - 24/11/2026 =
+
+- Added: Two-Factor | See which accounts and roles use two-factor, including a Users screen column, and two-factor set up in another plugin shows as on
+- Added: Settings migration | After settings come over from another security plugin, a notice names the plugin to deactivate to use them
+- Improved: Hub | A redesigned Hub screen shows the connection, last check, access and instant alerts at a glance
+- Improved: Agents | A redesigned Agent surface screen puts new actions and actions open to non-admins first
+- Improved: File Changes | A redesigned screen shows check progress and changes by plugin, and cache plugins' own files are no longer flagged critical
+- Fixed: Recovery | Each recovery link works only once, slow email no longer holds up the page, and expired links are flagged
+
 = 1.1.11 - 23/11/2026 =
 
 - Added: Alerts | The weekly summary now lists newly waiting WordPress, plugin and theme updates, and urgent alerts are marked "Action needed"
@@ -674,6 +683,10 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 - Added: Multisite | Every site's score in one table and rules a network can set once
 
 == Upgrade Notice ==
+
+= 1.1.12 =
+
+Recovery links now work only once, cache plugins' own files are no longer flagged critical, and two-factor in use shows on its screen and the Users screen. Recommended for all sites.
 
 = 1.1.11 =
 

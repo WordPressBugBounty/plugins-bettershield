@@ -396,13 +396,16 @@ final class Policy {
 	}
 
 	/**
-	 * Whether a password is the only way into this account: no second factor
-	 * and no verified passkey.
+	 * Whether a password is the only way into this account: no second factor,
+	 * here or in another security plugin the sign-in leaves it to, and no
+	 * verified passkey. Two-factor set up in that plugin held the account to
+	 * the longer password-alone bar (#3064).
 	 */
 	public function password_alone( \WP_User $user ): bool {
 		return $user->ID > 0
 			&& ! \BetterShield\TwoFactor\Manager::instance()->enabled( (int) $user->ID )
-			&& 0 === \BetterShield\Passkeys\Store::count_verified_for_user( (int) $user->ID );
+			&& 0 === \BetterShield\Passkeys\Store::count_verified_for_user( (int) $user->ID )
+			&& '' === \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user );
 	}
 
 	/**

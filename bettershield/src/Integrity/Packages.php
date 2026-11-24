@@ -119,11 +119,14 @@ final class Packages {
 					'context'  => (string) $row->context,
 					'slug'     => (string) $row->slug,
 					'version'  => (string) $row->version,
-					'name'     => self::name_of( (string) $row->context, (string) $row->slug ),
-					'total'    => 0,
-					'modified' => 0,
-					'added'    => 0,
-					'removed'  => 0,
+					'name'      => self::name_of( (string) $row->context, (string) $row->slug ),
+					// The version installed now, so a group recorded against
+					// an older one can say a check again is due.
+					'installed' => self::installed_of( (string) $row->context, (string) $row->slug ),
+					'total'     => 0,
+					'modified'  => 0,
+					'added'     => 0,
+					'removed'   => 0,
 				);
 			}
 
@@ -1005,6 +1008,23 @@ final class Packages {
 		}
 
 		return $slug;
+	}
+
+	/** The version of a plugin or theme installed now, or '' where it isn't installed. */
+	public static function installed_of( string $context, string $slug ): string {
+		if ( 'theme' === $context ) {
+			$theme = wp_get_theme( $slug );
+
+			return $theme->exists() ? (string) $theme->get( 'Version' ) : '';
+		}
+
+		foreach ( self::plugins() as $file => $plugin ) {
+			if ( dirname( (string) $file ) === $slug || (string) $file === $slug ) {
+				return (string) ( $plugin['Version'] ?? '' );
+			}
+		}
+
+		return '';
 	}
 
 	/** The installed version of a plugin by its folder, or ''. */

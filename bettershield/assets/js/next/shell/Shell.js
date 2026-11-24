@@ -16,6 +16,7 @@ import ActionNotice from '../../shared/ActionNotice';
 import ConfirmPassword from '../../shared/ConfirmPassword';
 import OverviewPrefetch from '../../shared/OverviewPrefetch';
 import UsageReminder from './UsageReminder';
+import SwitchOffNotice from './SwitchOffNotice';
 import RecoveryPreflight from '../../ui/RecoveryPreflight';
 import { schemeAttribute, useScheme } from '../../ui/scheme';
 import { useCollapsed } from './collapse';
@@ -195,12 +196,14 @@ export default function Shell() {
 						<div className="bs-ds-content" key={ byAddOn ? route.section : `${ route.section }/${ route.tab }` }>
 							<ActionNotice route={ route } fallback={ headingRef } />
 							<UsageReminder />
+							{ isNetwork ? null : <SwitchOffNotice /> }
 							{ render( route ) }
 						</div>
 					) : (
 						<div className="bs-app bs-ds-current" data-bs-scheme={ schemeAttribute( scheme ) } key={ byAddOn ? route.section : `${ route.section }/${ route.tab }` }>
 							<ActionNotice route={ route } fallback={ headingRef } />
 							<UsageReminder />
+							{ isNetwork ? null : <SwitchOffNotice /> }
 							{ render( route ) }
 						</div>
 					) }

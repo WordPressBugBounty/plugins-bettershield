@@ -51,6 +51,12 @@
 	line-height: 1.4;
 }
 
+/* With an ⓘ, the title takes its own width so the ⓘ sits right after it. */
+.bs-ds-app .bs-ds-card__head--tip .bs-ds-card__title {
+	flex: 0 1 auto;
+	min-width: 0;
+}
+
 /* A title focus is moved to, after the card redrew under the reader, is not a control. */
 .bs-ds-app .bs-ds-card__title:focus {
 	outline: none;
@@ -106,9 +112,18 @@
 
 .bs-ds-tray__foot {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--bs-ds-space-xs);
+	min-height: 28px;
 	padding: 0 var(--bs-ds-space-xs) 0 var(--bs-ds-space-md);
+}
+
+/* A note that may wrap: a sentence keeps its leading on a narrow screen. */
+.bs-ds-app .bs-ds-tray__note {
+	flex: 1 1 12em;
+	min-width: 0;
+	line-height: 1.4;
 }
 
 .bs-ds-section-head {

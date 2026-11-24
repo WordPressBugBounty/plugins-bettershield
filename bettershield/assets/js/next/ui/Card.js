@@ -7,7 +7,9 @@
 import './Card.css';
 
 import { forwardRef } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
 import Icon from './Icon';
+import InfoTip from './InfoTip';
 
 export function IconTile( { icon, size = 'sm' } ) {
 	return (
@@ -25,15 +27,27 @@ export function IconTile( { icon, size = 'sm' } ) {
  * @param {boolean} props.line     A rule under the header.
  * @param {boolean} props.auto     Height from the content rather than 60.
  * @param {Object}  props.headingRef Takes the heading, which can then be focused: for a card that moves focus to its own title.
+ * @param {*}       props.tip      A short why behind an ⓘ beside the title.
  * @param {*}       props.children The one trailing element.
  */
-export function CardHead( { icon, title, id, line = false, auto = false, headingRef, children } ) {
+export function CardHead( { icon, title, id, line = false, auto = false, headingRef, tip = null, children } ) {
 	return (
-		<div className={ `bs-ds-card__head${ line ? ' bs-ds-card__head--line' : '' }${ auto ? ' bs-ds-card__head--auto' : '' }` }>
+		<div className={ `bs-ds-card__head${ line ? ' bs-ds-card__head--line' : '' }${ auto ? ' bs-ds-card__head--auto' : '' }${ tip ? ' bs-ds-card__head--tip' : '' }` }>
 			<IconTile icon={ icon } />
 			<h2 className="bs-ds-card__title bs-ds-t14 bs-ds-m bs-ds-c1 bs-ds-nowrap" id={ id } ref={ headingRef } tabIndex={ headingRef ? -1 : undefined }>
 				{ title }
 			</h2>
+			{ tip ? (
+				<InfoTip
+					label={ sprintf(
+						/* translators: %s: a card's name. */
+						__( 'About %s', 'bettershield' ),
+						title
+					) }
+				>
+					{ tip }
+				</InfoTip>
+			) : null }
 			<span className="bs-ds-spacer" />
 			{ children }
 		</div>
@@ -74,16 +88,20 @@ export function SectionHead( { children, aside = null, id, as: Label = 'span' } 
 }
 
 /**
- * @param {Object} props
- * @param {*}      props.note   The strip's note.
- * @param {*}      props.action Its one action.
+ * @param {Object}  props
+ * @param {*}       props.note      The strip's note.
+ * @param {*}       props.action    Its one action.
+ * @param {string}  props.icon      A 14 icon before the note, as the design's footers draw one.
+ * @param {boolean} props.wrap      The note may take more than one line: for a sentence on a narrow screen.
+ * @param {string}  props.className Where the strip sits, for the screen that places it.
  */
-export function Tray( { note, action, children } ) {
+export function Tray( { note, action, icon = '', wrap = false, className = '', children } ) {
 	return (
-		<div className="bs-ds-tray">
+		<div className={ `bs-ds-tray${ className ? ` ${ className }` : '' }` }>
 			{ children }
 			<div className="bs-ds-tray__foot">
-				<span className="bs-ds-t12 bs-ds-r bs-ds-c2 bs-ds-nowrap">{ note }</span>
+				{ icon ? <Icon name={ icon } size={ 14 } tone="2" /> : null }
+				<span className={ `bs-ds-t12 bs-ds-r bs-ds-c2${ wrap ? ' bs-ds-tray__note' : ' bs-ds-nowrap' }` }>{ note }</span>
 				<span className="bs-ds-spacer" />
 				{ action }
 			</div>

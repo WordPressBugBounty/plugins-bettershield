@@ -994,7 +994,7 @@ final class Baseline {
 			(int) @filesize( $path ) // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- the file was just hashed; a size of 0 is only a detail.
 		);
 
-		if ( Unpublished::SLUG_WP_CONFIG === $name ) {
+		if ( KnownWrites::keeps_shape( $name ) ) {
 			KnownWrites::remember_config( $path );
 		}
 	}

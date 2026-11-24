@@ -80,6 +80,10 @@ final class TwoFactorController {
 							// lockdown, the card's promise that they keep working
 							// was untrue (#1847).
 							'app_passwords_work' => wp_is_application_passwords_available_for_user( wp_get_current_user() ),
+							// The other security plugin this account's two-factor
+							// is set up in, or '': the card says so rather than
+							// offering a setup the server refuses (#3064).
+							'elsewhere'          => \BetterShield\Onboarding\Coexistence::two_factor_for_user( wp_get_current_user() ),
 						)
 					);
 				},
@@ -301,6 +305,11 @@ final class TwoFactorController {
 									'elsewhere'       => array(
 										'roles' => self::roles_required_elsewhere(),
 									),
+									// Who signs in with a code here today,
+									// required or not: the at-a-glance strip
+									// reads it so the site's state is seen,
+									// not only the viewer's own.
+									'in_use'          => \BetterShield\TwoFactor\Manager::instance()->in_use(),
 								)
 							)
 						);

@@ -1849,6 +1849,73 @@ final class Coexistence {
 		return array_values( array_filter( $jobs, static fn( string $job ): bool => 'bettershield' !== ( $choices[ $job ] ?? '' ) ) );
 	}
 
+	/** The plugins whose "deactivate it" notice the owner closed, by file. */
+	public const NOTICE_DISMISSED_OPTION = 'bettershield_coexistence_notice_dismissed';
+
+	/**
+	 * The plugins still active after the finished setup handed one of their
+	 * jobs to BetterShield: their settings came over, and BetterShield's
+	 * take over (two-factor accounts move) only once they are switched off.
+	 * The setup never switches them off, so the screens say so until they
+	 * are, or until the owner closes the notice for one.
+	 *
+	 * @return array<int, array{file: string, name: string, jobs: string[], also: string[], two_factor: bool, plugins_url: string}>
+	 */
+	public static function awaiting_deactivation(): array {
+		if ( ! class_exists( QuickSetup::class ) || ! QuickSetup::is_done() ) {
+			return array();
+		}
+
+		$state = QuickSetup::state();
+
+		if ( empty( $state['coexistence_saved'] ) ) {
+			return array();
+		}
+
+		$choices   = (array) $state['coexistence'];
+		$dismissed = array_map( 'strval', (array) get_option( self::NOTICE_DISMISSED_OPTION, array() ) );
+		$found     = array();
+
+		foreach ( self::active() as $file => $plugin ) {
+			$file   = (string) $file;
+			$jobs   = array_values( (array) $plugin['jobs'] );
+			$handed = array_values(
+				array_filter(
+					$jobs,
+					static fn( string $job ): bool => in_array( $job, self::CHOICE_JOBS, true ) && 'bettershield' === ( $choices[ $job ] ?? '' )
+				)
+			);
+
+			if ( array() === $handed || in_array( $file, $dismissed, true ) ) {
+				continue;
+			}
+
+			$network = is_multisite() && is_plugin_active_for_network( $file );
+
+			$found[] = array(
+				'file'        => $file,
+				'name'        => (string) $plugin['name'],
+				'jobs'        => $handed,
+				// What else switching it off stops, which BetterShield does not take over.
+				'also'        => self::kept_for( $jobs, $choices ),
+				'two_factor'  => in_array( 'two_factor', $handed, true ),
+				'plugins_url' => $network ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ),
+			);
+		}
+
+		return $found;
+	}
+
+	/** Close the notice for one plugin, for every administrator. */
+	public static function dismiss_deactivation_notice( string $file ): void {
+		$dismissed = array_map( 'strval', (array) get_option( self::NOTICE_DISMISSED_OPTION, array() ) );
+
+		if ( ! in_array( $file, $dismissed, true ) ) {
+			$dismissed[] = $file;
+			update_option( self::NOTICE_DISMISSED_OPTION, array_values( $dismissed ), false );
+		}
+	}
+
 	/**
 	 * The saved choice for a job, or the default where there is none.
 	 *

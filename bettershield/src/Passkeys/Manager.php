@@ -196,12 +196,23 @@ final class Manager {
 	}
 
 	/**
-	 * What an account another security plugin covers is told about passkeys,
-	 * without naming that plugin: the account holder may not know it, and
-	 * the choice of one plugin for two-factor is the administrator's (#2465).
+	 * What an account another security plugin covers is told about passkeys
+	 * (#2465): that plugin by name, and who can change it. Someone who runs
+	 * the site was sent to "ask your administrator", which was themselves
+	 * (#3064); they are pointed to the choice in Quick Setup instead.
 	 */
-	public static function elsewhere_words(): string {
-		return __( 'Another security plugin handles two-factor for your account here, so a passkey cannot sign you in. Use your password and its code, or ask your administrator.', 'bettershield' );
+	public static function elsewhere_words( \WP_User $user ): string {
+		$plugin = \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user );
+
+		if ( '' === $plugin ) {
+			$plugin = __( 'another security plugin', 'bettershield' );
+		}
+
+		return user_can( $user, \BetterShield\Capabilities::MANAGE )
+			/* translators: %s: the name of another security plugin. */
+			? sprintf( __( 'Your two-factor is set up in %s here, so a passkey cannot sign you in. Use your password and its code, or choose one plugin for two-factor in Quick Setup.', 'bettershield' ), $plugin )
+			/* translators: %s: the name of another security plugin. */
+			: sprintf( __( 'Your two-factor is set up in %s here, so a passkey cannot sign you in. Use your password and its code, or ask your administrator.', 'bettershield' ), $plugin );
 	}
 
 	/* ---- registration --------------------------------------------------- */
@@ -221,7 +232,7 @@ final class Manager {
 		// Another plugin's code would still be asked after it, so it could
 		// never sign this account in (#2465).
 		if ( '' !== \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user ) ) {
-			return new \WP_Error( 'bettershield_passkey_two_factor_elsewhere', self::elsewhere_words(), array( 'status' => 409 ) );
+			return new \WP_Error( 'bettershield_passkey_two_factor_elsewhere', self::elsewhere_words( $user ), array( 'status' => 409 ) );
 		}
 
 		$issued = Store::issue_challenge( self::PURPOSE_REGISTER, (int) $user->ID );

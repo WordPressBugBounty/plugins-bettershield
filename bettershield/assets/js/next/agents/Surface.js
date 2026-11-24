@@ -6,16 +6,12 @@
  * is information; a row becomes a warning only when it is a finding, and then
  * it carries the finding's severity, not the screen's tone.
  *
- * The inventory is grouped by the plugin that registered each ability, because
- * with several plugins installed the flat list ran to ninety rows and the
- * question it exists to answer — is anything open to lower roles — was
- * somewhere inside them. This plugin's own group is open; every other is a row
- * with a name and a count until somebody asks.
- *
- * The agent strip, then two cards: the inventory as one table (All and Open to
- * lower roles as tabs, the search at the tab row's end, a group row per
- * registering plugin), and a card of rows for everything else that can reach
- * this site.
+ * The strip, then two columns. On the left, what changed since the last
+ * update and the inventory: one table, a group row per registering plugin,
+ * with what is open to non-admins lifted into a group of its own at the top,
+ * because that is the question the list exists to answer. On the right, a
+ * card for each other way in: the application passwords, the traps, and
+ * what other plugins open or keep.
  */
 
 import './Surface.css';
@@ -30,47 +26,70 @@ import Alert from '../ui/Alert';
 import Armed from '../ui/Armed';
 import Badge, { kindTone } from '../ui/Badge';
 import Button from '../ui/Button';
-import { Card, CardHead } from '../ui/Card';
-import Field, { FieldRow } from '../ui/Field';
+import { Card, CardHead, Tray } from '../ui/Card';
+import Field from '../ui/Field';
 import { focusIfLost } from '../ui/focus';
 import Icon from '../ui/Icon';
-import SettingRow, { Saved, SettingsCard } from '../ui/Setting';
+import SettingRow, { Saved, Toggle } from '../ui/Setting';
 import Skeleton, { CardBone } from '../ui/Skeleton';
 import { EmptyState, Resource } from '../ui/States';
 import Table, { Cell, Row, TitleMeta, WholeRow } from '../ui/Table';
 import Tabs from '../ui/Tabs';
 import { panelProps } from '../ui/tabKeys';
-import Topics from '../ui/Topics';
 import AgentStrip, { AgentStripBone } from './AgentStrip';
-import SwitchLine from './SwitchLine';
 
 /** The one filter that crosses every group: everything, or what is open. */
 const ALL = '__all';
 const OPEN = '__open';
 
+/** The group that lifts what is open to non-admins out of its plugin's. */
+const LOOK = '__look';
+
 /** Rows one page of a group carries. */
 const PER_PAGE = 25;
+
+/** A group this long or shorter opens by itself; a longer one waits to be asked. */
+const SHORT = 5;
 
 /** The namespace this plugin registers under, which is what makes a group ours. */
 const OURS = 'bettershield/';
 
+/** The namespace WordPress itself registers under. */
+const CORE = 'core/';
+
 /** The id the inventory's tabs and the table under them share. */
 const TABS_ID = 'bs-ds-abilities';
 
+/** Whether an ability lets accounts below administrator call it. */
+const isOpen = ( ability ) => 'allowed' === ability.low_privilege_access;
+
 /**
- * The inventory, folded into one group per registering plugin.
+ * The inventory, folded into one group per registering plugin, with what is
+ * open to non-admins in a group of its own ahead of them.
  *
- * Ours first and open, the rest by name and collapsed. Sorting by the name a
- * plugin gives itself rather than by its directory is what makes the list read
- * as a shelf of plugins instead of a list of slugs.
+ * Ours first, then by name. Sorting by the name a plugin gives itself rather
+ * than by its directory is what makes the list read as a shelf of plugins
+ * instead of a list of slugs.
  *
- * @param {Array<Object>} abilities Every ability the registry holds.
- * @return {Array<Object>} One entry per registering plugin.
+ * Under the Open to non-admins tab every row is open, so lifting them would
+ * empty every plugin's group into one: there they stay with their plugin,
+ * which is the one thing that tab has left to say about them.
+ *
+ * @param {Array<Object>} abilities The abilities to group.
+ * @param {boolean}       lift      Whether to lift what is open into its own group.
+ * @return {Array<Object>} One entry per group, each with its rows.
  */
-function groupsOf( abilities ) {
+function groupsOf( abilities, lift = true ) {
 	const groups = new Map();
+	const look = [];
 
 	abilities.forEach( ( ability ) => {
+		if ( lift && isOpen( ability ) ) {
+			look.push( ability );
+
+			return;
+		}
+
 		const key = ability.registering_source;
 
 		if ( ! groups.has( key ) ) {
@@ -78,83 +97,132 @@ function groupsOf( abilities ) {
 				source: key,
 				label: ability.registering_source_label || key,
 				ours: false,
-				abilities: [],
+				core: false,
+				rows: [],
 			} );
 		}
 
 		const group = groups.get( key );
+		const name = String( ability.name || '' );
 
-		group.abilities.push( ability );
+		group.rows.push( ability );
 
 		// Read off the ability's own namespace rather than off a directory
 		// name, which is whatever the site happened to install this under.
-		if ( String( ability.name || '' ).startsWith( OURS ) ) {
-			group.ours = true;
-		}
+		group.ours = group.ours || name.startsWith( OURS );
+		group.core = group.core || name.startsWith( CORE );
 	} );
 
-	return Array.from( groups.values() ).sort( ( a, b ) => {
+	const plugins = Array.from( groups.values() ).sort( ( a, b ) => {
 		if ( a.ours !== b.ours ) {
 			return a.ours ? -1 : 1;
 		}
 
 		return a.label.localeCompare( b.label );
 	} );
+
+	return look.length ? [ { source: LOOK, label: __( 'Needs a look', 'bettershield' ), look: true, rows: look }, ...plugins ] : plugins;
 }
 
 /**
- * Who can call an ability: the column this whole inventory exists for.
+ * The changes waiting in New since your last update, by ability name: what
+ * each one was, so its row in the inventory can say so.
  *
- * @param {Object} props
- * @param {string} props.access allowed, denied, or anything else for not known.
+ * @param {Array<Object>} changes The waiting changes.
+ * @return {Object} kind by name.
  */
-function AccessBadge( { access } ) {
-	if ( 'allowed' === access ) {
-		return <Badge tone={ kindTone( 'medium' ) }>{ __( 'non-admins', 'bettershield' ) }</Badge>;
+function pendingOf( changes ) {
+	const pending = {};
+
+	( changes || [] ).forEach( ( change ) => {
+		if ( change && change.name ) {
+			pending[ change.name ] = change.kind;
+		}
+	} );
+
+	return pending;
+}
+
+/** An ability's name without its namespace: the group above already says whose it is. */
+function shortName( name ) {
+	const text = String( name || '' );
+	const slash = text.indexOf( '/' );
+
+	return slash > 0 ? text.slice( slash + 1 ) : text;
+}
+
+/**
+ * What a group row says after its count.
+ *
+ * "Nothing to review" only when it is true: not while one of the group's
+ * abilities waits in New since your last update, and not while the site
+ * could not tell who may use one of them.
+ *
+ * @param {Object} group   The group.
+ * @param {Object} pending The waiting changes, by ability name.
+ * @return {{text: string, quiet: boolean}} The line, and whether it says only that all is well.
+ */
+function groupSays( group, pending ) {
+	if ( group.look ) {
+		return { text: __( 'Open to non-admins', 'bettershield' ), quiet: false };
 	}
 
-	if ( 'denied' === access ) {
-		return <Badge tone={ kindTone( 'neutral' ) }>{ __( 'admins only', 'bettershield' ) }</Badge>;
+	const waiting = group.rows.filter( ( ability ) => pending[ ability.name ] ).length;
+
+	if ( waiting ) {
+		return {
+			text: sprintf(
+				/* translators: %d: how many of the group’s abilities are waiting to be reviewed. */
+				_n( '%d to review', '%d to review', waiting, 'bettershield' ),
+				waiting
+			),
+			quiet: false,
+		};
 	}
 
-	return <Badge tone={ kindTone( 'muted' ) }>{ __( 'unknown', 'bettershield' ) }</Badge>;
+	if ( group.rows.some( ( ability ) => 'allowed' !== ability.low_privilege_access && 'denied' !== ability.low_privilege_access ) ) {
+		return { text: __( 'Access not known for some', 'bettershield' ), quiet: false };
+	}
+
+	return { text: __( 'Nothing to review', 'bettershield' ), quiet: true };
+}
+
+/** The icon a group row leads with. */
+function groupIcon( group ) {
+	if ( group.look ) {
+		return 'triangle-alert';
+	}
+
+	if ( group.ours ) {
+		return 'shield';
+	}
+
+	return group.core ? 'layers' : 'plug';
 }
 
 /**
- * What an ability declares it would do.
+ * One group: its row, opening in place, then its rows a page at a time.
  *
- * @param {Object}  props
- * @param {boolean} props.readonly Whether it declares itself read-only.
+ * The rows are a group of the one table under the tab row, so every group
+ * shares the table's columns and its one header.
  */
-function DeclaresBadge( { readonly } ) {
-	return readonly ? (
-		<Badge tone={ kindTone( 'good' ) }>{ __( 'views only', 'bettershield' ) }</Badge>
-	) : (
-		<Badge tone={ kindTone( 'high' ) }>{ __( 'changes site', 'bettershield' ) }</Badge>
-	);
-}
-
-/**
- * One plugin's abilities: its group row, opening in place, then its rows a
- * page at a time.
- *
- * The rows are a group of the one table under the tab row, named for the
- * plugin, so every group shares the table's columns and its one header.
- */
-function AbilityGroup( { group, rows, open, onToggle } ) {
+function AbilityGroup( { group, open, onToggle, pending = {} } ) {
 	const [ shown, setShown ] = useState( PER_PAGE );
+	const rows = group.rows;
 	const page = rows.slice( 0, shown );
+	const says = groupSays( group, pending );
 
 	return (
 		<>
 			<WholeRow kind="group">
-				<button type="button" className="bs-ds-surface__grouphead" aria-expanded={ open } onClick={ onToggle }>
-					<Icon name="plug" size={ 14 } tone="2" />
+				<button type="button" className={ `bs-ds-surface__grouphead${ group.look ? ' bs-ds-surface__grouphead--look' : '' }` } aria-expanded={ open } onClick={ onToggle }>
+					<Icon name={ groupIcon( group ) } size={ 14 } tone="2" />
 					<span className="bs-ds-surface__groupname">{ group.label }</span>
 					<Badge className="bs-ds-surface__groupcount">{ rows.length }</Badge>
+					<span className={ `bs-ds-surface__groupsays${ says.quiet ? ' bs-ds-surface__groupsays--quiet' : '' }` }>{ says.text }</span>
 					<span className="bs-ds-spacer" />
 					{ /* The one mark that says "this opens", turned when it has. */ }
-					<Icon name="chevron-down" size={ 14 } tone="3" className="bs-ds-surface__chevron" />
+					<Icon name="chevron-down" size={ 16 } tone="2" className="bs-ds-surface__chevron" />
 				</button>
 			</WholeRow>
 
@@ -162,24 +230,49 @@ function AbilityGroup( { group, rows, open, onToggle } ) {
 				<div
 					className="bs-ds-surface__rows"
 					role="rowgroup"
-					aria-label={ sprintf(
-						/* translators: %s: the name of the plugin that registered them. */
-						__( 'Abilities registered by %s', 'bettershield' ),
-						group.label
-					) }
+					aria-label={
+						group.look
+							? __( 'Abilities open to non-admins', 'bettershield' )
+							: sprintf(
+									/* translators: %s: the name of the plugin that registered them. */
+									__( 'Abilities registered by %s', 'bettershield' ),
+									group.label
+							  )
+					}
 				>
 					{ page.map( ( ability ) => (
-						<Row key={ ability.name } className="bs-ds-surface__row">
+						<Row key={ ability.name } className={ `bs-ds-surface__row${ isOpen( ability ) ? ' bs-ds-surface__row--look' : '' }` }>
 							<Cell>
-								<span className="bs-ds-surface__name">{ ability.name }</span>
+								<span className="bs-ds-surface__ability">
+									{ isOpen( ability ) ? <Icon name="triangle-alert" size={ 16 } tone="1" /> : null }
+									<span className="bs-ds-surface__name" title={ ability.name }>
+										<span aria-hidden="true">{ shortName( ability.name ) }</span>
+										<span className="screen-reader-text">{ ability.name }</span>
+									</span>
+									{ /* Lifted out of its plugin's group, a row says whose it is itself. */ }
+									{ group.look ? (
+										<span className="bs-ds-surface__owner" aria-hidden="true">
+											{ ability.registering_source_label || ability.registering_source }
+										</span>
+									) : null }
+									{ /* What the tray promises: an update's addition, marked where it sits. */ }
+									{ pending[ ability.name ] ? (
+										<Badge tone={ kindTone( 'medium' ) }>{ 'added' === pending[ ability.name ] ? __( 'new', 'bettershield' ) : __( 'opened wider', 'bettershield' ) }</Badge>
+									) : null }
+								</span>
 							</Cell>
 							<Cell>
-								<span className="bs-ds-surface__by">{ ability.registering_source_label || ability.registering_source }</span>
+								<span className="bs-ds-surface__fact">{ ability.annotated_readonly ? __( 'Views only', 'bettershield' ) : __( 'Changes site', 'bettershield' ) }</span>
 							</Cell>
-							<Cell className="bs-ds-surface__chips">
-								<DeclaresBadge readonly={ ability.annotated_readonly } />
-								{ ability.exposed_in_rest ? <Badge tone={ kindTone( 'neutral' ) }>{ __( 'REST', 'bettershield' ) }</Badge> : null }
-								<AccessBadge access={ ability.low_privilege_access } />
+							<Cell>
+								<span className="bs-ds-surface__fact">{ ability.exposed_in_rest ? __( 'REST', 'bettershield' ) : __( 'Site only', 'bettershield' ) }</span>
+							</Cell>
+							<Cell>
+								{ isOpen( ability ) ? (
+									<Badge tone={ kindTone( 'medium' ) }>{ __( 'non-admins', 'bettershield' ) }</Badge>
+								) : (
+									<span className="bs-ds-surface__fact">{ 'denied' === ability.low_privilege_access ? __( 'Admins only', 'bettershield' ) : __( 'Unknown', 'bettershield' ) }</span>
+								) }
 							</Cell>
 						</Row>
 					) ) }
@@ -207,99 +300,138 @@ function AbilityGroup( { group, rows, open, onToggle } ) {
 
 /**
  * What an update or an activation added or opened wider since the abilities
- * were last accepted (#1878): each with its plugin and what it now does, and
- * Accept, which takes the abilities as they are now as the baseline.
+ * were last accepted (#1878): a card of each with its plugin and what it now
+ * does, and Mark As Reviewed, which takes the abilities as they are now as
+ * the baseline. Once reviewed, a line in its place, with an Undo.
  *
  * @param {Object} props
  * @param {Array}  props.changes The changes waiting.
  */
 function NewSinceUpdate( { changes } ) {
 	const { acceptAbilityChanges, undoAbilityAccept, load, busy } = useStore();
-	const [ said, setSaid ] = useState( '' );
+	const [ said, setSaid ] = useState( null );
 	// The accept's undo record, while its Undo is on offer.
 	const [ undo, setUndo ] = useState( '' );
+	// The card the pressed button sat in is gone once the review lands, so the
+	// line that replaced it takes the keyboard, rather than the page's body.
+	const line = useRef( null );
+	const lineShown = Boolean( said ) && ! ( changes && changes.length );
+
+	useEffect( () => {
+		if ( lineShown ) {
+			focusIfLost( line.current );
+		}
+	}, [ lineShown, said ] );
 
 	const putBack = () =>
 		undoAbilityAccept( undo, ( answer ) => {
 			if ( answer ) {
 				setUndo( '' );
-				setSaid( __( 'These changes are waiting for you again.', 'bettershield' ) );
+				setSaid( { tone: 'info', title: '', desc: __( 'These changes are waiting for you again.', 'bettershield' ) } );
 				load( 'agentSurface', { force: true } );
 			}
 		} );
 
 	if ( ! changes || ! changes.length ) {
 		return said ? (
-			<div className="bs-ds-surface__notes">
-				<p className="bs-ds-surface__intro" role="status">
-					{ said }
-				</p>
-				{ undo ? (
-					<div>
+			<Alert
+				alertRef={ line }
+				tone={ said.tone }
+				title={ said.title }
+				desc={ said.desc }
+				live
+				actions={
+					undo ? (
 						<Button type="secondary" size="sm" isBusy={ 'ability-accept-undo' === busy } disabled={ Boolean( busy ) } onClick={ putBack }>
 							{ __( 'Undo', 'bettershield' ) }
 						</Button>
-					</div>
-				) : null }
-			</div>
+					) : null
+				}
+			/>
 		) : null;
 	}
 
 	const accept = () =>
 		acceptAbilityChanges( ( answer ) => {
 			setUndo( ( answer && answer.undo ) || '' );
-			setSaid( __( 'Reviewed. Only new changes will show here after the next update.', 'bettershield' ) );
+			setSaid( {
+				tone: 'success',
+				title: __( 'Reviewed.', 'bettershield' ),
+				desc: __( 'Only new changes will show here after the next update.', 'bettershield' ),
+			} );
 			load( 'agentSurface', { force: true } );
 		} );
 
 	return (
-		<div className="bs-ds-surface__notes">
-			<Alert
-				layout="default"
-				tone="warning"
-				title={ __( 'New since your last update', 'bettershield' ) }
-				desc={ __( 'A plugin update or a new plugin added these AI actions or opened them to more people. Nothing was blocked.', 'bettershield' ) }
-			/>
-			<Table
-				label={ __( 'New since your last update', 'bettershield' ) }
-				columns={ [
-					{ key: 'name', label: __( 'Ability', 'bettershield' ) },
-					{ key: 'what', label: __( 'What changed', 'bettershield' ), width: '240px' },
-				] }
-			>
-				{ changes.map( ( change ) => (
-					<Row key={ change.name }>
-						<Cell>
-							<TitleMeta title={ change.name } meta={ change.owner_label } />
-						</Cell>
-						<Cell className="bs-ds-surface__chips">
-							<Badge tone={ kindTone( 'medium' ) }>{ 'added' === change.kind ? __( 'new', 'bettershield' ) : __( 'opened wider', 'bettershield' ) }</Badge>
-							{ change.readonly ? null : <Badge tone={ kindTone( 'high' ) }>{ __( 'changes site', 'bettershield' ) }</Badge> }
-							{ change.open ? <Badge tone={ kindTone( 'medium' ) }>{ __( 'non-admins', 'bettershield' ) }</Badge> : null }
-						</Cell>
-					</Row>
-				) ) }
-			</Table>
-			<div>
-				<Button type="secondary" size="sm" isBusy={ 'ability-accept' === busy } disabled={ Boolean( busy ) } onClick={ accept }>
-					{ __( 'Mark As Reviewed', 'bettershield' ) }
-				</Button>
+		<Card className="bs-ds-surface__card" aria-labelledby="bs-ds-changes-title">
+			<CardHead icon="bot" id="bs-ds-changes-title" title={ __( 'New since your last update', 'bettershield' ) } line>
+				<Badge>{ changes.length }</Badge>
+			</CardHead>
+			<div className="bs-ds-surface__changes">
+				<Alert
+					tone="warning"
+					title={ sprintf(
+						/* translators: %d: how many AI actions changed. */
+						_n( '%d action changed.', '%d actions changed.', changes.length, 'bettershield' ),
+						changes.length
+					) }
+					desc={ __( 'These AI actions are new or open to more people since the last update. Nothing was blocked.', 'bettershield' ) }
+				/>
+				<div className="bs-ds-surface__boxed">
+					<Table
+						label={ __( 'New since your last update', 'bettershield' ) }
+						columns={ [
+							{ key: 'name', label: __( 'Ability', 'bettershield' ) },
+							{ key: 'what', label: __( 'What changed', 'bettershield' ), width: '240px' },
+						] }
+					>
+						{ changes.map( ( change ) => (
+							<Row key={ change.name }>
+								<Cell>
+									<TitleMeta title={ change.name } meta={ change.owner_label } />
+								</Cell>
+								<Cell className="bs-ds-surface__chips">
+									<Badge tone={ kindTone( 'medium' ) }>{ 'added' === change.kind ? __( 'new', 'bettershield' ) : __( 'opened wider', 'bettershield' ) }</Badge>
+									{ change.readonly ? null : <Badge tone={ kindTone( 'medium' ) }>{ __( 'changes site', 'bettershield' ) }</Badge> }
+									{ change.open ? <Badge tone={ kindTone( 'medium' ) }>{ __( 'non-admins', 'bettershield' ) }</Badge> : null }
+								</Cell>
+							</Row>
+						) ) }
+					</Table>
+				</div>
+				<div>
+					<Button type="secondary" size="sm" isBusy={ 'ability-accept' === busy } disabled={ Boolean( busy ) } onClick={ accept }>
+						{ __( 'Mark As Reviewed', 'bettershield' ) }
+					</Button>
+				</div>
 			</div>
-		</div>
+		</Card>
 	);
 }
 
-function Abilities( { available, abilities, changes = [] } ) {
+function Abilities( { available, abilities, pending = {} } ) {
 	const [ filter, setFilter ] = useState( ALL );
 	const [ search, setSearch ] = useState( '' );
 	// Which groups the reader has opened or closed by hand. Anything absent
-	// follows the default: ours open, everybody else's shut.
+	// follows the default: short groups open, long ones shut.
 	const [ opened, setOpened ] = useState( {} );
+
+	const head = (
+		<CardHead
+			icon="bot"
+			id="bs-ds-abilities-title"
+			title={ __( 'Actions plugins offer to AI', 'bettershield' ) }
+			tip={ __( 'Flagged actions can change your site, run from outside, and are open to non-admins.', 'bettershield' ) }
+			line
+		>
+			{ available ? <Badge>{ abilities.length }</Badge> : null }
+		</CardHead>
+	);
 
 	if ( ! available ) {
 		return (
 			<Card className="bs-ds-surface__card" aria-labelledby="bs-ds-abilities-title">
-				<CardHead icon="bot" id="bs-ds-abilities-title" title={ __( 'Actions plugins offer to AI', 'bettershield' ) } />
+				{ head }
 				<div className="bs-ds-surface__notes">
 					<Alert layout="default" tone="info" desc={ __( 'Abilities require WordPress 6.9.', 'bettershield' ) } />
 				</div>
@@ -307,153 +439,118 @@ function Abilities( { available, abilities, changes = [] } ) {
 		);
 	}
 
-	const isOpenToLowerRoles = ( ability ) => 'allowed' === ability.low_privilege_access;
 	const needle = search.trim().toLowerCase();
-	const matches = ( ability ) =>
-		( ALL === filter || isOpenToLowerRoles( ability ) ) &&
-		( '' === needle || String( ability.name || '' ).toLowerCase().includes( needle ) );
+	const matches = ( ability ) => ( ALL === filter || isOpen( ability ) ) && ( '' === needle || String( ability.name || '' ).toLowerCase().includes( needle ) );
 
 	// Whether the reader is looking at a subset rather than at everything.
 	const narrowed = ALL !== filter || '' !== needle;
-	const groups = groupsOf( abilities );
-	const shown = groups
-		.map( ( group ) => ( { group, rows: group.abilities.filter( matches ) } ) )
-		.filter( ( entry ) => entry.rows.length > 0 );
+	const shown = groupsOf( abilities.filter( matches ), ALL === filter );
+	// A group holding a change that waits for review opens, so its mark is seen.
+	const openByDefault = ( group ) => group.look || narrowed || group.rows.length <= SHORT || group.rows.some( ( ability ) => pending[ ability.name ] );
 
 	const counts = {
 		[ ALL ]: abilities.length,
-		[ OPEN ]: abilities.filter( isOpenToLowerRoles ).length,
+		[ OPEN ]: abilities.filter( isOpen ).length,
 	};
 
 	return (
-		<Card className="bs-ds-surface__card" aria-labelledby="bs-ds-abilities-title">
-			<CardHead icon="bot" id="bs-ds-abilities-title" title={ __( 'Actions plugins offer to AI', 'bettershield' ) } />
-			<NewSinceUpdate changes={ changes } />
-			<p className="bs-ds-surface__intro">
-				{ __(
-					'Every action your plugins let AI assistants use.',
-					'bettershield'
-				) }
-			</p>
-			<div className="bs-ds-surface__notes">
-				<Topics
-					items={ [
-						{
-							key: 'who',
-							label: __( 'What to look for', 'bettershield' ),
-							lead: __( 'Who can use it.', 'bettershield' ),
-							text: __(
-								'It is flagged when it can change your site, can be used from outside, and is open to non-admins.',
-								'bettershield'
-							),
-						},
-					] }
-				/>
-			</div>
+		<Tray icon="info" wrap note={ __( 'New actions from plugin updates show here first, marked new.', 'bettershield' ) }>
+			<Card className="bs-ds-surface__card" aria-labelledby="bs-ds-abilities-title">
+				{ head }
 
-			{ abilities.length ? (
-				<div className="bs-ds-surface__body">
-					<div className="bs-ds-surface__tabs">
-						<Tabs
-							id={ TABS_ID }
-							label={ __( 'Show abilities', 'bettershield' ) }
-							selected={ filter }
-							onSelect={ setFilter }
-							tabs={ [
-								{ key: ALL, label: __( 'All', 'bettershield' ), count: counts[ ALL ] },
-								{ key: OPEN, label: __( 'Open to non-admins', 'bettershield' ), count: counts[ OPEN ] },
-							] }
-							actions={
-								<label className="bs-ds-surface__search">
-									<Icon name="search" size={ 16 } tone="3" />
-									<input
-										type="search"
-										value={ search }
-										placeholder={ __( 'Search ability names', 'bettershield' ) }
-										aria-label={ __( 'Search ability names', 'bettershield' ) }
-										onChange={ ( event ) => setSearch( event.target.value ) }
-									/>
-								</label>
-							}
-						/>
-					</div>
-
-					<div className="bs-ds-surface__panel" { ...panelProps( TABS_ID, filter ) }>
-						{ OPEN === filter && ! counts[ OPEN ] ? (
-							<EmptyState>
-								{ sprintf(
-									/* translators: %d: number of registered abilities. */
-									_n(
-										'None of the %d registered ability admits accounts below administrator.',
-										'None of the %d registered abilities admits accounts below administrator.',
-										abilities.length,
-										'bettershield'
-									),
-									abilities.length
-								) }
-							</EmptyState>
-						) : null }
-
-						{ shown.length ? (
-							<Table
-								label={ __( 'Actions plugins offer to AI', 'bettershield' ) }
-								className="bs-ds-tbl--grouped"
-								columns={ [
-									{ key: 'name', label: __( 'Ability', 'bettershield' ) },
-									{ key: 'by', label: __( 'Registered by', 'bettershield' ), width: '160px' },
-									{ key: 'what', label: __( 'Can change site · Used from · Who can use it', 'bettershield' ), width: '240px' },
+				{ abilities.length ? (
+					<div className="bs-ds-surface__body">
+						<div className="bs-ds-surface__tabs">
+							<Tabs
+								id={ TABS_ID }
+								label={ __( 'Show abilities', 'bettershield' ) }
+								selected={ filter }
+								onSelect={ setFilter }
+								tabs={ [
+									{ key: ALL, label: __( 'All', 'bettershield' ), count: counts[ ALL ] },
+									{ key: OPEN, label: __( 'Open to non-admins', 'bettershield' ), count: counts[ OPEN ] },
 								] }
-							>
-								{ shown.map( ( entry ) => (
-									<AbilityGroup
-										key={ entry.group.source }
-										group={ entry.group }
-										rows={ entry.rows }
-										/*
-										 * A list being narrowed hides nothing that
-										 * survived the narrowing: a search or a
-										 * filter whose matches stay inside a shut
-										 * group is one that answers nothing. So
-										 * everything left open is open — unless the
-										 * reader has said otherwise about it.
-										 */
-										open={
-											undefined === opened[ entry.group.source ]
-												? entry.group.ours || narrowed
-												: opened[ entry.group.source ]
-										}
-										onToggle={ () =>
-											setOpened( ( state ) => ( {
-												...state,
-												[ entry.group.source ]:
-													undefined === state[ entry.group.source ]
-														? ! ( entry.group.ours || narrowed )
-														: ! state[ entry.group.source ],
-											} ) )
-										}
-									/>
-								) ) }
-							</Table>
-						) : null }
+								actions={
+									<label className="bs-ds-surface__search">
+										<Icon name="search" size={ 16 } tone="3" />
+										<input
+											type="search"
+											value={ search }
+											placeholder={ __( 'Search ability names', 'bettershield' ) }
+											aria-label={ __( 'Search ability names', 'bettershield' ) }
+											onChange={ ( event ) => setSearch( event.target.value ) }
+										/>
+									</label>
+								}
+							/>
+						</div>
 
-						{ ! shown.length && '' !== needle ? <EmptyState>{ __( 'No ability name matches that.', 'bettershield' ) }</EmptyState> : null }
+						<div className="bs-ds-surface__panel" { ...panelProps( TABS_ID, filter ) }>
+							{ OPEN === filter && ! counts[ OPEN ] ? (
+								<EmptyState>
+									{ sprintf(
+										/* translators: %d: number of registered abilities. */
+										_n(
+											'None of the %d registered ability admits accounts below administrator.',
+											'None of the %d registered abilities admits accounts below administrator.',
+											abilities.length,
+											'bettershield'
+										),
+										abilities.length
+									) }
+								</EmptyState>
+							) : null }
+
+							{ shown.length ? (
+								<Table
+									label={ __( 'Actions plugins offer to AI', 'bettershield' ) }
+									className="bs-ds-tbl--grouped bs-ds-surface__inventory"
+									columns={ [
+										{ key: 'name', label: __( 'Ability', 'bettershield' ) },
+										{ key: 'changes', label: __( 'Changes site', 'bettershield' ), width: '112px' },
+										{ key: 'from', label: __( 'Used from', 'bettershield' ), width: '80px' },
+										{ key: 'who', label: __( 'Who can use it', 'bettershield' ), width: '112px' },
+									] }
+								>
+									{ shown.map( ( group ) => (
+										<AbilityGroup
+											key={ group.source }
+											group={ group }
+											pending={ pending }
+											/*
+											 * A list being narrowed hides nothing that
+											 * survived the narrowing: a search or a
+											 * filter whose matches stay inside a shut
+											 * group is one that answers nothing. So
+											 * everything left open is open — unless the
+											 * reader has said otherwise about it.
+											 */
+											open={ undefined === opened[ group.source ] ? openByDefault( group ) : opened[ group.source ] }
+											onToggle={ () =>
+												setOpened( ( state ) => ( {
+													...state,
+													[ group.source ]: undefined === state[ group.source ] ? ! openByDefault( group ) : ! state[ group.source ],
+												} ) )
+											}
+										/>
+									) ) }
+								</Table>
+							) : null }
+
+							{ ! shown.length && '' !== needle ? <EmptyState>{ __( 'No ability name matches that.', 'bettershield' ) }</EmptyState> : null }
+						</div>
 					</div>
-				</div>
-			) : (
-				<EmptyState>
-					{ __(
-						'No plugin offers AI actions yet.',
-						'bettershield'
-					) }
-				</EmptyState>
-			) }
-		</Card>
+				) : (
+					<EmptyState>{ __( 'No plugin offers AI actions yet.', 'bettershield' ) }</EmptyState>
+				) }
+			</Card>
+		</Tray>
 	);
 }
 
 /**
- * One application password: its row, and the form that holds it to routes and
- * a network, opening under the row.
+ * One application password: what it is, what it reaches, and the form that
+ * holds it to routes and a network, opening under it.
  *
  * A limit narrows what a leaked credential can do: the REST routes it is for,
  * the network it is used from, or both. A request outside either is refused
@@ -555,8 +652,6 @@ function Password( { userId, password } ) {
 								  )
 						}
 					/>
-				</Cell>
-				<Cell>
 					{ limitable ? (
 						<div className="bs-ds-surface__limit">
 							<span className="bs-ds-surface__reach" ref={ status } tabIndex={ -1 }>
@@ -584,11 +679,32 @@ function Password( { userId, password } ) {
 
 							{ editing ? null : (
 								<span className="bs-ds-surface__limitactions" ref={ actions }>
-									<Button type="ghost" size="sm" disabled={ working } onClick={ open }>
+									<Button
+										type="ghost"
+										size="sm"
+										disabled={ working }
+										onClick={ open }
+										aria-label={ sprintf(
+											/* translators: %s: an application password’s name. */
+											__( 'Set limits for %s', 'bettershield' ),
+											password.name
+										) }
+									>
 										{ __( 'Set Limits', 'bettershield' ) }
 									</Button>
 									{ limit ? (
-										<Button type="ghost" size="sm" isBusy={ working } disabled={ working } onClick={ remove }>
+										<Button
+											type="ghost"
+											size="sm"
+											isBusy={ working }
+											disabled={ working }
+											onClick={ remove }
+											aria-label={ sprintf(
+												/* translators: %s: an application password’s name. */
+												__( 'Remove the limit on %s', 'bettershield' ),
+												password.name
+											) }
+										>
 											{ __( 'Remove Limit', 'bettershield' ) }
 										</Button>
 									) : null }
@@ -596,6 +712,11 @@ function Password( { userId, password } ) {
 										<Button
 											type="ghost"
 											size="sm"
+											aria-label={ sprintf(
+												/* translators: %s: an application password’s name. */
+												__( 'Undo the limit change on %s', 'bettershield' ),
+												password.name
+											) }
 											disabled={ busy === `limit-undo-${ undo }` }
 											onClick={ () => undoAppPasswordLimit( undo, afterChange( () => setUndo( null ) ) ) }
 										>
@@ -612,28 +733,26 @@ function Password( { userId, password } ) {
 			{ limitable && editing ? (
 				<div className="bs-ds-surface__under" role="row">
 					<div className="bs-ds-surface__limitform" role="cell" ref={ form }>
-						<FieldRow>
-							<Field
-								label={ __( 'Parts of the site it can use', 'bettershield' ) }
-								help={ __( 'Leave empty for all. Developers can name specific API paths here.', 'bettershield' ) }
-								value={ routes }
-								disabled={ working }
-								onChange={ ( next ) => {
-									setRoutes( next );
-									setRefusal( '' );
-								} }
-							/>
-							<Field
-								label={ __( 'Only allow from this IP address', 'bettershield' ) }
-								help={ __( 'Leave empty to allow any address.', 'bettershield' ) }
-								value={ range }
-								disabled={ working }
-								onChange={ ( next ) => {
-									setRange( next );
-									setRefusal( '' );
-								} }
-							/>
-						</FieldRow>
+						<Field
+							label={ __( 'Parts of the site it can use', 'bettershield' ) }
+							help={ __( 'Leave empty for all. Developers can name specific API paths here.', 'bettershield' ) }
+							value={ routes }
+							disabled={ working }
+							onChange={ ( next ) => {
+								setRoutes( next );
+								setRefusal( '' );
+							} }
+						/>
+						<Field
+							label={ __( 'Only allow from this IP address', 'bettershield' ) }
+							help={ __( 'Leave empty to allow any address.', 'bettershield' ) }
+							value={ range }
+							disabled={ working }
+							onChange={ ( next ) => {
+								setRange( next );
+								setRefusal( '' );
+							} }
+						/>
 						{ refusal ? <Alert layout="default" tone="error" live="alert" desc={ refusal } /> : null }
 						<span className="bs-ds-surface__limitactions">
 							<Button type="primary" size="sm" isBusy={ working } disabled={ working } onClick={ save }>
@@ -650,66 +769,110 @@ function Password( { userId, password } ) {
 	);
 }
 
-/**
- * The application passwords every account holds: a row saying what they are,
- * then a table of them, a group row per account.
- */
-function ApplicationPasswords( { holders } ) {
-	return (
-		<>
-			<SettingRow
-				title={ __( 'Application passwords', 'bettershield' ) }
-				about={ __( 'Every application password on the site, for every user.', 'bettershield' ) }
-				topics={ [
-					{
-						key: 'stale',
-						label: __( 'Unused', 'bettershield' ),
-						lead: __( 'Not used for 90 days, but still works.', 'bettershield' ),
-						note: {
-							tone: 'info',
-							text: __( 'Its owner can revoke it from their profile.', 'bettershield' ),
-						},
-					},
-				] }
-			/>
+/** The application passwords every account holds: a group row per account. */
+function PasswordList( { holders } ) {
+	if ( ! holders.length ) {
+		return null;
+	}
 
-			{ holders.length ? (
-				<Table
-					label={ __( 'Application passwords', 'bettershield' ) }
-					columns={ [
-						{ key: 'name', label: __( 'Name', 'bettershield' ) },
-						{ key: 'access', label: __( 'Access', 'bettershield' ) },
-					] }
-				>
-					{ holders.map( ( holder ) => [
-						<WholeRow
-							key={ `holder-${ holder.user_id }` }
-							kind="group"
-							aside={ holder.oldest_unused_days >= 90 ? <Badge tone={ kindTone( 'low' ) }>{ __( 'unused', 'bettershield' ) }</Badge> : null }
-						>
-							<span className="bs-ds-surface__holder">
-								<span className="bs-ds-surface__login">{ holder.login }</span>
-								<span>{ holder.role }</span>
-								<span>
-									{ sprintf(
-										/* translators: %d: number of application passwords the account holds. */
-										_n( '%d application password', '%d application passwords', holder.count, 'bettershield' ),
-										holder.count
-									) }
-								</span>
+	return (
+		<div className="bs-ds-surface__holders">
+			<Table label={ __( 'Application passwords', 'bettershield' ) } head={ false } columns={ [ { key: 'name', label: __( 'Name', 'bettershield' ) } ] }>
+				{ holders.map( ( holder ) => [
+					<WholeRow
+						key={ `holder-${ holder.user_id }` }
+						kind="group"
+						aside={ holder.oldest_unused_days >= 90 ? <Badge tone={ kindTone( 'low' ) }>{ __( 'unused', 'bettershield' ) }</Badge> : null }
+					>
+						<span className="bs-ds-surface__holder">
+							<span className="bs-ds-surface__login">{ holder.login }</span>
+							<span>{ holder.role }</span>
+							<span>
+								{ sprintf(
+									/* translators: %d: number of application passwords the account holds. */
+									_n( '%d application password', '%d application passwords', holder.count, 'bettershield' ),
+									holder.count
+								) }
 							</span>
-						</WholeRow>,
-						...( holder.passwords || [] ).map( ( password, index ) => (
-							<Password key={ `${ holder.user_id }-${ password.uuid || index }` } userId={ holder.user_id } password={ password } />
-						) ),
-					] ) }
-				</Table>
-			) : (
-				<EmptyState>
-					{ __( 'No application passwords are in use. Assistants connected here are listed on Connect.', 'bettershield' ) }
-				</EmptyState>
-			) }
-		</>
+						</span>
+					</WholeRow>,
+					...( holder.passwords || [] ).map( ( password, index ) => (
+						<Password key={ `${ holder.user_id }-${ password.uuid || index }` } userId={ holder.user_id } password={ password } />
+					) ),
+				] ) }
+			</Table>
+			<p className="bs-ds-surface__help bs-ds-surface__holdershelp">
+				{ __( '“Unused” means not used for 90 days; it still works. Each password’s owner can revoke it from their profile.', 'bettershield' ) }
+			</p>
+		</div>
+	);
+}
+
+/** The ages the sweep offers, in days. */
+const AGES = [ 30, 90, 180, 365 ];
+
+/** An age said in words: a year where it is one. */
+function ageLabel( days ) {
+	return 365 === days
+		? __( '1 year', 'bettershield' )
+		: sprintf(
+				/* translators: %d: a number of days. */
+				_n( '%d day', '%d days', days, 'bettershield' ),
+				days
+		  );
+}
+
+/**
+ * The design's Segmented control as a choice of one value: radios, so a
+ * reader hears a setting rather than a set of tabs.
+ */
+function AgeChoice( { label, value, options, disabled, onChange } ) {
+	const index = options.indexOf( value );
+	/*
+	 * While a choice saves the radios are marked unavailable rather than
+	 * disabled: a disabled button drops the focus the arrow key just moved to
+	 * it, and the reader is left on the page's body. A press or a key during
+	 * the save does nothing, so the next step is taken from the saved value.
+	 */
+	const move = ( event ) => {
+		const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[ event.key ];
+
+		if ( ! step ) {
+			return;
+		}
+
+		event.preventDefault();
+
+		if ( disabled ) {
+			return;
+		}
+
+		const next = options[ ( Math.max( index, 0 ) + step + options.length ) % options.length ];
+		const group = event.currentTarget.closest( '[role="radiogroup"]' );
+
+		group?.querySelector( `[data-days="${ next }"]` )?.focus();
+		onChange( next );
+	};
+
+	return (
+		<div className="bs-ds-seg" role="radiogroup" aria-label={ label }>
+			{ options.map( ( days ) => (
+				<button
+					key={ days }
+					type="button"
+					role="radio"
+					data-days={ days }
+					className="bs-ds-seg__item"
+					aria-checked={ value === days }
+					tabIndex={ value === days || ( index < 0 && days === options[ 0 ] ) ? 0 : -1 }
+					aria-disabled={ disabled || undefined }
+					onClick={ () => ! disabled && value !== days && onChange( days ) }
+					onKeyDown={ move }
+				>
+					{ ageLabel( days ) }
+				</button>
+			) ) }
+		</div>
 	);
 }
 
@@ -722,16 +885,16 @@ function ApplicationPasswords( { holders } ) {
  * was uninstalled. Each still opens the site.
  *
  * The copy carries the one thing that separates this from everything else this
- * plugin does — a revoked password cannot be put back, because the secret was
- * never stored. Saying so is not a disclaimer; it is the difference between an
- * owner switching this on knowingly and finding out at three in the morning.
+ * plugin does — a deleted password cannot be put back, because the secret was
+ * never stored. It is said on the row, not behind an ⓘ.
  */
 function Retirement( { expiry, minDays } ) {
 	const { saveAppPasswordExpiry, busy } = useStore();
 	const saving = busy === 'app-password-expiry';
-	const [ draft, setDraft ] = useState( null );
-	const value = draft || expiry;
-	// A refused day count is said under the field, not in the page banner
+	const days = Number( expiry.days ) || 0;
+	// A saved age the choices do not hold (set before they were offered) stays one of them.
+	const options = Array.from( new Set( [ ...AGES.filter( ( age ) => age >= minDays ), days ].filter( Boolean ) ) ).sort( ( a, b ) => a - b );
+	// A refused change is said under the choice, not in the page banner
 	// far above it (#2664).
 	const [ refusal, setRefusal ] = useState( '' );
 	const sayRefusal = ( error ) => {
@@ -742,83 +905,38 @@ function Retirement( { expiry, minDays } ) {
 
 	return (
 		<SettingRow
-			title={ __( 'Delete unused app passwords', 'bettershield' ) }
-			about={ __(
-				'Checked once a day; unused ones are deleted.',
-				'bettershield'
-			) }
+			title={ __( 'Delete unused passwords', 'bettershield' ) }
+			about={ __( 'Checked daily. Deleted passwords can’t be restored, so tools need a new one.', 'bettershield' ) }
+			control={ <Saved forKey="app-password-expiry" /> }
+			toggle={ {
+				checked: Boolean( expiry.enabled ),
+				disabled: saving,
+				onChange: ( enabled ) => saveAppPasswordExpiry( { ...expiry, enabled }, () => setRefusal( '' ), sayRefusal ),
+			} }
 		>
-			<Alert
-				layout="default"
-				tone="warning"
-				desc={ __( 'Can’t be undone: the tool using it will need a new password. Each removal is logged by name.', 'bettershield' ) }
-			/>
-
-			<SwitchLine
-				label={ sprintf(
-					/* translators: %d: the saved number of days a password may go unused. */
-					_n( 'Delete application passwords unused for %d day', 'Delete application passwords unused for %d days', Number( expiry.days ) || 0, 'bettershield' ),
-					Number( expiry.days ) || 0
-				) }
-				checked={ value.enabled }
-				disabled={ saving }
-				/*
-				 * The saved value, not the draft. A half-typed day count in
-				 * the field below is refused by the server, so somebody who
-				 * had started editing it could not turn the switch off at all
-				 * until they corrected a number they were no longer using.
-				 */
-				onChange={ ( enabled ) => saveAppPasswordExpiry( { ...expiry, enabled }, () => setRefusal( '' ), sayRefusal ) }
-			>
-				<Saved forKey="app-password-expiry" />
-			</SwitchLine>
-
-			{ value.enabled ? (
-				// Along the top: the field carries a help line, and lined up
-				// along the bottom Save sat beside that line, not the input.
-				<FieldRow align="start">
-					<Field
-						type="number"
-						width="md"
-						min={ minDays }
-						max={ 3650 }
-						label={ __( 'Unused for (days)', 'bettershield' ) }
-						help={ __( 'Counted from last use, or from creation if never used.', 'bettershield' ) }
-						error={ refusal }
-						value={ String( value.days ) }
+			{ expiry.enabled ? (
+				<div className="bs-ds-surface__age">
+					<span className="bs-ds-surface__agelabel" id="bs-ds-surface-age">
+						{ __( 'Delete when unused for', 'bettershield' ) }
+					</span>
+					<AgeChoice
+						label={ __( 'Delete when unused for', 'bettershield' ) }
+						value={ days }
+						options={ options }
 						disabled={ saving }
-						onChange={ ( days ) => {
-							setDraft( { ...value, days } );
-							setRefusal( '' );
-						} }
+						onChange={ ( next ) => saveAppPasswordExpiry( { ...expiry, days: next }, () => setRefusal( '' ), sayRefusal ) }
 					/>
-					<Button
-						type="secondary"
-						size="sm"
-						isBusy={ saving }
-						disabled={ saving || ! draft }
-						onClick={ () =>
-							// Cleared only once saved, and passed in so it
-							// still runs after a password confirmation. A
-							// refusal raises the banner; clearing the draft
-							// then would snap the field back and lose what
-							// was typed.
-							saveAppPasswordExpiry(
-								{ ...value, days: Number( value.days ) },
-								() => {
-									setDraft( null );
-									setRefusal( '' );
-								},
-								sayRefusal
-							)
-						}
-					>
-						{ __( 'Save', 'bettershield' ) }
-					</Button>
-				</FieldRow>
+					<span className="bs-ds-surface__help">{ __( 'Counted from last use, or from creation if never used.', 'bettershield' ) }</span>
+				</div>
 			) : null }
+			{ refusal ? <Alert layout="default" tone="error" live="alert" desc={ refusal } /> : null }
 		</SettingRow>
 	);
+}
+
+/** A trap's state beside its name: On in brand, Off in neutral. */
+function OnOff( { on } ) {
+	return on ? <Badge tone={ kindTone( 'on' ) }>{ __( 'On', 'bettershield' ) }</Badge> : <Badge>{ __( 'Off', 'bettershield' ) }</Badge>;
 }
 
 /**
@@ -833,7 +951,7 @@ function Retirement( { expiry, minDays } ) {
  * attacker, and a tripwire nobody knew about is one that fires at three in the
  * morning and nobody knows why.
  */
-function Decoy( { canary, name, used } ) {
+function Decoy( { canary, used } ) {
 	const { setCanary, busy } = useStore();
 	const working = busy === 'canary';
 	// A refusal said under the switch, not in the page banner (#2664).
@@ -842,28 +960,36 @@ function Decoy( { canary, name, used } ) {
 	return (
 		<SettingRow
 			title={ __( 'Trap password', 'bettershield' ) }
-			about={ __( 'A fake app password that no one should use. If anyone tries it, you get an alert, as it means your database or a backup was copied.', 'bettershield' ) }
-			meta={ sprintf(
-				/* translators: %s: the name the decoy appears under. */
-				__( 'It shows on your profile as “%s”. Using it yourself also sends an alert.', 'bettershield' ),
-				name
-			) }
+			about={ __( 'A decoy password. If anyone tries it, you get an alert, since your data was likely copied.', 'bettershield' ) }
+			badge={ <OnOff on={ !! canary } /> }
 		>
-			<SwitchLine
-				label={ __( 'Keep a trap password on my account', 'bettershield' ) }
-				checked={ !! canary }
-				disabled={ working }
-				onChange={ ( plant ) => {
-					setRefusal( '' );
-					setCanary( plant, ( error ) => {
-						setRefusal( error?.message || '' );
-
-						return Boolean( error?.message );
-					} );
-				} }
-			>
+			<div className="bs-ds-surface__switch">
+				<div className="bs-ds-surface__switchtext">
+					<span className="bs-ds-surface__switchlabel" id="bs-ds-surface-canary">
+						{ __( 'Keep a trap password on my account', 'bettershield' ) }
+					</span>
+					<span className="bs-ds-surface__help" id="bs-ds-surface-canary-help">
+						{ __( 'Listed on your profile, marked “do not use”.', 'bettershield' ) }
+					</span>
+				</div>
 				<Saved forKey="canary" />
-			</SwitchLine>
+				<Toggle
+					checked={ !! canary }
+					disabled={ working }
+					labelledBy="bs-ds-surface-canary"
+					describedBy="bs-ds-surface-canary-help"
+					onChange={ ( event ) => {
+						const plant = Boolean( event && event.target ? event.target.checked : event );
+
+						setRefusal( '' );
+						setCanary( plant, ( error ) => {
+							setRefusal( error?.message || '' );
+
+							return Boolean( error?.message );
+						} );
+					} }
+				/>
+			</div>
 			{ refusal ? <Alert layout="default" tone="error" live="alert" desc={ refusal } /> : null }
 
 			{ /* Said from the log the alarm writes to: a card that went on
@@ -886,22 +1012,25 @@ function Decoy( { canary, name, used } ) {
 							formatTime( used.at ),
 							used.count
 						) }
-						actions={
-							<Button type="secondary" size="sm" href={ tabUrl( 'bettershield-activity', 'site' ) }>
-								{ __( 'See It in Activity', 'bettershield' ) }
-							</Button>
-						}
 					/>
 				</div>
 			) : null }
 			{ canary && ! used ? (
 				<p className="bs-ds-surface__line" role="status">
+					<Icon name="circle-check" size={ 14 } tone="2" />
 					{ sprintf(
 						/* translators: %s: date and time. */
 						__( 'Added %s. No one has tried it.', 'bettershield' ),
 						formatTime( canary.planted_at )
 					) }
 				</p>
+			) : null }
+			{ canary ? (
+				<div>
+					<Button type="link" size="sm" href={ tabUrl( 'bettershield-activity', 'site' ) } trailing="arrow-right">
+						{ __( 'See It in Activity', 'bettershield' ) }
+					</Button>
+				</div>
 			) : null }
 		</SettingRow>
 	);
@@ -965,44 +1094,26 @@ function DecoyUrl( { state = {} } ) {
 		} );
 	};
 
-	const check = () =>
-		testDecoyPage( ( result ) => setTested( { matched: Boolean( result?.matched ), collision: result?.collision || '' } ) );
+	const check = () => testDecoyPage( ( result ) => setTested( { matched: Boolean( result?.matched ), collision: result?.collision || '' } ) );
 
 	return (
 		<SettingRow
 			title={ __( 'Trap page', 'bettershield' ) }
-			about={ __( 'A hidden address no real visitor would open. If someone does, you get an alert.', 'bettershield' ) }
-			topics={ [
-				{
-					key: 'path',
-					label: __( 'How this works', 'bettershield' ),
-					text: __(
-						'It shows your normal 404 page. A visit can be a scanner or an accident, not proof of compromise.',
-						'bettershield'
-					),
-					points: [
-						__( 'Choose a path nothing uses.', 'bettershield' ),
-						__( 'Only requests that reach WordPress are seen; server rules and edge caches can bypass it.', 'bettershield' ),
-						__( 'Repeat visits alert at most once a minute.', 'bettershield' ),
-					],
-				},
-			] }
+			about={ __( 'A hidden page only intruders find. Visits alert you.', 'bettershield' ) }
+			badge={ <OnOff on={ enabled && ! collision } /> }
 		>
-			<p className="bs-ds-surface__state" role="status" ref={ status } tabIndex={ -1 }>
-				{ state.enabled ? (
-					<>
-						{ collision
-							? __( 'Saved, but not active:', 'bettershield' )
-							: __( 'Your trap page (visiting it yourself sends an alert too):', 'bettershield' ) }{ ' ' }
-						<span className="bs-ds-surface__url">{ state.url }</span>
-					</>
-				) : (
-					__( 'No trap page is set.', 'bettershield' )
-				) }
-			</p>
-
 			{ state.enabled ? (
 				<>
+					<div className="bs-ds-surface__address">
+						{ /* The address inside the status line, so focus landing here reads both. */ }
+						<p className="bs-ds-surface__state" role="status" ref={ status } tabIndex={ -1 }>
+							{ collision ? __( 'Saved, but not active:', 'bettershield' ) : __( 'Your trap page (visiting it yourself sends an alert too):', 'bettershield' ) }{ ' ' }
+							<span className="bs-ds-surface__url" title={ state.url }>
+								{ pathOf( state.url ) }
+							</span>
+						</p>
+					</div>
+
 					<span className="bs-ds-surface__actions">
 						<Button type="secondary" size="sm" disabled={ working } onClick={ check }>
 							{ __( 'Test It (No Alert Sent)', 'bettershield' ) }
@@ -1012,11 +1123,8 @@ function DecoyUrl( { state = {} } ) {
 						     the one that replaces it is a different path. */ }
 						<Armed
 							type="ghost"
-							label={ __( 'Turn Off Trap Page', 'bettershield' ) }
-							consequence={ __(
-								'The path stops being watched and raises no alert. Setting up again gives a new path.',
-								'bettershield'
-							) }
+							label={ __( 'Turn Off', 'bettershield' ) }
+							consequence={ __( 'The path stops being watched and raises no alert. Setting up again gives a new path.', 'bettershield' ) }
 							busy={ working }
 							onConfirm={ () => save( false, '' ) }
 						/>
@@ -1030,10 +1138,7 @@ function DecoyUrl( { state = {} } ) {
 							<Alert
 								layout="default"
 								tone="warning"
-								desc={ __(
-									'Your sign-in address uses this path, so the decoy is not watching it. Disable it and choose another.',
-									'bettershield'
-								) }
+								desc={ __( 'Your sign-in address uses this path, so the decoy is not watching it. Disable it and choose another.', 'bettershield' ) }
 							/>
 						</div>
 					) : null }
@@ -1042,10 +1147,7 @@ function DecoyUrl( { state = {} } ) {
 							<Alert
 								layout="default"
 								tone="warning"
-								desc={ __(
-									'Published content now uses this path, so the decoy is not watching it. Disable it and choose another.',
-									'bettershield'
-								) }
+								desc={ __( 'Published content now uses this path, so the decoy is not watching it. Disable it and choose another.', 'bettershield' ) }
 							/>
 						</div>
 					) : null }
@@ -1056,10 +1158,7 @@ function DecoyUrl( { state = {} } ) {
 								tone={ tested.matched ? 'success' : 'warning' }
 								desc={
 									tested.matched
-										? __(
-												'The saved path is recognized. No public request or alert was sent.',
-												'bettershield'
-										  )
+										? __( 'The saved path is recognized. No public request or alert was sent.', 'bettershield' )
 										: __( 'The saved path was not recognized. Reload and check it.', 'bettershield' )
 								}
 							/>
@@ -1067,12 +1166,16 @@ function DecoyUrl( { state = {} } ) {
 					) : null }
 				</>
 			) : (
-				<FieldRow align="start">
+				<>
+					<p className="screen-reader-text" role="status" ref={ status } tabIndex={ -1 }>
+						{ __( 'No trap page is set.', 'bettershield' ) }
+					</p>
 					<Field
 						label={ __( 'Trap page address', 'bettershield' ) }
-						help={ __( '8–80 lowercase letters, digits or hyphens, starting with a letter. Example: private-export-review', 'bettershield' ) }
+						help={ __( 'a–z, 0–9 or hyphens, starting with a letter.', 'bettershield' ) }
 						error={ refusal }
 						value={ slug }
+						placeholder="private-export-review"
 						onChange={ ( next ) => {
 							setSlug( next );
 							setRefusal( '' );
@@ -1082,13 +1185,24 @@ function DecoyUrl( { state = {} } ) {
 						autoCapitalize="off"
 						spellCheck={ false }
 					/>
-					<Button type="secondary" size="sm" disabled={ working || ! slug } isBusy={ working } onClick={ () => save( true, slug ) }>
-						{ __( 'Turn On Trap Page', 'bettershield' ) }
-					</Button>
-				</FieldRow>
+					<div>
+						<Button type="secondary" size="sm" disabled={ working || ! slug } isBusy={ working } onClick={ () => save( true, slug ) }>
+							{ __( 'Turn On Trap Page', 'bettershield' ) }
+						</Button>
+					</div>
+				</>
 			) }
 		</SettingRow>
 	);
+}
+
+/** A trap page's address as its path, as the reader would type it after the site's own. */
+function pathOf( url ) {
+	try {
+		return new URL( url ).pathname;
+	} catch ( error ) {
+		return String( url || '' );
+	}
 }
 
 /** Where a credential is kept, said in words rather than in a storage term. */
@@ -1097,6 +1211,46 @@ const SOURCES = {
 	env: () => __( 'in an environment variable', 'bettershield' ),
 	constant: () => __( 'in a PHP constant', 'bettershield' ),
 };
+
+/**
+ * Where the saved keys are kept, said once for all of them: one place when
+ * they share it, the site when they do not.
+ *
+ * @param {Array<Object>} configured The connectors with a key saved.
+ * @return {string} The place, as a phrase that follows "saved".
+ */
+function keptIn( configured ) {
+	const places = Array.from( new Set( configured.map( ( connector ) => connector.storage_source ) ) );
+
+	if ( 1 === places.length ) {
+		if ( 'database' === places[ 0 ] ) {
+			return __( 'in the database', 'bettershield' );
+		}
+
+		if ( SOURCES[ places[ 0 ] ] ) {
+			return SOURCES[ places[ 0 ] ]();
+		}
+	}
+
+	return __( 'on this site', 'bettershield' );
+}
+
+/**
+ * One finding of the last card: its name and a state word, the sentence
+ * under them, then a line per thing found.
+ */
+function Found( { title, badge, about = null, children = null } ) {
+	return (
+		<div className="bs-ds-surface__found">
+			<div className="bs-ds-surface__foundhead">
+				<h3 className="bs-ds-surface__foundtitle">{ title }</h3>
+				{ badge }
+			</div>
+			{ about ? <p className="bs-ds-surface__line">{ about }</p> : null }
+			{ children }
+		</div>
+	);
+}
 
 /**
  * Other plugins' MCP servers on this site, read from the REST routes (#1877):
@@ -1108,9 +1262,27 @@ function McpServers( { endpoints } ) {
 	const list = endpoints || [];
 	const open = list.filter( ( endpoint ) => endpoint.open ).length;
 
-	let about = __( 'No other plugin lets AI assistants connect here.', 'bettershield' );
+	let badge = <Badge tone={ kindTone( 'good' ) }>{ __( 'None found', 'bettershield' ) }</Badge>;
+	let about = null;
 
 	if ( list.length ) {
+		badge = open ? (
+			<Badge tone={ kindTone( 'high' ) }>
+				{ sprintf(
+					/* translators: %d: how many endpoints accept calls without signing in. */
+					__( '%d open', 'bettershield' ),
+					open
+				) }
+			</Badge>
+		) : (
+			<Badge>
+				{ sprintf(
+					/* translators: %d: how many endpoints other plugins run. */
+					__( '%d found', 'bettershield' ),
+					list.length
+				) }
+			</Badge>
+		);
 		about = open
 			? sprintf(
 					/* translators: 1: how many endpoints accept calls without signing in, 2: how many there are. */
@@ -1126,75 +1298,47 @@ function McpServers( { endpoints } ) {
 	}
 
 	return (
-		<>
-			<SettingRow
-				title={ __( 'Other plugins’ AI connections', 'bettershield' ) }
-				about={ about }
-				topics={ [
-					{
-						key: 'how',
-						label: __( 'How this works', 'bettershield' ),
-						text: __( 'Other plugins that let AI assistants connect. Any that don’t ask for a sign-in are flagged.', 'bettershield' ),
-					},
-				] }
-			/>
-
+		<Found title={ __( 'Other plugins’ AI connections', 'bettershield' ) } badge={ badge } about={ about }>
 			{ list.length ? (
-				<Table
-					label={ __( 'Other plugins’ AI connections', 'bettershield' ) }
-					columns={ [
-						{ key: 'route', label: __( 'Route', 'bettershield' ) },
-						{ key: 'who', label: __( 'Who can call it', 'bettershield' ), width: '200px' },
-					] }
-				>
+				<ul className="bs-ds-surface__items" aria-label={ __( 'Other plugins’ AI connections', 'bettershield' ) }>
 					{ list.map( ( endpoint ) => (
-						<Row key={ endpoint.route } className="bs-ds-surface__connector">
-							<Cell>
-								<TitleMeta
-									title={ endpoint.route }
-									meta={
-										<span className="bs-ds-surface__where">
-											<span>{ endpoint.owner_label }</span>
-											{ endpoint.advisory ? <span>{ __( 'has a published advisory', 'bettershield' ) }</span> : null }
-										</span>
-									}
-								/>
-							</Cell>
-							<Cell>
-								{ endpoint.open ? (
-									<Badge tone={ kindTone( 'high' ) }>{ __( 'anyone, no sign-in', 'bettershield' ) }</Badge>
-								) : endpoint.sign_in ? (
-									// OAuth discovery and sign-in steps have to answer a caller with no token (#2939).
-									<Badge tone={ kindTone( 'neutral' ) }>{ __( 'sign-in route', 'bettershield' ) }</Badge>
-								) : endpoint.not_mcp ? (
-									// Let a stranger through but gave no AI-connection answer, so it asks for no sign-in either.
-									<Badge tone={ kindTone( 'neutral' ) }>{ __( 'not an AI connection', 'bettershield' ) }</Badge>
-								) : (
-									<Badge tone={ kindTone( 'neutral' ) }>{ __( 'signed-in users only', 'bettershield' ) }</Badge>
-								) }
-							</Cell>
-						</Row>
+						<li key={ endpoint.route } className="bs-ds-surface__item">
+							<span className="bs-ds-surface__itemtext">
+								<span className="bs-ds-surface__route">{ endpoint.route }</span>
+								<span className="bs-ds-surface__where">
+									<span>{ endpoint.owner_label }</span>
+									{ endpoint.advisory ? <span>{ __( 'has a published advisory', 'bettershield' ) }</span> : null }
+								</span>
+							</span>
+							{ endpoint.open ? (
+								<Badge tone={ kindTone( 'high' ) }>{ __( 'anyone, no sign-in', 'bettershield' ) }</Badge>
+							) : endpoint.sign_in ? (
+								// OAuth discovery and sign-in steps have to answer a caller with no token (#2939).
+								<Badge>{ __( 'sign-in route', 'bettershield' ) }</Badge>
+							) : endpoint.not_mcp ? (
+								// Let a stranger through but gave no AI-connection answer, so it asks for no sign-in either.
+								<Badge>{ __( 'not an AI connection', 'bettershield' ) }</Badge>
+							) : (
+								<Badge>{ __( 'signed-in users only', 'bettershield' ) }</Badge>
+							) }
+						</li>
 					) ) }
-				</Table>
+				</ul>
 			) : null }
-		</>
+		</Found>
 	);
 }
 
 /**
  * Connector credentials, and who can read them.
  *
- * This row is the one that proves the positioning, and it only works if the
- * tone is right. Every sentence here is a statement of how WordPress works —
- * not an accusation about a connector, and not a warning. An owner who reads
- * it and feels informed will act; one who feels alarmed will dismiss it.
- *
- * The claim is also deliberately narrow. Core masks these values in its own
- * REST responses, so "readable over the API" would be false. What is true is
- * that the credential is an option, a variable or a constant, and every plugin
- * running here can read all three directly — no route involved.
+ * Every sentence here is a statement of how WordPress works — not an
+ * accusation about a connector, and not a warning. Core masks these values in
+ * its own REST responses, so "readable over the API" would be false. What is
+ * true is that the credential is an option, a variable or a constant, and
+ * every plugin running here can read all three directly — no route involved.
  */
-function Connectors( { report, referenceUrl } ) {
+function Connectors( { report } ) {
 	// Absent below the version that has connectors at all, rather than a
 	// placeholder promising a feature that is gated on the platform.
 	if ( ! report || ! report.available ) {
@@ -1223,90 +1367,82 @@ function Connectors( { report, referenceUrl } ) {
 			  );
 
 	return (
-		<>
-			<SettingRow
-				title={ __( 'Stored service keys', 'bettershield' ) }
-				about={
-					configured.length
-						? sprintf(
-								/* translators: 1: the services whose keys are saved, e.g. "OpenAI and Elastic", 2: who can read them. */
-								_n( 'A key for %1$s is saved on this site. %2$s', 'Keys for %1$s are saved on this site. %2$s', configured.length, 'bettershield' ),
-								listOf( configured.map( ( connector ) => connector.label ) ),
-								readers
-						  )
-						: __( 'No service key is saved on this site.', 'bettershield' )
-				}
-				topics={ [
-					{
-						key: 'how',
-						label: __( 'How this works', 'bettershield' ),
-						text: report.advisory,
-						body: (
-							<p>
-								<Button type="link" size="sm" href={ referenceUrl } target="_blank" rel="noopener noreferrer" trailing="external-link">
-									{ __( 'WordPress Plans to Encrypt These Keys', 'bettershield' ) }
-								</Button>
-							</p>
-						),
-					},
-				] }
-			/>
-
-			{ /* With none saved the row's one line says so: eleven rows of
-			     "not set" under it said it again (#2569). */ }
+		<Found
+			title={ __( 'Stored service keys', 'bettershield' ) }
+			badge={
+				configured.length ? (
+					<Badge tone={ kindTone( 'medium' ) }>
+						{ sprintf(
+							/* translators: %d: how many service keys are saved. */
+							_n( '%d key saved', '%d keys saved', configured.length, 'bettershield' ),
+							configured.length
+						) }
+					</Badge>
+				) : (
+					<Badge tone={ kindTone( 'good' ) }>{ __( 'None saved', 'bettershield' ) }</Badge>
+				)
+			}
+			about={
+				configured.length
+					? sprintf(
+							/* translators: 1: the services whose keys are saved, e.g. "OpenAI and Elastic", 2: where they are kept, e.g. "in the database", 3: who can read them. */
+							_n( 'A key for %1$s is saved %2$s. %3$s', 'Keys for %1$s are saved %2$s. %3$s', configured.length, 'bettershield' ),
+							listOf( configured.map( ( connector ) => connector.label ) ),
+							keptIn( configured ),
+							readers
+					  )
+					: null
+			}
+		>
+			{ /* The saved keys only: the ones not set are said by the badge,
+			     not as rows of "Not Set" (#2569, #2663). */ }
 			{ configured.length ? (
-				<Table
-					label={ __( 'Connector credentials', 'bettershield' ) }
-					columns={ [
-						{ key: 'name', label: __( 'Name', 'bettershield' ) },
-						{ key: 'state', label: __( 'State', 'bettershield' ), width: '200px' },
-					] }
-				>
-					{ /* The saved keys only: the ones not set are said by the
-					     row's sentence, not as rows of "Not Set" (#2663). */ }
+				<ul className="bs-ds-surface__items" aria-label={ __( 'Connector credentials', 'bettershield' ) }>
 					{ configured.map( ( connector ) => (
-						<Row key={ connector.id } className="bs-ds-surface__connector">
-							<Cell>
-								<TitleMeta
-									title={ connector.label }
-									meta={
-										<span className="bs-ds-surface__where">
-											{ connector.configured && SOURCES[ connector.storage_source ] ? <span>{ SOURCES[ connector.storage_source ]() }</span> : null }
-											{ /* Four characters, so one key can be told from
-											     another. Never more, whoever is asking. */ }
-											{ connector.key_hint ? <span>{ '…' + connector.key_hint }</span> : null }
-										</span>
-									}
-								/>
-							</Cell>
-							<Cell>
-								{ /* One state word; where it is kept is said under the name. */ }
-								{ connector.configured ? (
-									<Badge tone={ kindTone( 'database' === connector.storage_source ? 'neutral' : 'muted' ) }>
-										{ 'database' === connector.storage_source ? __( 'Unencrypted', 'bettershield' ) : __( 'Saved', 'bettershield' ) }
-									</Badge>
-								) : (
-									<Badge tone={ kindTone( 'muted' ) }>{ __( 'Not Set', 'bettershield' ) }</Badge>
-								) }
-							</Cell>
-						</Row>
+						<li key={ connector.id } className="bs-ds-surface__item bs-ds-surface__connector">
+							<span className="bs-ds-surface__itemtext">
+								<span className="bs-ds-surface__route">{ connector.label }</span>
+								<span className="bs-ds-surface__where">
+									{ SOURCES[ connector.storage_source ] ? <span>{ SOURCES[ connector.storage_source ]() }</span> : null }
+									{ /* Four characters, so one key can be told from
+									     another. Never more, whoever is asking. */ }
+									{ connector.key_hint ? <span>{ '…' + connector.key_hint }</span> : null }
+								</span>
+							</span>
+							<Badge>{ 'database' === connector.storage_source ? __( 'Unencrypted', 'bettershield' ) : __( 'Saved', 'bettershield' ) }</Badge>
+						</li>
 					) ) }
-				</Table>
+				</ul>
 			) : null }
-		</>
+		</Found>
 	);
 }
 
+/** How many application passwords the site holds, said as the card's badge. */
+function passwordCount( holders ) {
+	const count = holders.reduce( ( sum, holder ) => sum + ( Number( holder.count ) || 0 ), 0 );
+
+	return count ? <Badge>{ count }</Badge> : <Badge>{ __( 'None', 'bettershield' ) }</Badge>;
+}
+
 /**
- * The Surface tab before the surface document has landed: the strip, the
- * inventory, and the card of everything else that can reach the site.
+ * The Surface tab before the surface document has landed: the strip, then
+ * the inventory beside the cards of everything else that can reach the site.
  */
 function SurfaceBone() {
 	return (
 		<Skeleton label={ __( 'Loading the agent surface…', 'bettershield' ) }>
 			<AgentStripBone />
-			<CardBone rows={ [ '40%', '55%', '35%' ] } />
-			<CardBone rows={ [ '30%', '50%', '35%', '25%' ] } toggle />
+			<div className="bs-ds-surface__grid">
+				<div className="bs-ds-surface__main">
+					<CardBone rows={ [ '40%', '55%', '35%', '50%', '30%' ] } />
+				</div>
+				<div className="bs-ds-surface__side">
+					<CardBone rows={ [ '60%', '45%' ] } toggle />
+					<CardBone rows={ [ '50%', '35%', '45%' ] } toggle />
+					<CardBone rows={ [ '55%', '40%' ] } />
+				</div>
+			</div>
 		</Skeleton>
 	);
 }
@@ -1316,42 +1452,66 @@ export default function Surface() {
 
 	return (
 		<Resource resource={ resource } onRetry={ reload } loading={ <SurfaceBone /> }>
-			{ ( data ) => (
-				<>
-					<AgentStrip surface={ data } />
-					<Abilities available={ data.abilities_api_available } abilities={ data.abilities } changes={ data.ability_changes } />
+			{ ( data ) => {
+				const holders = data.application_passwords || [];
+				const traps = ( data.canary ? 1 : 0 ) + ( data.decoy_page?.enabled && ! data.decoy_page?.collision ? 1 : 0 );
 
-					{ /*
-					   Then what else can reach this site, in the order a reader
-					   meets it: the credentials that exist, the sweep that
-					   retires the forgotten ones, the one that exists to be
-					   stolen, the path that exists to be asked for, the other
-					   MCP servers on the site, and the keys another plugin's
-					   connector holds.
+				return (
+					<>
+						<AgentStrip surface={ data } />
+						<div className="bs-ds-surface__grid">
+							<div className="bs-ds-surface__main">
+								<NewSinceUpdate changes={ data.ability_changes } />
+								<Abilities available={ data.abilities_api_available } abilities={ data.abilities || [] } pending={ pendingOf( data.ability_changes ) } />
+							</div>
 
-					   One card rather than five. They are five answers to a
-					   single question, and five cards made them read as five
-					   unrelated settings that happened to be on the same tab —
-					   which is also how somebody comes to configure the decoy
-					   without ever having scrolled past it to the connector
-					   keys. Inside, a row each, under the row's rule.
-					*/ }
-					<SettingsCard
-						className="bs-ds-surface__card"
-						icon="key"
-						title={ __( 'Other ways in to check', 'bettershield' ) }
-					>
-						<ApplicationPasswords holders={ data.application_passwords } />
-						<Retirement expiry={ data.expiry } minDays={ data.expiry_min_days } />
-						<Decoy canary={ data.canary } name={ data.canary_name } used={ data.canary_use || null } />
-						<DecoyUrl state={ data.decoy_page } />
-						{ /* The other doors an agent can use: other plugins' own
-						     MCP servers (#1877). */ }
-						<McpServers endpoints={ data.mcp_endpoints } />
-						<Connectors report={ data.connectors } referenceUrl={ data.connectors_reference } />
-					</SettingsCard>
-				</>
-			) }
+							{ /*
+							   Then what else can reach this site, in the order a
+							   reader meets it: the credentials that exist and the
+							   sweep that retires the forgotten ones, the two traps
+							   that exist to be found, and what other plugins open
+							   or keep.
+							*/ }
+							<div className="bs-ds-surface__side">
+								<Tray icon="info" wrap note={ __( 'Each removal is logged by name.', 'bettershield' ) }>
+									<Card className="bs-ds-surface__card bs-ds-settings" aria-labelledby="bs-ds-passwords-title">
+										<CardHead icon="key-round" id="bs-ds-passwords-title" title={ __( 'Application passwords', 'bettershield' ) }>
+											{ passwordCount( holders ) }
+										</CardHead>
+										<Retirement expiry={ data.expiry } minDays={ Number( data.expiry_min_days ) || 30 } />
+										<PasswordList holders={ holders } />
+									</Card>
+								</Tray>
+
+								<Tray icon="info" wrap note={ __( 'If anyone touches a trap, you get an alert.', 'bettershield' ) }>
+									<Card className="bs-ds-surface__card bs-ds-settings" aria-labelledby="bs-ds-traps-title">
+										<CardHead icon="globe" id="bs-ds-traps-title" title={ __( 'Traps', 'bettershield' ) }>
+											<Badge tone={ traps ? kindTone( 'on' ) : 'neutral' }>
+												{ sprintf(
+													/* translators: %d: how many of the two traps are on. */
+													__( '%d of 2 on', 'bettershield' ),
+													traps
+												) }
+											</Badge>
+										</CardHead>
+										<Decoy canary={ data.canary } used={ data.canary_use || null } />
+										<DecoyUrl state={ data.decoy_page } />
+									</Card>
+								</Tray>
+
+								<Card className="bs-ds-surface__card" aria-labelledby="bs-ds-ways-title">
+									<CardHead icon="shield-check" id="bs-ds-ways-title" title={ __( 'Other ways in, checked', 'bettershield' ) } />
+									{ /* The other doors an agent can use: other plugins'
+									     own MCP servers (#1877), and the keys their
+									     connectors hold. */ }
+									<McpServers endpoints={ data.mcp_endpoints } />
+									<Connectors report={ data.connectors } />
+								</Card>
+							</div>
+						</div>
+					</>
+				);
+			} }
 		</Resource>
 	);
 }

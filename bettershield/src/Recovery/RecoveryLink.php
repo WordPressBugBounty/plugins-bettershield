@@ -19,6 +19,7 @@ namespace BetterShield\Recovery;
 
 use BetterShield\Audit\Auditor;
 use BetterShield\Events\Writer;
+use BetterShield\Support\Claim;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -111,6 +112,23 @@ final class RecoveryLink {
 	 */
 	private const SPENT_OPTION         = 'bettershield_recovery_spent';
 	private const NETWORK_SPENT_OPTION = 'bettershield_network_recovery_spent';
+
+	/**
+	 * Held while a link is checked and replaced, and while one is generated,
+	 * so two presses at once spend it once, and a new link made while the
+	 * old one is being used is not overwritten by that use's replacement.
+	 */
+	private const SPEND_CLAIM         = 'recovery_link_spend';
+	private const NETWORK_SPEND_CLAIM = 'network_recovery_link_spend';
+
+	/** How long a hold lasts if its request dies holding it. */
+	private const SPEND_SECONDS = 30;
+
+	/** How long a request waits for another to let go, in microseconds. */
+	private const WAIT_MICROSECONDS = 5000000;
+
+	/** Whether this request's token was good but used by another at the same moment. */
+	private static bool $taken = false;
 
 	public static function register(): void {
 		// Priority 0: recovery must run before anything else the plugin
@@ -225,7 +243,7 @@ final class RecoveryLink {
 		 */
 		$stand_in = 'BETTERSHIELDCODE';
 
-		return str_replace( $stand_in, '', add_query_arg( self::QUERY_VAR, $stand_in, home_url( '/' ) ) );
+		return str_replace( $stand_in, '', add_query_arg( self::QUERY_VAR, $stand_in, self::door() ) );
 	}
 
 	/**
@@ -356,6 +374,21 @@ final class RecoveryLink {
 	 * the write reported a change — see `stored()`.
 	 */
 	public static function generate(): ?string {
+		// Waits out a use of the old link in progress, so that use's
+		// replacement cannot land after this and outlive it (#3059).
+		$held = self::hold( self::SPEND_CLAIM );
+
+		try {
+			return self::issue();
+		} finally {
+			if ( true === $held ) {
+				self::let_go( self::SPEND_CLAIM );
+			}
+		}
+	}
+
+	/** generate(), for a caller already holding the spend. */
+	private static function issue(): ?string {
 		$replaced = self::link_exists();
 		$token    = bin2hex( random_bytes( 32 ) );
 
@@ -392,7 +425,81 @@ final class RecoveryLink {
 			)
 		);
 
-		return add_query_arg( self::QUERY_VAR, $token, home_url( '/' ) );
+		return add_query_arg( self::QUERY_VAR, $token, self::door() );
+	}
+
+	/**
+	 * The address a link or a code is used at: the sign-in script, not the
+	 * home page. The home page is the most cached address on a site, and a
+	 * cache that ignores query strings answered the link with the cached
+	 * home page, or stored the confirm page and its token there for every
+	 * visitor; sign-in pages are left out of page caches everywhere (#3059).
+	 *
+	 * Built from the site address rather than through site_url( 'wp-login.php' ),
+	 * which a moved sign-in address rewrites: the link would carry the hidden
+	 * address and stop working when it moves. This request is answered on
+	 * init, before anything refuses the script, so it opens with the address
+	 * moved. Links already issued on the home page keep working.
+	 */
+	private static function door( bool $network = false ): string {
+		return trailingslashit( $network ? network_site_url() : site_url() ) . 'wp-login.php';
+	}
+
+	/**
+	 * Take a hold, waiting a few seconds for one held by another request to
+	 * be let go. The network's is kept on the main site, where every site's
+	 * use of the network link meets.
+	 *
+	 * True when held, false when another request kept it past the wait, and
+	 * null when the hold could not be stored at all. The link is the way back
+	 * in that has to work when the database half does not, so a store that
+	 * will not answer is passed through unguarded rather than refusing the
+	 * owner, as the link worked before the hold existed.
+	 */
+	private static function hold( string $key, bool $network = false ): ?bool {
+		$switched = $network && is_multisite() && get_current_blog_id() !== get_main_site_id() && switch_to_blog( get_main_site_id() );
+		$waited   = 0;
+
+		try {
+			while ( ! Claim::claim( $key, self::SPEND_SECONDS ) ) {
+				// Not held by anybody, yet not taken: the store is not answering.
+				if ( null === Claim::count_or_fail( $key ) ) {
+					return null;
+				}
+
+				if ( $waited >= self::WAIT_MICROSECONDS ) {
+					return false;
+				}
+
+				usleep( 100000 );
+				$waited += 100000;
+			}
+
+			return true;
+		} finally {
+			if ( $switched ) {
+				restore_current_blog();
+			}
+		}
+	}
+
+	private static function let_go( string $key, bool $network = false ): void {
+		$switched = $network && is_multisite() && get_current_blog_id() !== get_main_site_id() && switch_to_blog( get_main_site_id() );
+
+		Claim::release( $key );
+
+		if ( $switched ) {
+			restore_current_blog();
+		}
+	}
+
+	/**
+	 * Whether the token in this request was good, but another request used
+	 * it first: the same press twice, two tabs, or the owner and somebody
+	 * else at once. Answered as already used, never as a guess.
+	 */
+	public static function taken(): bool {
+		return self::$taken;
 	}
 
 	/**
@@ -488,24 +595,53 @@ final class RecoveryLink {
 			return false;
 		}
 
-		$duration = (int) apply_filters( 'bettershield_safe_mode_duration', HOUR_IN_SECONDS );
+		/*
+		 * The check and the replacement as one, so the link is spent once
+		 * however many presses arrive together, and a link generated meanwhile
+		 * is not overwritten by this use's replacement (#3059). The hash is
+		 * read again once held: whoever held it before may have spent it.
+		 */
+		$held = self::hold( self::SPEND_CLAIM );
 
-		// The thing they came for happens first and unconditionally. Whatever
-		// follows, the site is now in safe mode.
-		SafeMode::enter( $duration, 'recovery_link' );
+		if ( false === $held ) {
+			self::$taken = true;
 
-		// Storing the new hash is what makes the presented token dead, so the
-		// replacement exists before the old one stops working rather than after.
-		// A refused write leaves the presented token alive, which is the safer
-		// of the two ways to fail here: the owner keeps a way back in.
-		$replacement = self::generate();
-
-		if ( null !== $replacement ) {
-			update_option( self::SPENT_OPTION, self::spent_record( $token, $duration ), false );
-			self::mail_replacement_after_response( $replacement );
+			return false;
 		}
 
-		return true;
+		try {
+			wp_cache_delete( self::HASH_OPTION, 'options' );
+			$current = get_option( self::HASH_OPTION );
+
+			if ( ! is_string( $current ) || ! hash_equals( $current, hash( 'sha256', $token ) ) ) {
+				self::$taken = true;
+
+				return false;
+			}
+
+			$duration = (int) apply_filters( 'bettershield_safe_mode_duration', HOUR_IN_SECONDS );
+
+			// The thing they came for happens first and unconditionally. Whatever
+			// follows, the site is now in safe mode.
+			SafeMode::enter( $duration, 'recovery_link' );
+
+			// Storing the new hash is what makes the presented token dead, so the
+			// replacement exists before the old one stops working rather than after.
+			// A refused write leaves the presented token alive, which is the safer
+			// of the two ways to fail here: the owner keeps a way back in.
+			$replacement = self::issue();
+
+			if ( null !== $replacement ) {
+				update_option( self::SPENT_OPTION, self::spent_record( $token, $duration ), false );
+				self::mail_replacement_after_response( $replacement );
+			}
+
+			return true;
+		} finally {
+			if ( true === $held ) {
+				self::let_go( self::SPEND_CLAIM );
+			}
+		}
 	}
 
 	/**
@@ -566,10 +702,30 @@ final class RecoveryLink {
 		add_action(
 			'shutdown',
 			static function () use ( $url ): void {
+				// Not delivered until a send says otherwise: a send killed by
+				// the host's time limit left the link reading as delivered (#3059).
+				self::record_mailed( false, (string) get_option( 'admin_email' ) );
+				self::finish_response();
 				self::mail_replacement( $url );
 			},
 			1000
 		);
+	}
+
+	/**
+	 * Hand the page to the reader before the mail is tried. Shutdown alone
+	 * still held the response open while a mail server that never answers
+	 * was waited on, until the host's gateway gave up with a 504 and the new
+	 * link on the page was never seen (#3059).
+	 */
+	private static function finish_response(): void {
+		ignore_user_abort( true );
+
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
+			fastcgi_finish_request();
+		} elseif ( function_exists( 'litespeed_finish_request' ) ) {
+			litespeed_finish_request();
+		}
 	}
 
 	/**
@@ -713,6 +869,19 @@ final class RecoveryLink {
 	 * from any other.
 	 */
 	public static function generate_network(): ?string {
+		$held = self::hold( self::NETWORK_SPEND_CLAIM, true );
+
+		try {
+			return self::issue_network();
+		} finally {
+			if ( true === $held ) {
+				self::let_go( self::NETWORK_SPEND_CLAIM, true );
+			}
+		}
+	}
+
+	/** generate_network(), for a caller already holding the spend. */
+	private static function issue_network(): ?string {
 		$replaced = self::network_link_exists();
 		$token    = bin2hex( random_bytes( 32 ) );
 
@@ -743,7 +912,7 @@ final class RecoveryLink {
 			)
 		);
 
-		return add_query_arg( self::QUERY_VAR, $token, network_home_url( '/' ) );
+		return add_query_arg( self::QUERY_VAR, $token, self::door( true ) );
 	}
 
 	/**
@@ -787,26 +956,51 @@ final class RecoveryLink {
 			return false;
 		}
 
-		$duration = (int) apply_filters( 'bettershield_safe_mode_duration', HOUR_IN_SECONDS );
+		// Held and read again, as the site's own link is (#3059).
+		$held = self::hold( self::NETWORK_SPEND_CLAIM, true );
 
-		SafeMode::enter_network( $duration, 'recovery_link' );
+		if ( false === $held ) {
+			self::$taken = true;
 
-		$replacement = self::generate_network();
-
-		// A replacement that could not be stored leaves the presented link
-		// on record rather than pretending it was retired.
-		if ( null !== $replacement ) {
-			update_network_option( null, self::NETWORK_SPENT_OPTION, self::spent_record( $token, $duration ) );
-			self::mail_network_replacement_after_response( $replacement );
+			return false;
 		}
 
-		return true;
+		try {
+			wp_cache_delete( get_current_network_id() . ':' . self::NETWORK_HASH_OPTION, 'site-options' );
+
+			if ( ! self::network_matches( $token ) ) {
+				self::$taken = true;
+
+				return false;
+			}
+
+			$duration = (int) apply_filters( 'bettershield_safe_mode_duration', HOUR_IN_SECONDS );
+
+			SafeMode::enter_network( $duration, 'recovery_link' );
+
+			$replacement = self::issue_network();
+
+			// A replacement that could not be stored leaves the presented link
+			// on record rather than pretending it was retired.
+			if ( null !== $replacement ) {
+				update_network_option( null, self::NETWORK_SPENT_OPTION, self::spent_record( $token, $duration ) );
+				self::mail_network_replacement_after_response( $replacement );
+			}
+
+			return true;
+		} finally {
+			if ( true === $held ) {
+				self::let_go( self::NETWORK_SPEND_CLAIM, true );
+			}
+		}
 	}
 
 	private static function mail_network_replacement_after_response( string $url ): void {
 		add_action(
 			'shutdown',
 			static function () use ( $url ): void {
+				update_network_option( null, self::NETWORK_MAILED_OPTION, '0' );
+				self::finish_response();
 				self::mail_network_replacement( $url );
 			},
 			1000
@@ -1016,6 +1210,16 @@ final class RecoveryLink {
 		$own     = self::attempt( $token, $replacement );
 		$network = ! $own && self::attempt_network( $token, $replacement );
 
+		/*
+		 * Good, but used by another request at the same moment: the page that
+		 * one got, without its link, rather than "not valid" (#3059).
+		 */
+		if ( ! $own && ! $network && self::taken() ) {
+			self::show_entered( SafeMode::until(), null, null, true === self::just_spent( $token ), true );
+
+			return;
+		}
+
 		if ( $own || $network ) {
 			$until = SafeMode::until();
 
@@ -1127,7 +1331,7 @@ final class RecoveryLink {
 			esc_html( $spent ) .
 			// One press is one post: a double click sent two, and the second
 			// was answered for a credential the first had already spent.
-			'</p><form method="post" action="' . esc_url( add_query_arg( self::QUERY_VAR, $token, home_url( '/' ) ) ) . '" onsubmit="this.querySelector(\'button\').disabled=true;">' .
+			'</p><form method="post" action="' . esc_url( add_query_arg( self::QUERY_VAR, $token, self::door() ) ) . '" onsubmit="this.querySelector(\'button\').disabled=true;">' .
 			'<input type="hidden" name="' . esc_attr( self::QUERY_VAR ) . '" value="' . esc_attr( $token ) . '" />' .
 			'<p><button type="submit" style="padding:10px 16px;font-size:15px;">' . esc_html__( 'Pause Protection and Continue', 'bettershield' ) . '</button></p>' .
 			'</form>';

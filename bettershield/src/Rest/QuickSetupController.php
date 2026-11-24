@@ -799,6 +799,30 @@ final class QuickSetupController {
 			)
 		);
 
+		// Close the "deactivate it" notice for one plugin the setup handed jobs from.
+		register_rest_route(
+			self::NS,
+			'/coexistence/notice/dismiss',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'args'                => array(
+					'file' => array(
+						'type'              => 'string',
+						'required'          => true,
+						'validate_callback' => 'rest_validate_request_arg',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+				'callback'            => static function ( \WP_REST_Request $request ): \WP_REST_Response {
+					Coexistence::dismiss_deactivation_notice( (string) $request['file'] );
+
+					return rest_ensure_response( array( 'switch_off' => Coexistence::awaiting_deactivation() ) );
+				},
+				// A person closing a notice on the screen: a stored credential has no notice to close.
+				'permission_callback' => array( Permissions::class, 'interactive_manage' ),
+			)
+		);
+
 		/*
 		 * Why the plugin is being switched off, from the question its
 		 * Deactivate link asks on the Plugins screen. Kept for the one report

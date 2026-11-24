@@ -758,6 +758,46 @@ function RecoveryCardsBone() {
 	);
 }
 
+/**
+ * The network link's state: expired or not delivered as something to act on,
+ * otherwise when it stops working.
+ *
+ * @param {Object}  props
+ * @param {Object}  props.link exists, expires (seconds), mailed (true, false or null).
+ */
+function NetworkLinkStanding( { link } ) {
+	if ( ! link.exists ) {
+		return <p className="bs-ds-network__intro">{ __( 'No network link exists yet.', 'bettershield' ) }</p>;
+	}
+
+	const expires = Number( link.expires ) || 0;
+	let warning = '';
+
+	if ( expires && expires * 1000 <= Date.now() ) {
+		warning = __( 'The network link has expired and no longer works. Generate a new one and store it now.', 'bettershield' );
+	} else if ( false === link.mailed ) {
+		warning = __( 'The network link’s email could not be sent. Generate a new one and store it now. This cancels the old one.', 'bettershield' );
+	}
+
+	if ( warning ) {
+		return (
+			<div className="bs-ds-network__notes">
+				<Alert layout="default" tone="warning" desc={ warning } />
+			</div>
+		);
+	}
+
+	return expires ? (
+		<p className="bs-ds-network__intro">
+			{ sprintf(
+				/* translators: %s: date and time. */
+				__( 'The network link works until %s.', 'bettershield' ),
+				formatTime( new Date( expires * 1000 ).toISOString() )
+			) }
+		</p>
+	) : null;
+}
+
 function RecoveryCard() {
 	const { status, data, reload } = useNetworkRead( '/bettershield/v1/network/recovery/link' );
 	const { generateNetworkRecovery, rotateNetworkKeys, endNetworkSafeMode, busy } = useStore();
@@ -826,6 +866,11 @@ function RecoveryCard() {
 				</p>
 
 				<Saved forKey="network-recovery" />
+
+				{ /* Where the network's link stands, which the route always sent
+				     and the card never said: a link past its date is refused
+				     with nobody told (#3059). */ }
+				<NetworkLinkStanding link={ link } />
 
 				{ paused ? (
 					<div className="bs-ds-network__notes">

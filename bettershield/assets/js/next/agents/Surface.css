@@ -1,19 +1,27 @@
 /**
- * Agents › Surface: the inventory card (its intro and question, the tab row
- * with the design's Input/Search at its end, 12 above the table, a group row
- * per registering plugin that opens in place), and the rows of what else can
- * reach the site (a password's limit opening under its row, the decoy's state
- * line, a connector's meta).
+ * Agents › Surface: the strip, then two columns. On the left the changes
+ * since the last update and the inventory (the tab row with the design's
+ * Input/Search at its end, a group row per registering plugin that opens in
+ * place, what is open to non-admins in a warm group of its own first). On the
+ * right a 336 column of cards: application passwords, traps, and the other
+ * ways in, each a row under a rule.
  */
 
-.bs-ds-app .bs-ds-surface__intro {
-	max-width: 80ch;
-	margin: calc(var(--bs-ds-space-xs) * -1) 0 0;
-	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
-	font-size: var(--bs-ds-size-xsmall);
-	line-height: 1.4;
-	letter-spacing: -0.02em;
-	color: var(--bs-ds-color-text-secondary);
+/* ---- the two columns ---- */
+
+.bs-ds-surface__grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 336px;
+	align-items: start;
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-surface__main,
+.bs-ds-surface__side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	min-width: 0;
 }
 
 .bs-ds-surface__notes {
@@ -23,10 +31,40 @@
 	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
 }
 
-.bs-ds-surface__body {
+/* ---- new since the last update ---- */
+
+.bs-ds-surface__changes {
 	display: flex;
 	flex-direction: column;
 	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md);
+}
+
+/* A table set inside the card's padding, on a border of its own. */
+.bs-ds-surface__boxed {
+	overflow: hidden;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+}
+
+.bs-ds-app .bs-ds-surface__boxed .bs-ds-tbl__row:last-child {
+	border-bottom: 0;
+}
+
+/* ---- the inventory ---- */
+
+.bs-ds-surface__body {
+	display: flex;
+	flex-direction: column;
+}
+
+.bs-ds-surface__tabs {
+	padding: 0 var(--bs-ds-space-md) 0 var(--bs-ds-space-xs);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-app .bs-ds-surface__tabs .bs-ds-tabs {
+	border-bottom: 0;
 }
 
 .bs-ds-surface__panel {
@@ -37,7 +75,6 @@
 
 /* Straight under the tab row, whose rule already divides it from the card. */
 .bs-ds-app .bs-ds-surface__panel > .bs-ds-empty:first-child {
-	padding-top: 0;
 	border-top: 0;
 }
 
@@ -48,7 +85,7 @@
 	flex: none;
 	align-items: center;
 	gap: var(--bs-ds-space-xs);
-	width: 260px;
+	width: 240px;
 	height: 32px;
 	padding: 0 var(--bs-ds-space-xs);
 	border: 1px solid var(--bs-ds-color-border-control);
@@ -86,7 +123,7 @@
 	outline-offset: 1px;
 }
 
-/* ---- a registering plugin's group ---- */
+/* ---- a group: Needs a look, or a registering plugin ---- */
 
 .bs-ds-surface__grouphead {
 	display: flex;
@@ -110,7 +147,22 @@
 
 .bs-ds-app .bs-ds-surface__groupname {
 	min-width: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
 	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-surface__groupsays {
+	min-width: 0;
+	margin-inline-start: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 400;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
 	color: var(--bs-ds-color-text-primary);
 }
 
@@ -132,6 +184,18 @@
 	border-bottom: 0;
 }
 
+/* What is open to non-admins sits on the warning wash, its name after a warning mark. */
+.bs-ds-app .bs-ds-surface__row--look {
+	background: var(--bs-ds-color-surface-warning-transparent);
+}
+
+.bs-ds-surface__ability {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
 .bs-ds-app .bs-ds-surface__name {
 	min-width: 0;
 	font-size: var(--bs-ds-size-small);
@@ -141,7 +205,9 @@
 	color: var(--bs-ds-color-text-primary);
 }
 
-.bs-ds-app .bs-ds-surface__by {
+/* Whose a lifted row is, after its name, in the facts' quieter type. */
+.bs-ds-app .bs-ds-surface__owner {
+	flex: 0 1 auto;
 	min-width: 0;
 	font-size: var(--bs-ds-size-xsmall);
 	line-height: 1.4;
@@ -150,11 +216,147 @@
 	color: var(--bs-ds-color-text-secondary);
 }
 
+.bs-ds-app .bs-ds-surface__fact {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
 .bs-ds-app .bs-ds-tbl__cell.bs-ds-surface__chips {
+	flex-wrap: wrap;
 	gap: var(--bs-ds-space-xxs);
 }
 
-/* ---- what else can reach the site ---- */
+/* ---- the cards on the right ---- */
+
+/* A trap's state at the title row's far end, its sentence the row's full width under it. */
+.bs-ds-app .bs-ds-surface__side .bs-ds-setting__titlerow > .bs-ds-badge {
+	margin-inline-start: auto;
+}
+
+/* Their rows' type is a step smaller than a full-width card's, as the column is. */
+.bs-ds-app .bs-ds-surface__side .bs-ds-setting__about,
+.bs-ds-app .bs-ds-surface__help {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-surface__age {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-surface__agelabel,
+.bs-ds-app .bs-ds-surface__switchlabel {
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-surface__switchlabel {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 400;
+}
+
+.bs-ds-surface__age .bs-ds-seg {
+	flex-wrap: nowrap;
+}
+
+.bs-ds-surface__age .bs-ds-seg__item {
+	min-width: 0;
+	padding: 0 var(--bs-ds-space-xxs);
+	font-weight: 400;
+}
+
+/* A switch with its words before it, the switch at the row's far end. */
+.bs-ds-surface__switch {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-surface__switchtext {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+/* The trap page's address on the recessed surface. */
+.bs-ds-surface__address {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	padding: var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-app .bs-ds-surface__state {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-surface__state:focus,
+.bs-ds-surface__reach:focus {
+	outline: none;
+}
+
+.bs-ds-app .bs-ds-surface__url {
+	display: block;
+	margin-top: var(--bs-ds-space-xxs);
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-surface__line {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-surface__limitactions,
+.bs-ds-surface__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+/* ---- the application passwords ---- */
+
+.bs-ds-surface__holders {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+/* What "unused" means and where a password is revoked, under the list. */
+.bs-ds-app .bs-ds-surface__holdershelp {
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
 
 .bs-ds-surface__holder {
 	display: flex;
@@ -175,11 +377,17 @@
 	color: var(--bs-ds-color-text-primary);
 }
 
+.bs-ds-app .bs-ds-surface__password .bs-ds-tbl__cell {
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--bs-ds-space-xs);
+}
+
 .bs-ds-surface__limit {
 	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--bs-ds-space-xxs) var(--bs-ds-space-xs);
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xxs);
 	min-width: 0;
 }
 
@@ -192,22 +400,13 @@
 	color: var(--bs-ds-color-text-secondary);
 }
 
-.bs-ds-surface__limitactions,
-.bs-ds-surface__actions {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--bs-ds-space-xs);
-	min-width: 0;
-}
-
 /* A password's limit opens under its row, drawn as one with it. */
 .bs-ds-tbl__row:has(+ .bs-ds-surface__under) {
 	border-bottom: 0;
 }
 
 .bs-ds-surface__under {
-	padding: 0 var(--bs-ds-space-ml) var(--bs-ds-space-sm);
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-sm);
 	border-bottom: 1px solid var(--bs-ds-color-border-primary);
 	background: var(--bs-ds-color-surface-tertiary);
 	box-shadow: inset 2px 0 0 var(--bs-ds-color-border-brand);
@@ -220,39 +419,72 @@
 	min-width: 0;
 }
 
-/* The decoy's state: the line focus lands on once its controls have swapped. */
-.bs-ds-app .bs-ds-surface__state {
-	max-width: 80ch;
+/* ---- the other ways in ---- */
+
+.bs-ds-surface__found {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-md);
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-surface__foundhead {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-surface__foundtitle {
+	flex: 1 1 auto;
+	min-width: 0;
 	margin: 0;
 	font-size: var(--bs-ds-size-small);
+	font-weight: 400;
 	line-height: 1.4;
 	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-surface__items {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-md);
+	margin: var(--bs-ds-space-xxs) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-app .bs-ds-surface__item {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+}
+
+.bs-ds-surface__itemtext {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: var(--bs-ds-space-2);
+	min-width: 0;
+}
+
+.bs-ds-app .bs-ds-surface__route {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
 	overflow-wrap: anywhere;
 	color: var(--bs-ds-color-text-primary);
 }
 
-.bs-ds-surface__state:focus,
-.bs-ds-surface__reach:focus {
-	outline: none;
-}
-
-.bs-ds-app .bs-ds-surface__url {
-	font-weight: 500;
-}
-
-.bs-ds-app .bs-ds-surface__line {
-	max-width: 80ch;
-	margin: 0;
-	font-size: var(--bs-ds-size-xsmall);
-	line-height: 1.4;
-	letter-spacing: -0.02em;
-	color: var(--bs-ds-color-text-secondary);
-}
-
-.bs-ds-surface__where {
+.bs-ds-app .bs-ds-surface__where {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--bs-ds-space-xxs);
+	font-size: var(--bs-ds-size-xxsmall);
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -262,7 +494,15 @@
 	}
 }
 
-/* ---- a narrow card ---- */
+/* ---- a narrow screen ---- */
+
+/* The right column goes under the inventory once the two no longer fit side by side. */
+@container bs-ds-content (max-width: 900px) {
+
+	.bs-ds-surface__grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
 
 @container bs-ds-content (max-width: 600px) {
 
@@ -278,5 +518,37 @@
 
 	.bs-ds-surface__search {
 		width: 100%;
+	}
+
+	/* Each fact goes under the ability's name, as a line of its own. */
+	.bs-ds-surface__inventory .bs-ds-tbl__head {
+		display: none;
+	}
+
+	.bs-ds-app .bs-ds-surface__inventory .bs-ds-tbl__row {
+		grid-template-columns: minmax(0, 1fr);
+		row-gap: var(--bs-ds-space-xxs);
+	}
+
+	/* A group row keeps its name whole: the summary beside it is what gives way. */
+	.bs-ds-app .bs-ds-surface__groupname {
+		overflow-wrap: normal;
+		white-space: nowrap;
+	}
+
+	/* Only the line that says all is well gives way; one asking for a look stays. */
+	.bs-ds-app .bs-ds-surface__groupsays--quiet {
+		display: none;
+	}
+
+	/* The ages wrap rather than cut the last one off. */
+	.bs-ds-surface__age .bs-ds-seg {
+		flex-wrap: wrap;
+		overflow: visible;
+	}
+
+	.bs-ds-surface__age .bs-ds-seg__item {
+		flex: 1 0 auto;
+		min-width: max-content;
 	}
 }

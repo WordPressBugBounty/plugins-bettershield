@@ -1,0 +1,643 @@
+/**
+ * Activity › File changes, the parts (design section "File Changes · Flow"):
+ * the check's progress and its four places, the plugins table, the accept
+ * dialog, the filter chips, the severity meter, a group's band and the cards
+ * a changed file opens into.
+ */
+
+/* ---- File check: the line, the bar and the note (1:1673) ---- */
+
+.bs-ds-fcheck__progress {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-fcheck__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-app .bs-ds-fcheck__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* Focus lands here once a resolved row's control is gone, and is not drawn. */
+.bs-ds-fcheck__title:focus {
+	outline: none;
+}
+
+.bs-ds-fcheck__meta {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fcheck__track {
+	display: flex;
+	height: 8px;
+	overflow: clip;
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-tertiary-em);
+}
+
+.bs-ds-fcheck__fill {
+	display: block;
+	height: 8px;
+	border-radius: 999px;
+	background: var(--bs-ds-color-surface-brand);
+	transition: width 240ms ease-out;
+}
+
+.bs-ds-app .bs-ds-fcheck__note {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fcheck__note > svg {
+	flex: none;
+}
+
+/* ---- the four places (1:1683) ---- */
+
+.bs-ds-app .bs-ds-fcheck__places {
+	display: flex;
+	margin: 0;
+	padding: 0;
+	overflow: clip;
+	list-style: none;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+}
+
+.bs-ds-app .bs-ds-fcheck__place {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	min-width: 1px;
+	margin: 0;
+	padding: var(--bs-ds-space-sm);
+}
+
+.bs-ds-fcheck__place + .bs-ds-fcheck__place {
+	border-inline-start: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-fcheck__placename {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fcheck__placestate {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* ---- Changes by plugin (1:1767) ---- */
+
+.bs-ds-fplug__row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 80px 80px 80px 144px 176px;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-fplug__row:last-child {
+	border-bottom: 0;
+}
+
+.bs-ds-fplug__row--head {
+	padding-block: var(--bs-ds-space-xs);
+	background: var(--bs-ds-color-surface-tertiary);
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fplug__name {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+.bs-ds-fplug__title {
+	font-weight: 500;
+	line-height: 1.2;
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-fplug__sub {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fplug__none,
+.bs-ds-fplug__ready {
+	color: var(--bs-ds-color-text-tertiary);
+}
+
+.bs-ds-fplug__ready {
+	font-size: var(--bs-ds-size-xsmall);
+}
+
+.bs-ds-fplug__status,
+.bs-ds-fplug__action {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
+/* ---- the accept dialog (1:2253) ---- */
+
+/* Core draws its Modal at the end of the document, where only the tokens on
+   the body reach it. Its header holds just the close button, at the corner. */
+.bs-ds-faccept.components-modal__frame {
+	width: 540px;
+	max-width: calc(100vw - var(--bs-ds-space-lg));
+	max-height: calc(100vh - var(--bs-ds-space-lg) * 2);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 16px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-setup-modal-shadow);
+	font-family: var(--bs-ds-font);
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-faccept .components-modal__content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-lg);
+	margin-top: 0;
+	padding: var(--bs-ds-space-lg);
+}
+
+.bs-ds-faccept .components-modal__header {
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: auto;
+	z-index: 1;
+	width: auto;
+	height: auto;
+	padding: var(--bs-ds-space-md);
+	border: 0;
+	background: transparent;
+}
+
+.bs-ds-faccept .components-modal__header .components-button {
+	width: 28px;
+	min-width: 28px;
+	height: 28px;
+	padding: 0;
+	justify-content: center;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-faccept__head {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	padding-inline-end: var(--bs-ds-space-xl);
+}
+
+.bs-ds-app .bs-ds-faccept__title,
+.bs-ds-faccept__title {
+	margin: 0;
+	font-size: var(--bs-ds-size-large);
+	font-weight: 500;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-faccept__lead,
+.bs-ds-faccept__text {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-faccept__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-lg);
+	margin-block: var(--bs-ds-space-lg);
+}
+
+.bs-ds-faccept__counts {
+	display: flex;
+	margin: 0;
+	overflow: clip;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+}
+
+.bs-ds-faccept__count {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 1px;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+}
+
+.bs-ds-faccept__count + .bs-ds-faccept__count {
+	border-inline-start: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-faccept__count dt {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-faccept__count dd {
+	margin: 0;
+	font-size: var(--bs-ds-size-large);
+	font-weight: 500;
+	line-height: 1.3;
+	letter-spacing: -0.005em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-faccept__count dd.bs-ds-faccept__warn {
+	color: var(--bs-ds-color-text-warning);
+}
+
+.bs-ds-faccept__scripts {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+}
+
+.bs-ds-faccept__list,
+.bs-ds-faccept__notes {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.bs-ds-faccept__list {
+	max-height: 280px;
+	overflow: auto;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-secondary);
+}
+
+.bs-ds-faccept__item {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-sm);
+	margin: 0;
+	padding: var(--bs-ds-space-sm) var(--bs-ds-space-md);
+}
+
+.bs-ds-faccept__item + .bs-ds-faccept__item {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-faccept__item > svg {
+	flex: none;
+}
+
+.bs-ds-faccept__file {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xxs);
+	min-width: 0;
+}
+
+.bs-ds-faccept__name {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-faccept__meta {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-faccept__notes {
+	gap: var(--bs-ds-space-xs);
+}
+
+.bs-ds-faccept__notes li {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The app's own root, so the buttons take their design, without the root's
+   page height, gutter and fill. */
+.bs-ds-app.bs-ds-faccept__actions {
+	display: flex;
+	flex-direction: row;
+	min-height: 0;
+	margin-inline-start: 0;
+	background: none;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--bs-ds-space-xs);
+}
+
+/* ---- a filter on the tabs' row (1:1786) ---- */
+
+.bs-ds-fchip {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	height: 32px;
+	padding: 0 var(--bs-ds-space-xs);
+	border: 1px solid var(--bs-ds-color-border-control);
+	border-radius: 8px;
+	background: var(--bs-ds-color-surface-primary);
+	box-shadow: var(--bs-ds-elevation-control);
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.bs-ds-fchip:focus-within {
+	outline: 2px solid var(--bs-ds-color-border-brand);
+	outline-offset: 1px;
+}
+
+.bs-ds-fchip__label {
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* The native select carries the choice, so it is a real control to the
+   keyboard and to assistive technology; only its box is drawn away. */
+.bs-ds-app .bs-ds-fchip__select {
+	min-height: 0;
+	max-width: 12em;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	outline: 0;
+	font: inherit;
+	font-weight: 500;
+	line-height: 1;
+	color: var(--bs-ds-color-text-primary);
+	cursor: pointer;
+	appearance: none;
+	field-sizing: content;
+}
+
+/* ---- the severity meter and its word (27:43485) ---- */
+
+.bs-ds-fcsev {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	height: 20px;
+}
+
+.bs-ds-fcsev__word {
+	font-size: var(--bs-ds-size-small);
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-primary);
+}
+
+/* ---- a group's band (27:38734) ---- */
+
+.bs-ds-fcgroup {
+	border-bottom: 1px solid var(--bs-ds-color-border-primary);
+	background: var(--bs-ds-color-surface-secondary);
+}
+
+.bs-ds-fcgroup__cell {
+	display: flex;
+	align-items: center;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-fcgroup__label {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	font-weight: 500;
+	line-height: 1.4;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- the cards a file opens into (27:43521) ---- */
+
+/* On the open row's fill, under its summary, as the findings' detail sits. */
+.bs-ds-fcdetail {
+	display: block;
+	padding: 0 var(--bs-ds-space-md) var(--bs-ds-space-md);
+	padding-inline-start: 60px;
+	background: var(--bs-ds-color-surface-secondary);
+}
+
+.bs-ds-fcdetail__cards {
+	display: flex;
+	align-items: stretch;
+	gap: var(--bs-ds-space-md);
+}
+
+.bs-ds-app .bs-ds-fcdetail__text {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fcdetail__evidence {
+	display: flex;
+	flex: 1 0 0;
+	flex-direction: column;
+	gap: var(--bs-ds-space-sm);
+	min-width: 1px;
+	padding-bottom: var(--bs-ds-space-sm);
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-tertiary);
+}
+
+.bs-ds-fcdetail__evcard {
+	overflow: clip;
+	margin: -1px -1px 0;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 12px;
+	background: var(--bs-ds-color-surface-primary);
+}
+
+.bs-ds-fcdetail__evbody {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs);
+	padding: var(--bs-ds-space-md);
+}
+
+.bs-ds-fcdetail__evlabel {
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-fcdetail__evvalue {
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-fcdetail__evfoot {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-xs);
+	margin: 0;
+	padding: 0 var(--bs-ds-space-md);
+	font-size: var(--bs-ds-size-xsmall);
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	color: var(--bs-ds-color-text-secondary);
+}
+
+/* ---- narrow ---- */
+
+@container bs-ds-content (max-width: 900px) {
+
+	.bs-ds-fcdetail__cards {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-fcdetail__cards > * {
+		flex: 1 1 calc(50% - var(--bs-ds-space-md));
+	}
+}
+
+@container bs-ds-content (max-width: 760px) {
+
+	.bs-ds-app .bs-ds-fcheck__places {
+		flex-wrap: wrap;
+	}
+
+	.bs-ds-app .bs-ds-fcheck__place {
+		flex: 1 1 calc(50% - 1px);
+	}
+
+	.bs-ds-fcheck__place:nth-child(3) {
+		border-inline-start: 0;
+	}
+
+	.bs-ds-fcheck__place:nth-child(n + 3) {
+		border-top: 1px solid var(--bs-ds-color-border-primary);
+	}
+
+	/* The plugins table becomes a card a plugin: its name, then each number
+	   under its column's name, then what to do. */
+	.bs-ds-fplug__row--head {
+		display: none;
+	}
+
+	.bs-ds-fplug__row {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.bs-ds-fplug__name,
+	.bs-ds-fplug__status,
+	.bs-ds-fplug__action {
+		grid-column: 1 / -1;
+	}
+
+	.bs-ds-fplug__row > [data-label]::before {
+		content: attr(data-label) " ";
+		color: var(--bs-ds-color-text-secondary);
+	}
+
+	.bs-ds-fcdetail {
+		padding-inline-start: var(--bs-ds-space-md);
+	}
+
+	.bs-ds-fcdetail__cards > * {
+		flex-basis: 100%;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.bs-ds-fcheck__fill {
+		transition: none;
+	}
+}
+
+/* Below 600px core draws the modal as a sheet along the bottom. At the
+   desktop width less a gap it sat flush left with that gap on the right;
+   there it spans the screen, as the sheet it is. */
+@media (max-width: 599px) {
+	.bs-ds-faccept.components-modal__frame {
+		width: 100%;
+		max-width: 100%;
+		border-radius: 16px 16px 0 0;
+	}
+}

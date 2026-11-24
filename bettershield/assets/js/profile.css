@@ -81,6 +81,14 @@
 	padding: var(--bs-space-sm) 0;
 }
 
+/* A passkey's Remove, armed in place: the confirm, Cancel and what it does. */
+.bs-profile-passkeys__confirm {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--bs-space-sm);
+}
+
 .bs-profile-passkeys__label {
 	flex: 1 1 auto;
 	font-weight: 600;

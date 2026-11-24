@@ -84,7 +84,7 @@ export default function Hero( { overview, running, onUnknown, heroRef, progress 
 				<div className="bs-ds-hero__row">
 					<ScoreGauge state={ state } score={ score } grade={ grade } />
 					<span className="screen-reader-text">
-						{ waiting ? __( 'Your first scan is running. Your score appears when it finishes.', 'bettershield' ) : null }
+						{ waiting && ! ( progress && progress.paused ) ? __( 'Your first scan is running. Your score appears when it finishes.', 'bettershield' ) : null }
 						{ audited && ! waiting
 							? sprintf(
 									/* translators: 1: the score, 2: the letter grade. */
@@ -95,7 +95,15 @@ export default function Hero( { overview, running, onUnknown, heroRef, progress 
 							: null }
 						{ audited ? null : __( 'This site has not been audited yet.', 'bettershield' ) }
 					</span>
-					{ waiting ? (
+					{ /* One state at a time: a paused scan says so in the
+					     heading rather than under one saying it runs (#3050). */ }
+					{ waiting && progress && progress.paused ? (
+						<div className="bs-ds-hero__next">
+							<p className="bs-ds-hero__goal">{ __( 'Your first scan paused.', 'bettershield' ) }</p>
+							<p className="bs-ds-hero__para">{ __( 'It will finish in the background, and your score appears here when it does. What it has found so far is listed below.', 'bettershield' ) }</p>
+						</div>
+					) : null }
+					{ waiting && ! ( progress && progress.paused ) ? (
 						<div className="bs-ds-hero__next">
 							<p className="bs-ds-hero__goal">{ __( 'Your first scan is running.', 'bettershield' ) }</p>
 							<p className="bs-ds-hero__para">{ __( 'Your score appears here when it finishes. What it has found so far is listed below.', 'bettershield' ) }</p>

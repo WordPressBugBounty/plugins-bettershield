@@ -459,7 +459,14 @@ final class PasskeyController {
 		if ( '' !== \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user ) ) {
 			return new \WP_Error(
 				'bettershield_passkey_two_factor_elsewhere',
-				__( 'Another security plugin here also asks for a code for your account. Sign in with your password and its code, or ask your administrator to choose one plugin.', 'bettershield' ),
+				/*
+				 * Said on the sign-in page, before anyone is signed in, so the
+				 * plugin is not named here (#2465). Whoever runs the site is not
+				 * told to ask an administrator, which was themselves (#3064).
+				 */
+				user_can( $user, \BetterShield\Capabilities::MANAGE )
+					? __( 'Another security plugin here also asks for a code for your account. Sign in with your password and its code, then choose one plugin for two-factor in Quick Setup.', 'bettershield' )
+					: __( 'Another security plugin here also asks for a code for your account. Sign in with your password and its code, or ask your administrator to choose one plugin.', 'bettershield' ),
 				array( 'status' => 409 )
 			);
 		}

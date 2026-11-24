@@ -205,7 +205,7 @@ final class ProfilePanel {
 	 */
 	public function intro_for( \WP_User $user ): string {
 		if ( '' !== \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user ) ) {
-			return Manager::elsewhere_words();
+			return Manager::elsewhere_words( $user );
 		}
 
 		$policy = Policy::instance();

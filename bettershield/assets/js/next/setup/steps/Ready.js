@@ -164,6 +164,14 @@ function coexistenceWords( row ) {
 						_n( '%s handles two-factor', '%s handle two-factor', row.plugins.length, 'bettershield' ),
 						names
 				  );
+		case 'login_url':
+			return ours
+				? sprintf( /* translators: %s: the plugin's name. */ __( '%s handles your sign-in address', 'bettershield' ), brand() )
+				: sprintf(
+						/* translators: %s: one or more plugin names. */
+						_n( '%s handles your sign-in address', '%s handle your sign-in address', row.plugins.length, 'bettershield' ),
+						names
+				  );
 		default:
 			return '';
 	}
@@ -311,7 +319,8 @@ export default function Ready() {
 	const fixes = summary.fixes;
 	// A job kept with the other plugin is not something the setup changed,
 	// so only the jobs handed to BetterShield are listed (#2997).
-	const choices = ( summary.coexistence || [] ).filter( ( row ) => 'choice' === row.kind && 'bettershield' === row.choice );
+	// A job with no words of its own is left out rather than shown as an empty line.
+	const choices = ( summary.coexistence || [] ).filter( ( row ) => 'choice' === row.kind && 'bettershield' === row.choice && '' !== coexistenceWords( row ) );
 
 	/*
 	 * Every step skipped, or left as it was: no fix on, no way back in

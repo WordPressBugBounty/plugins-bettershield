@@ -343,7 +343,7 @@ final class OverviewController {
 	}
 
 	/**
-	 * @return array{setup: ?array{url: string, resume: bool}, rerun: ?string, usage_reminder: bool}
+	 * @return array{setup: ?array{url: string, resume: bool}, rerun: ?string, usage_reminder: bool, switch_off: array<int, array<string, mixed>>}
 	 */
 	private static function onboarding(): array {
 		if ( ! current_user_can( Capabilities::MANAGE ) ) {
@@ -351,6 +351,7 @@ final class OverviewController {
 				'setup'          => null,
 				'rerun'          => null,
 				'usage_reminder' => false,
+				'switch_off'     => array(),
 			);
 		}
 
@@ -367,6 +368,8 @@ final class OverviewController {
 			// A finished setup is out of the menu; Settings links to it here.
 			'rerun'          => QuickSetup::is_done() ? QuickSetup::url() : null,
 			'usage_reminder' => Usage::reminder_due(),
+			// Plugins the setup handed jobs from that are still on.
+			'switch_off'     => \BetterShield\Onboarding\Coexistence::awaiting_deactivation(),
 		);
 	}
 

@@ -39,7 +39,8 @@
 	cursor: pointer;
 }
 
-.bs-ds-seg__item[aria-selected="true"] {
+.bs-ds-seg__item[aria-selected="true"],
+.bs-ds-seg__item[aria-checked="true"] {
 	border-color: var(--bs-ds-color-border-control);
 	background: var(--bs-ds-color-surface-primary);
 	box-shadow: var(--bs-ds-elevation-control);

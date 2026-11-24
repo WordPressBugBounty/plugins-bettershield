@@ -95,7 +95,74 @@ final class Report {
 			// What is being checked right now, so the sentence names something
 			// the reader recognizes rather than a number out of a number.
 			'label'   => is_array( $current ) ? self::target_label( $current ) : null,
+			// Where each part of the site stands in the run: done, the one
+			// under way, or still waiting.
+			'places'  => self::places_progress( $targets, $index ),
 		);
+	}
+
+	/**
+	 * Where each part of the site (core, plugins, themes, other files) stands
+	 * in a run: `done` once every one of its targets is behind the current
+	 * one, `current` while one of them is under way, `waiting` before any
+	 * has started, and `none` where the run has nothing of it to check.
+	 *
+	 * @param array<int, mixed> $targets The run's targets, in order.
+	 * @param int               $index   The target under way.
+	 * @return array<string, string>
+	 */
+	private static function places_progress( array $targets, int $index ): array {
+		$places = array();
+
+		foreach ( self::PLACES as $place => $contexts ) {
+			$at = array();
+
+			foreach ( $targets as $position => $target ) {
+				if ( is_array( $target ) && in_array( (string) ( $target['context'] ?? '' ), $contexts, true ) ) {
+					$at[] = (int) $position;
+				}
+			}
+
+			if ( array() === $at ) {
+				$places[ $place ] = 'none';
+			} elseif ( max( $at ) < $index ) {
+				$places[ $place ] = 'done';
+			} elseif ( min( $at ) > $index ) {
+				$places[ $place ] = 'waiting';
+			} else {
+				$places[ $place ] = 'current';
+			}
+		}
+
+		return $places;
+	}
+
+	/**
+	 * How many open changes each part of the site holds: core, plugins,
+	 * themes and everything else.
+	 *
+	 * @return array<string, int>
+	 */
+	public static function open_by_place(): array {
+		global $wpdb;
+
+		$counts = array_fill_keys( array_keys( self::PLACES ), 0 );
+		$rows   = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT context, COUNT(*) AS total FROM %i WHERE site_id = 0 AND status IN ('new','acknowledged') GROUP BY context",
+				Schema::table( 'integrity_changes' )
+			)
+		);
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			foreach ( self::PLACES as $place => $contexts ) {
+				if ( in_array( (string) $row->context, $contexts, true ) ) {
+					$counts[ $place ] += (int) $row->total;
+				}
+			}
+		}
+
+		return $counts;
 	}
 
 	/**
@@ -108,9 +175,20 @@ final class Report {
 			return __( 'WordPress itself', 'bettershield' );
 		}
 
-		$slug = (string) ( $target['slug'] ?? '' );
+		$slug    = (string) ( $target['slug'] ?? '' );
+		$context = (string) ( $target['context'] ?? '' );
 
-		return '' !== $slug ? $slug : __( 'this site', 'bettershield' );
+		if ( '' === $slug ) {
+			return __( 'this site', 'bettershield' );
+		}
+
+		// The name the owner sees on the Plugins and Themes screens, not the
+		// folder: "Paused at bettershield" named a directory nobody reads.
+		if ( Manifest::CONTEXT_PLUGIN === $context || Unpublished::CONTEXT_THEME === $context ) {
+			return Packages::name_of( $context, $slug );
+		}
+
+		return $slug;
 	}
 
 	/**
@@ -133,6 +211,8 @@ final class Report {
 			// cannot say when a check last ran cannot be trusted to say a site
 			// is clean.
 			'last_run_at'    => isset( $result['finished_at'] ) ? (string) $result['finished_at'] : null,
+			// When that run began, so the screen can say how long it took.
+			'last_started_at' => isset( $result['started_at'] ) ? (string) $result['started_at'] : null,
 			'ever_run'       => null !== $result,
 			// A subsite of a network reads the main site's check and runs none.
 			'elsewhere'      => Shared::elsewhere(),
@@ -146,6 +226,9 @@ final class Report {
 			// With how many of them can be put back, counted across every
 			// page: the screen leads with that number and the group it heads.
 			'open_changes'   => array_merge( self::open_count(), array( 'restorable' => self::open_restorable() ) ),
+			// The same open changes by part of the site, for the check's
+			// four places.
+			'places'         => self::open_by_place(),
 			'changes'        => is_wp_error( $page ) ? array() : $page['changes'],
 			'changes_error'  => is_wp_error( $page ) ? $page->get_error_message() : null,
 			'next_cursor'    => is_wp_error( $page ) ? null : $page['next_cursor'],
@@ -566,6 +649,10 @@ final class Report {
 				'size_after'  => null !== $row->size_after ? (int) $row->size_after : null,
 				'restorable'  => $availability['restorable'],
 				'why_not'     => $availability['reason'],
+				// Why, as a word the screen can branch on: `older` (compared
+				// with a version no longer installed) or `licensed` (the
+				// official copy needs a license); null otherwise.
+				'why_code'    => $availability['code'] ?? null,
 				// Said on the row, in the Overview's words (#1968).
 				'can_run'     => 'added' === (string) $row->change_type && Packages::is_code( (string) $row->path ),
 				// Which named signs of compromise an added file showed, by test

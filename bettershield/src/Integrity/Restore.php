@@ -689,7 +689,7 @@ final class Restore {
 	 * published it: none of these have an official version, and a guess is
 	 * worse than an honest "this one is yours to judge".
 	 *
-	 * @return array{restorable: bool, reason: string}
+	 * @return array{restorable: bool, reason: string, code?: string}
 	 */
 	public static function availability( object $change ): array {
 		/*
@@ -763,6 +763,9 @@ final class Restore {
 			return array(
 				'restorable' => false,
 				'reason'     => __( 'This file was checked against its publisher’s list, but the official copy needs your license. Reinstall the plugin from your account to put it back.', 'bettershield' ),
+				// Named, so the screen can group these by why and not by a
+				// sentence: a licensed copy is not an older one.
+				'code'       => 'licensed',
 			);
 		}
 
@@ -796,6 +799,9 @@ final class Restore {
 					(string) $change->version,
 					$installed
 				),
+				// The one reason a check again fixes, which is what the
+				// screen's "Compared with an older version" band offers.
+				'code'       => 'older',
 			);
 		}
 
