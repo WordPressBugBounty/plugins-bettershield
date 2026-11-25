@@ -310,6 +310,8 @@ final class TwoFactorController {
 									// reads it so the site's state is seen,
 									// not only the viewer's own.
 									'in_use'          => \BetterShield\TwoFactor\Manager::instance()->in_use(),
+									// Another plugin's rule waiting for the way back in, or null.
+									'held_rule'       => \BetterShield\Onboarding\QuickSetup::held_rule_waiting(),
 								)
 							)
 						);

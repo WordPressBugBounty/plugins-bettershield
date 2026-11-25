@@ -1,9 +1,10 @@
 /**
  * After the Quick Setup, for each plugin it handed jobs from that is still
  * active: its settings came over, and they take effect in BetterShield once
- * it is switched off. The setup never switches another plugin off, so this
- * points to the Plugins screen, on this plugin's own screens only, until it
- * is deactivated or the notice is closed.
+ * it is switched off. Shown on this plugin's own screens only, until it is
+ * deactivated or the notice is closed. Where the site has the setup's
+ * deactivation on, its button is WordPress's own Deactivate; otherwise it
+ * says it opens the Plugins screen, where the owner switches it off.
  */
 
 import './SwitchOffNotice.css';
@@ -91,9 +92,15 @@ export default function SwitchOffNotice() {
 					desc={ switchOffText( plugin ) }
 					onDismiss={ 'switch-off' === busy ? undefined : () => dismissSwitchOff( plugin.file ) }
 					actions={
-						<Button type="secondary" size="sm" href={ plugin.plugins_url }>
-							{ __( 'Deactivate', 'bettershield' ) }
-						</Button>
+						plugin.deactivate_url ? (
+							<Button type="secondary" size="sm" href={ plugin.deactivate_url }>
+								{ __( 'Deactivate', 'bettershield' ) }
+							</Button>
+						) : (
+							<Button type="secondary" size="sm" href={ plugin.plugins_url }>
+								{ __( 'Open Plugins', 'bettershield' ) }
+							</Button>
+						)
 					}
 				/>
 			) ) }

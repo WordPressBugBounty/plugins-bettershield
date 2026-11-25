@@ -333,13 +333,17 @@ function Enabled( { status, onDone } ) {
 	return (
 		<>
 			<div className="bs-ds-2fa__body">
+				{ /* None at all, as after a move from a plugin that held none:
+				     "0 unused, running low" read as a count, not as an account
+				     with no way in if the phone is lost. */ }
 				<p className="bs-ds-2fa__lead">
-					{ sprintf(
-						/* translators: %d: number of unused backup codes. */
-						_n( '%d backup code unused.', '%d backup codes unused.', status.backup_remaining, 'bettershield' ),
-						status.backup_remaining
-					) }
-					{ status.backup_remaining <= 3 ? ' ' + __( 'Running low, so issue a fresh set below.', 'bettershield' ) : '' }
+					{ status.backup_remaining > 0
+						? sprintf(
+								/* translators: %d: number of unused backup codes. */
+								_n( '%d backup code unused.', '%d backup codes unused.', status.backup_remaining, 'bettershield' ),
+								status.backup_remaining
+						  ) + ( status.backup_remaining <= 3 ? ' ' + __( 'Running low, so issue a fresh set below.', 'bettershield' ) : '' )
+						: __( 'No backup codes yet. Create a set below, so you can still sign in if you lose your phone.', 'bettershield' ) }
 				</p>
 
 				{ /* What two-factor is needs no explaining. What is worth saying
@@ -392,8 +396,13 @@ function Enabled( { status, onDone } ) {
 								'Your old codes no longer work. Each new one works once and is shown only now.',
 								'bettershield'
 						  )
-						: __(
+						: status.backup_remaining > 0
+						? __(
 								'A new set replaces all your backup codes.',
+								'bettershield'
+						  )
+						: __(
+								'Each code signs you in once, without your phone. They are shown only when created.',
 								'bettershield'
 						  )
 				}
@@ -733,8 +742,55 @@ function RolePolicy() {
 					// asked for this plugin's code on top of that one's.
 					const adding = Boolean( saved.handled_by ) && roles.some( ( role ) => ! ( saved.roles || [] ).includes( role ) );
 					const save = () => saveTwoFactorPolicy( { roles, grace_days: Number( grace ) }, () => setDraft( null ) );
+					const held = saved.held_rule;
 
 					return (
+						<>
+						{ held ? (
+							<Alert
+								tone="warning"
+								layout="default"
+								title={ __( 'A two-factor rule is waiting to come over', 'bettershield' ) }
+								desc={ [
+									sprintf(
+										/* translators: %s: role names, e.g. "Administrator, Editor". */
+										__( 'Two-factor required for %s, from the plugin you switched from.', 'bettershield' ),
+										held.roles.map( ( slug ) => ( ( saved.available_roles || [] ).find( ( role ) => role.slug === slug ) || {} ).label || slug ).join( ', ' )
+									),
+									/*
+									 * What it still waits for, each said once: the
+									 * plugin it came from, which asks for its own
+									 * codes until it is off (#3088), and the way
+									 * back in.
+									 */
+									( held.waits_for || [] ).length
+										? sprintf(
+												/* translators: %s: one or more plugin names. */
+												__( 'It comes into use once %s is deactivated, so the two plugins don’t both ask for codes.', 'bettershield' ),
+												( held.waits_for || [] ).join( ', ' )
+										  )
+										: '',
+									held.reason ? __( 'It comes over on its own as soon as this site has a working recovery link or recovery codes.', 'bettershield' ) : '',
+									held.reason,
+								]
+									.filter( Boolean )
+									.join( ' ' ) }
+								actions={
+									<>
+										{ ( held.waits_for || [] ).length ? (
+											<Button type="secondary" size="sm" href={ held.plugins_url }>
+												{ __( 'Open Plugins', 'bettershield' ) }
+											</Button>
+										) : null }
+										{ held.reason ? (
+											<Button type="secondary" size="sm" href={ held.recovery_url }>
+												{ __( 'Set Up Recovery', 'bettershield' ) }
+											</Button>
+										) : null }
+									</>
+								}
+							/>
+						) : null }
 						<SettingRow
 							// Named so the role picker under it can say which
 							// policy its roles are for (#2030).
@@ -825,6 +881,7 @@ function RolePolicy() {
 								<Unsaved dirty={ dirty } />
 							</div>
 						</SettingRow>
+						</>
 					);
 				} }
 			</Resource>
@@ -1231,6 +1288,10 @@ function AtAGlance() {
 								_n( '%d account. Not set up on yours yet', '%d accounts. Not set up on yours yet', inUseAccounts, 'bettershield' ),
 								inUseAccounts
 						  );
+				}
+
+				if ( on && ! own.data.backup_remaining ) {
+					return __( 'No backup codes yet', 'bettershield' );
 				}
 
 				if ( on ) {

@@ -40,6 +40,15 @@ final class Observed {
 	private const RECENT = 'bettershield_observed_recent';
 
 	/**
+	 * How the record is read, as part of its basis. Raised when the reading
+	 * changes, so a record kept worst-first under the old one starts over on
+	 * the next screen rather than holding its old answer forever: forwarding
+	 * headers that name the connecting address itself stopped counting as
+	 * ignored (2), and a site that had one recorded kept the finding open.
+	 */
+	private const READING = 2;
+
+	/**
 	 * Record what this request can see, if this request can see anything.
 	 *
 	 * Cheap and idempotent: one option read, and a write only when the answer
@@ -91,7 +100,7 @@ final class Observed {
 		 * asks of them. Changing what the answer is derived from is what starts
 		 * the record over.
 		 */
-		$basis = md5( (string) wp_json_encode( array( $proxies, $cloudflare ) ) );
+		$basis = self::basis( $proxies, $cloudflare );
 		$same  = $basis === ( $stored['basis'] ?? '' );
 
 		/*
@@ -188,8 +197,18 @@ final class Observed {
 			// Whether the record was made under the proxy settings in force
 			// now. Until a request is seen after a change, it describes the
 			// settings before it, and nothing is fixed on its say-so.
-			'current'         => md5( (string) wp_json_encode( array( Protection::trusted_proxies(), Protection::cloudflare() ) ) ) === ( $stored['basis'] ?? '' ),
+			'current'         => self::basis( Protection::trusted_proxies(), Protection::cloudflare() ) === ( $stored['basis'] ?? '' ),
 		);
+	}
+
+	/**
+	 * What the client answers are derived from: the proxy settings, and how
+	 * the record is read (READING).
+	 *
+	 * @param string[] $proxies
+	 */
+	private static function basis( array $proxies, bool $cloudflare ): string {
+		return md5( (string) wp_json_encode( array( $proxies, $cloudflare, self::READING ) ) );
 	}
 
 	/**

@@ -63,6 +63,18 @@ function lockoutNote( data ) {
 }
 
 /**
+ * Whether this request came through Cloudflare to a host that already puts
+ * the visitor's address where PHP reads it: Cloudflare's header names the
+ * connecting address itself (#3082). Not a bypass, and not "directly".
+ *
+ * @param {Object} resolution The request's resolution.
+ * @return {boolean} Whether it did.
+ */
+function throughCloudflareByHost( resolution ) {
+	return Boolean( resolution.restored && resolution.claimed );
+}
+
+/**
  * The detection method as a phrase in a sentence. The stored slugs are for
  * the log; a reader should not have to learn them.
  *
@@ -92,6 +104,15 @@ function methodPhrase( method ) {
  * @return {string} The line.
  */
 function connectionLine( resolution ) {
+	// The host passes on the address Cloudflare names: one address, said once.
+	if ( throughCloudflareByHost( resolution ) ) {
+		return sprintf(
+			/* translators: %s: the visitor's address, as the host passed it on from Cloudflare. */
+			__( 'Through Cloudflare. Your host passes on each visitor’s address: you appear as %s.', 'bettershield' ),
+			resolution.connecting
+		);
+	}
+
 	if ( resolution.connecting && resolution.claimed ) {
 		return sprintf(
 			/* translators: 1: the address the connection came from, 2: the address the Cloudflare header names. */
@@ -149,6 +170,11 @@ function connectionLine( resolution ) {
  * @return {string} The sentence.
  */
 function confidenceLine( resolution ) {
+	// The line above already says how the address arrives; only the outcome is left.
+	if ( throughCloudflareByHost( resolution ) ) {
+		return __( 'Lockouts are on. Each visitor is counted by their own address.', 'bettershield' );
+	}
+
 	if ( resolution.confident ) {
 		return sprintf(
 			/* translators: %s: how visitors' addresses are read, e.g. "directly", "through Cloudflare". */
@@ -242,7 +268,7 @@ function SeenAs( { resolution, settings, onRecheck } ) {
 	// A confirmation that was true once and quietly is not: the site still
 	// believes an edge it is no longer reached through. Worth a sentence,
 	// because nothing else on the screen would show it.
-	const stale = settings.cloudflare && 'cloudflare' !== resolution.method && ! unconfirmed;
+	const stale = settings.cloudflare && 'cloudflare' !== resolution.method && ! unconfirmed && ! throughCloudflareByHost( resolution );
 
 	/*
 	 * Check Again read the screen again and said nothing, so nobody could

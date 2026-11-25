@@ -3143,7 +3143,7 @@ final class Protection {
 	 * request and written nowhere — nothing here records an address, and
 	 * nothing here may start to.
 	 *
-	 * @return array{method: string, confident: bool, ignored_headers: bool, named_proxy: bool, named_proxy_no_visitor: bool, connecting: string, claimed: ?string}
+	 * @return array{method: string, confident: bool, ignored_headers: bool, named_proxy: bool, named_proxy_no_visitor: bool, connecting: string, claimed: ?string, restored: bool, seen_as: string}
 	 */
 	public function resolution_report(): array {
 		$settings = $this->settings();
@@ -3153,6 +3153,17 @@ final class Protection {
 		$connecting = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- validated as an address below and never stored.
 		$claimed = isset( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ? (string) $_SERVER['HTTP_CF_CONNECTING_IP'] : '';
+
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- read as addresses by ClientIp and never stored.
+		$forwarded = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? (string) $_SERVER['HTTP_X_FORWARDED_FOR'] : '';
+
+		/*
+		 * The host has already put the visitor's address where PHP reads it,
+		 * and the forwarding headers name that same address: through
+		 * Cloudflare when its header is among them. Read the same way as the
+		 * resolver reads it, so the card says what the lockouts do.
+		 */
+		$restored = ClientIp::METHOD_DIRECT === $resolved['method'] && $resolved['confident'] && ClientIp::headers_agree( $connecting, $claimed, $forwarded );
 
 		$connecting = false === filter_var( $connecting, FILTER_VALIDATE_IP ) ? '' : $connecting;
 		$claimed    = false === filter_var( $claimed, FILTER_VALIDATE_IP ) ? null : $claimed;
@@ -3169,6 +3180,7 @@ final class Protection {
 			'named_proxy_no_visitor' => ClientIp::named_proxy_without_visitor( $resolved, $connecting, $settings['trusted_proxies'] ),
 			'connecting'      => $connecting,
 			'claimed'         => $claimed,
+			'restored'        => $restored,
 			// The address lockouts and the lists act on. Behind a named proxy
 			// it is not the connecting one, and the card printed the proxy's
 			// as though the visitor came directly. Shown to the person it

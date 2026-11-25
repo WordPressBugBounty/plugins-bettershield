@@ -185,13 +185,42 @@ function PasskeysBone() {
  * For whoever manages the site: another plugin also handles two-factor, and
  * how many accounts it covers, which a passkey cannot sign in because that
  * plugin asks for its own code after it (#2465). The way out is one plugin
- * for two-factor, chosen in the Quick Setup's Coexistence step.
+ * for two-factor, chosen in the Quick Setup's Coexistence step. Once
+ * BetterShield is that choice, what is left is deactivating the other
+ * plugin, so the card says that and opens the Plugins screen (#3087).
  *
  * @param {Object} props
- * @param {Object} props.shared The other plugin's name and how many accounts it covers.
+ * @param {Object} props.shared The other plugin's name, how many accounts it
+ *                              covers, whether BetterShield is already
+ *                              chosen, and the Plugins screen's address.
  */
 function SharedTwoFactor( { shared } ) {
 	const { reopenSetup, busy } = useStore();
+
+	if ( shared.chosen ) {
+		return (
+			<Alert
+				layout="default"
+				tone="warning"
+				desc={ sprintf(
+					/* translators: 1: another security plugin's name, 2: how many accounts it has two-factor set up for. */
+					_n(
+						'BetterShield is chosen for two-factor, and %1$s is still active. %2$d account has two-factor set up there, so a passkey cannot sign it in until %1$s is deactivated.',
+						'BetterShield is chosen for two-factor, and %1$s is still active. %2$d accounts have two-factor set up there, so a passkey cannot sign them in until %1$s is deactivated.',
+						shared.count,
+						'bettershield'
+					),
+					shared.name,
+					shared.count
+				) }
+				actions={
+					<Button type="secondary" size="sm" href={ shared.plugins_url }>
+						{ __( 'Open Plugins', 'bettershield' ) }
+					</Button>
+				}
+			/>
+		);
+	}
 
 	return (
 		<Alert

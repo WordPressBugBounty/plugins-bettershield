@@ -281,6 +281,40 @@ final class OAuth {
 		);
 	}
 
+	/**
+	 * The server metadata in its OpenID form, at the third address the
+	 * specification has a client try for an issuer with a path, the only one
+	 * inside the site's own folder.
+	 *
+	 * The same endpoints, plus the three fields an OpenID document must
+	 * carry. No ID token is ever issued here (there is no `openid` scope), so
+	 * the key set is empty and `none` is the only signing answer, which the
+	 * authorization code flow allows.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function openid_configuration(): array {
+		return self::authorization_server_metadata() + array(
+			'jwks_uri'                              => self::key_set_url(),
+			'subject_types_supported'               => array( 'public' ),
+			'id_token_signing_alg_values_supported' => array( 'none' ),
+		);
+	}
+
+	/** Where the OpenID document's key set is. */
+	public static function key_set_url(): string {
+		return self::issuer() . '/.well-known/jwks.json';
+	}
+
+	/**
+	 * The key set: empty, as nothing here is signed for a client to check.
+	 *
+	 * @return array{keys: array<int, mixed>}
+	 */
+	public static function key_set(): array {
+		return array( 'keys' => array() );
+	}
+
 	/* ---- registration --------------------------------------------------------- */
 
 	/**

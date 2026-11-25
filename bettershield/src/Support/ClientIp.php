@@ -272,8 +272,72 @@ final class ClientIp {
 		// Everything else is the connecting address itself. Forwarding
 		// headers that arrived on a connection nothing vouches for are noted
 		// and ignored — see the file header for why they never stand anything
-		// down.
-		return self::answer( (string) $remote, self::METHOD_DIRECT, null !== $remote, $headers );
+		// down. Headers that name the connecting address itself ignore
+		// nothing: the host has already put the visitor's address where PHP
+		// reads it (see `headers_agree()`).
+		return self::answer( (string) $remote, self::METHOD_DIRECT, null !== $remote, $headers && ! self::headers_agree( (string) $remote, $cf_header, $xff_header ) );
+	}
+
+	/**
+	 * Whether every forwarding header that arrived names the connecting
+	 * address itself.
+	 *
+	 * A web server that takes the visitor's address from the CDN in front of
+	 * it (nginx `real_ip_header`, Apache `mod_remoteip`, OpenLiteSpeed's
+	 * proxy header setting) puts it in REMOTE_ADDR and leaves the CDN's
+	 * headers on the request. Those headers then name the address PHP already
+	 * answers with: they were not ignored, because there was nothing in them
+	 * to use. Read as ignored, a site whose lockouts count each visitor was
+	 * told it couldn't tell visitors apart, with no setting that closed it.
+	 *
+	 * This changes what is reported, never the address or how much it is
+	 * believed: the answer is the connecting address either way. A header
+	 * naming anybody else is still a header nothing vouches for.
+	 *
+	 * The Cloudflare header names one address. A forwarding chain is read from
+	 * the right, past Cloudflare's own hops, as the proxy walk reads it: the
+	 * hop that is left is the one the last proxy saw connect.
+	 */
+	public static function headers_agree( string $remote, string $cf_header, string $xff_header ): bool {
+		$remote = self::valid( $remote );
+
+		if ( null === $remote || ( '' === $cf_header && '' === $xff_header ) ) {
+			return false;
+		}
+
+		if ( '' !== $cf_header && ! self::same_address( (string) self::valid( $cf_header ), $remote ) ) {
+			return false;
+		}
+
+		if ( '' === $xff_header ) {
+			return true;
+		}
+
+		$hops = array_map( 'trim', explode( ',', $xff_header ) );
+
+		for ( $i = count( $hops ) - 1; $i >= 0; $i-- ) {
+			$hop = self::hop( $hops[ $i ] );
+
+			if ( null === $hop ) {
+				return false;
+			}
+
+			if ( ! self::same_address( $hop, $remote ) && self::in_ranges( $hop, self::CLOUDFLARE_RANGES ) ) {
+				continue;
+			}
+
+			return self::same_address( $hop, $remote );
+		}
+
+		return false;
+	}
+
+	/** Whether two addresses are one, however each is written (an IPv6 address has several spellings). */
+	private static function same_address( string $a, string $b ): bool {
+		$a = '' === $a ? false : @inet_pton( $a ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- an unreadable address is simply not the same one.
+		$b = '' === $b ? false : @inet_pton( $b ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- as above.
+
+		return false !== $a && false !== $b && $a === $b;
 	}
 
 	/**

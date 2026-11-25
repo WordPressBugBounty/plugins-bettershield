@@ -59,6 +59,12 @@ function siteName() {
 
 /** A longer address is set smaller, so it fits the card beside the gauge. */
 function addressSize( address ) {
+	// The whole name is shown, wrapping as it needs: a very long one steps
+	// down once more so the card stays a card.
+	if ( address.length > 28 ) {
+		return ' is-longest';
+	}
+
 	if ( address.length > 13 ) {
 		return ' is-longer';
 	}

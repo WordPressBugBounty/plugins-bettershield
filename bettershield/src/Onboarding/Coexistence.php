@@ -1673,12 +1673,24 @@ final class Coexistence {
 			 * accounts, codes or limits came over (#2992). It waits with the
 			 * items above, and the setup brings it at its end.
 			 */
-			if ( $waiting && isset( $document['two_factor_policy'] ) ) {
+			/*
+			 * The rule for who must use two-factor waits until the plugin it
+			 * came from is off, whatever the way back in. Applied at once, it
+			 * asked the accounts set up in neither plugin for codes here while
+			 * that plugin still asked for its own, and the notice said the
+			 * copied settings waited for its deactivation (#3088). It also
+			 * waits for the way back in, as before.
+			 */
+			if ( isset( $document['two_factor_policy'] ) ) {
 				unset( $document['two_factor_policy'] );
 				$items[] = self::HELD_RULE;
 				$held[]  = array(
 					'setting' => __( 'Two-factor requirement', 'bettershield' ),
-					'reason'  => __( 'This changes how people sign in, so it waits until your way back in is set up. Bring it over from Settings › General after setup.', 'bettershield' ),
+					'reason'  => $waiting
+						/* translators: %s: another security plugin's name. */
+						? sprintf( __( 'This changes how people sign in, so it comes into use once %s is deactivated and your way back in is set up.', 'bettershield' ), (string) $source['name'] )
+						/* translators: %s: another security plugin's name. */
+						: sprintf( __( 'It comes into use once %s is deactivated, so the two plugins don’t both ask for codes.', 'bettershield' ), (string) $source['name'] ),
 				);
 			}
 
@@ -1859,7 +1871,11 @@ final class Coexistence {
 	 * The setup never switches them off, so the screens say so until they
 	 * are, or until the owner closes the notice for one.
 	 *
-	 * @return array<int, array{file: string, name: string, jobs: string[], also: string[], two_factor: bool, plugins_url: string}>
+	 * `deactivate_url` is WordPress's own Deactivate for it where the site has
+	 * the setup's deactivation on and the person asking may use it, or ''
+	 * where the notice can only open the Plugins screen.
+	 *
+	 * @return array<int, array{file: string, name: string, jobs: string[], also: string[], two_factor: bool, plugins_url: string, deactivate_url: string}>
 	 */
 	public static function awaiting_deactivation(): array {
 		if ( ! class_exists( QuickSetup::class ) || ! QuickSetup::is_done() ) {
@@ -1899,7 +1915,8 @@ final class Coexistence {
 				// What else switching it off stops, which BetterShield does not take over.
 				'also'        => self::kept_for( $jobs, $choices ),
 				'two_factor'  => in_array( 'two_factor', $handed, true ),
-				'plugins_url' => $network ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ),
+				'plugins_url'    => $network ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ),
+				'deactivate_url' => '' === self::why_not_deactivate( $file ) ? self::deactivate_url( $file ) : '',
 			);
 		}
 
@@ -1981,7 +1998,7 @@ final class Coexistence {
 	 * and has nothing to bring by the time the way back in is set up.
 	 *
 	 * @param string[] $keys The sources being brought over, by key.
-	 * @return array{roles: string[], grace_days: int}|null
+	 * @return array{roles: string[], grace_days: int, files: string[]}|null
 	 */
 	public static function held_rule( array $keys ): ?array {
 		$held = array_column(
@@ -2001,10 +2018,34 @@ final class Coexistence {
 			$rule = null === $rule ? $policy : array(
 				'roles'      => array_values( array_unique( array_merge( $rule['roles'], $policy['roles'] ) ) ),
 				'grace_days' => min( (int) $rule['grace_days'], (int) $policy['grace_days'] ),
+				'files'      => $rule['files'],
 			);
+
+			// The plugins it came from: it comes into use once they are off.
+			$rule['files'] = array_values( array_unique( array_merge( (array) ( $rule['files'] ?? array() ), Migrate::files_of( (string) $source['key'] ) ) ) );
 		}
 
 		return $rule;
+	}
+
+	/**
+	 * The sources holding a rule for who must use two-factor that the step
+	 * does not offer to tick: held for the way back in, the rule was all
+	 * they carried, so `imports()` leaves them out.
+	 *
+	 * @return string[] Source keys.
+	 */
+	public static function unoffered_rule_keys(): array {
+		$offered = array_column( self::imports(), 'key' );
+		$keys    = array();
+
+		foreach ( self::import_sources() as $source ) {
+			if ( in_array( self::HELD_RULE, $source['held_items'], true ) && ! in_array( $source['key'], $offered, true ) ) {
+				$keys[] = (string) $source['key'];
+			}
+		}
+
+		return $keys;
 	}
 
 	/** @return string[] The plugin files of the sources whose address is held. */
@@ -2277,9 +2318,17 @@ final class Coexistence {
 	 * owner: the first such plugin and how many of its accounts a passkey
 	 * cannot sign in, or null where there are none.
 	 *
-	 * @return array{name: string, count: int}|null
+	 * `chosen` is true once the owner has already chosen BetterShield for
+	 * two-factor in the Quick Setup: what is left then is deactivating that
+	 * plugin, on the Plugins screen at `plugins_url`, not the choice again.
+	 *
+	 * @return array{name: string, count: int, chosen: bool, plugins_url: string}|null
 	 */
 	public static function two_factor_accounts_elsewhere(): ?array {
+		if ( ! function_exists( 'is_plugin_active_for_network' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
 		foreach ( self::active() as $file => $plugin ) {
 			if ( ! in_array( 'two_factor', $plugin['jobs'], true ) ) {
 				continue;
@@ -2288,14 +2337,28 @@ final class Coexistence {
 			$count = self::two_factor_set_up_count( (string) $file );
 
 			if ( $count > 0 ) {
+				$network = is_multisite() && is_plugin_active_for_network( (string) $file );
+
 				return array(
-					'name'  => (string) $plugin['name'],
-					'count' => $count,
+					'name'        => (string) $plugin['name'],
+					'count'       => $count,
+					'chosen'      => self::two_factor_handed_over(),
+					'plugins_url' => $network ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ),
 				);
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Whether the owner chose BetterShield for two-factor in the Quick
+	 * Setup's Coexistence step. A step skipped or never run is no choice.
+	 */
+	public static function two_factor_handed_over(): bool {
+		$state = QuickSetup::state();
+
+		return $state['coexistence_saved'] && 'bettershield' === ( $state['coexistence']['two_factor'] ?? '' );
 	}
 
 	/**

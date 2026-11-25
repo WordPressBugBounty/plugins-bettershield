@@ -616,10 +616,23 @@ final class QuickSetup {
 		}
 
 		if ( null !== Preflight::failure() ) {
+			// Never silent: the rule waits, and the Two-Factor screen and
+			// the log say so; it comes over on its own once the way back in
+			// exists (bring_held_rule_if_ready()).
+			if ( null !== $rule ) {
+				Writer::instance()->record(
+					'two_factor_rule_held',
+					Writer::SEVERITY_MEDIUM,
+					array( 'context' => array( 'roles' => $rule['roles'], 'grace_days' => $rule['grace_days'] ) )
+				);
+			}
+
 			return;
 		}
 
-		if ( null !== $rule ) {
+		// Only once the plugin it came from is off: until then that plugin
+		// asks for its own codes, and the rule waits for it (#3088).
+		if ( null !== $rule && array() === self::rule_sources_on( $rule ) ) {
 			self::bring_held_rule( $rule );
 		}
 
@@ -685,16 +698,97 @@ final class QuickSetup {
 			if ( is_wp_error( $result ) ) {
 				return;
 			}
+
+			Writer::instance()->record(
+				'two_factor_rule_imported',
+				Writer::SEVERITY_MEDIUM,
+				array( 'context' => array( 'roles' => $rule['roles'], 'grace_days' => $rule['grace_days'] ) )
+			);
 		}
 
 		self::save( array( 'held_rule' => null ) );
 	}
 
 	/**
+	 * The rule for who must use two-factor that another plugin brought and
+	 * that waits for the way back in, for the Two-Factor screen to say so;
+	 * null when nothing waits or two-factor went to another plugin.
+	 *
+	 * @return array{roles: string[], grace_days: int, reason: string, recovery_url: string, waits_for: string[], plugins_url: string}|null
+	 */
+	public static function held_rule_waiting(): ?array {
+		$rule = self::state()['held_rule'];
+
+		if ( null === $rule || 'bettershield' !== Coexistence::choice_of( 'two_factor', self::state()['coexistence'] ) ) {
+			return null;
+		}
+
+		$failure = Preflight::failure();
+		$on      = self::rule_sources_on( $rule );
+
+		return array(
+			'roles'        => $rule['roles'],
+			'grace_days'   => $rule['grace_days'],
+			'reason'       => null !== $failure ? (string) $failure['message'] : '',
+			'recovery_url' => admin_url( 'admin.php?page=bettershield-protect&tab=recovery' ),
+			// The plugins it waits for, by name, while they are still on, and
+			// where they are switched off.
+			'waits_for'    => array_values( $on ),
+			'plugins_url'  => is_multisite() && is_network_admin() ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ),
+		);
+	}
+
+	/**
+	 * The plugins a held rule came from that are still active, by file and
+	 * name. The rule comes into use only once none is (#3088).
+	 *
+	 * @param array{files?: string[]} $rule
+	 * @return array<string, string> Name by plugin file.
+	 */
+	private static function rule_sources_on( array $rule ): array {
+		if ( ! function_exists( 'is_plugin_active' ) || ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$installed = get_plugins();
+		$on        = array();
+
+		foreach ( (array) ( $rule['files'] ?? array() ) as $file ) {
+			if ( is_plugin_active( (string) $file ) ) {
+				$on[ (string) $file ] = wp_strip_all_tags( (string) ( $installed[ $file ]['Name'] ?? dirname( (string) $file ) ) );
+			}
+		}
+
+		return $on;
+	}
+
+	/**
+	 * Bring the held rule over once the way back in exists (a recovery link
+	 * that arrived, or recovery codes issued after the setup finished) and
+	 * the plugin it came from is off (#3088).
+	 * Before, the setup's end was its only chance, and a site that could not
+	 * mail the link then kept the rule held for good, with nothing said.
+	 * Cheap while nothing waits: one read of the setup's state.
+	 */
+	public static function bring_held_rule_if_ready(): void {
+		if ( ! current_user_can( \BetterShield\Capabilities::MANAGE ) ) {
+			return;
+		}
+
+		$rule = self::state()['held_rule'];
+
+		if ( null === $rule || ! self::is_done() || null !== Preflight::failure() || array() !== self::rule_sources_on( $rule ) ) {
+			return;
+		}
+
+		self::bring_held_rule( $rule );
+	}
+
+	/**
 	 * A stored rule for who must use two-factor, or null.
 	 *
 	 * @param mixed $stored
-	 * @return array{roles: string[], grace_days: int}|null
+	 * @return array{roles: string[], grace_days: int, files: string[]}|null
 	 */
 	private static function rule_of( $stored ): ?array {
 		if ( ! is_array( $stored ) || ! is_array( $stored['roles'] ?? null ) || array() === $stored['roles'] ) {
@@ -704,6 +798,7 @@ final class QuickSetup {
 		return array(
 			'roles'      => array_values( array_filter( array_map( 'strval', $stored['roles'] ) ) ),
 			'grace_days' => max( 0, min( 90, (int) ( $stored['grace_days'] ?? 0 ) ) ),
+			'files'      => array_values( array_filter( array_map( 'strval', (array) ( $stored['files'] ?? array() ) ) ) ),
 		);
 	}
 
@@ -847,6 +942,13 @@ final class QuickSetup {
 		$report = Protection::instance()->resolution_report();
 
 		if ( in_array( $report['method'], array( ClientIp::METHOD_CLOUDFLARE, ClientIp::METHOD_CLOUDFLARE_UNCONFIRMED ), true ) ) {
+			return 'cloudflare';
+		}
+
+		// Through Cloudflare, with the host already passing on the visitor's
+		// address: Cloudflare's header names the connecting address. It is
+		// Cloudflare in front, not a service whose address is needed.
+		if ( ! empty( $report['restored'] ) && null !== $report['claimed'] ) {
 			return 'cloudflare';
 		}
 
@@ -1409,22 +1511,32 @@ final class QuickSetup {
 
 		$keys = is_array( $import ) ? array_values( array_filter( $import, 'is_string' ) ) : array();
 
+		/*
+		 * Read before the import: the plugins it came from are switched off
+		 * once the step finishes, and the setup's end brings it from here.
+		 *
+		 * Who must use two-factor comes over with two-factor itself. Held
+		 * for the way back in, a plugin whose only setting is that rule has
+		 * nothing left to carry, so it is not offered to tick at all, and
+		 * the rule was dropped with nothing said: it is held here whenever
+		 * two-factor is handed over, ticked or not offered.
+		 */
+		$rule = 'bettershield' === ( $choices['two_factor'] ?? '' )
+			? Coexistence::held_rule( array_values( array_unique( array_merge( $keys, Coexistence::unoffered_rule_keys() ) ) ) )
+			: null;
+
+		if ( null !== $rule ) {
+			self::save( array( 'held_rule' => $rule ) );
+		}
+
 		if ( array() === $keys ) {
 			return true;
 		}
-
-		// Read before the import: the plugins it came from are switched off
-		// once the step finishes, and the setup's end brings it from here.
-		$rule = 'bettershield' === ( $choices['two_factor'] ?? '' ) ? Coexistence::held_rule( $keys ) : null;
 
 		$done = Coexistence::import( $keys );
 
 		if ( is_wp_error( $done ) ) {
 			return $done;
-		}
-
-		if ( null !== $rule ) {
-			self::save( array( 'held_rule' => $rule ) );
 		}
 
 		// Added to what an earlier save brought over, by plugin.

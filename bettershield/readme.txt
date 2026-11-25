@@ -4,7 +4,7 @@ Tags: 2fa, passkeys, hardening, activity log, two factor authentication
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.12
+Stable tag: 1.1.13
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -367,6 +367,14 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 
 == Changelog ==
 
+= 1.1.13 - 25/11/2026 =
+
+- Fixed: Login Protection | Cloudflare sites whose host already passes on visitor addresses no longer see a false bypass warning or finding
+- Fixed: Two-Factor | A two-factor rule brought over from another plugin is kept, and applies once that plugin is deactivated
+- Fixed: Settings migration | The notice's button now does what it says: it deactivates the plugin, or opens the Plugins screen
+- Fixed: Passkeys | Once BetterShield handles two-factor, the advice says to deactivate the other plugin instead of choosing again
+- Fixed: MCP Server | Assistants that sign in through the browser now connect to sites installed in a folder
+
 = 1.1.12 - 24/11/2026 =
 
 - Added: Two-Factor | See which accounts and roles use two-factor, including a Users screen column, and two-factor set up in another plugin shows as on
@@ -683,6 +691,10 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 - Added: Multisite | Every site's score in one table and rules a network can set once
 
 == Upgrade Notice ==
+
+= 1.1.13 =
+
+Cloudflare sites whose host passes on visitor addresses no longer see a false warning, and two-factor rules from another plugin apply once it is deactivated. Recommended for all sites.
 
 = 1.1.12 =
 

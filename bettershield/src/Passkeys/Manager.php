@@ -199,13 +199,20 @@ final class Manager {
 	 * What an account another security plugin covers is told about passkeys
 	 * (#2465): that plugin by name, and who can change it. Someone who runs
 	 * the site was sent to "ask your administrator", which was themselves
-	 * (#3064); they are pointed to the choice in Quick Setup instead.
+	 * (#3064); they are pointed to the choice in Quick Setup instead, or,
+	 * once BetterShield is that choice, to deactivating the other plugin,
+	 * which is all that is left (#3087).
 	 */
 	public static function elsewhere_words( \WP_User $user ): string {
 		$plugin = \BetterShield\Onboarding\Coexistence::two_factor_for_user( $user );
 
 		if ( '' === $plugin ) {
 			$plugin = __( 'another security plugin', 'bettershield' );
+		}
+
+		if ( user_can( $user, \BetterShield\Capabilities::MANAGE ) && \BetterShield\Onboarding\Coexistence::two_factor_handed_over() ) {
+			/* translators: %s: the name of another security plugin. */
+			return sprintf( __( 'Your two-factor is set up in %s, so a passkey cannot sign you in until it is deactivated on the Plugins screen. Use your password and its code.', 'bettershield' ), $plugin );
 		}
 
 		return user_can( $user, \BetterShield\Capabilities::MANAGE )

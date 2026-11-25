@@ -252,15 +252,15 @@
 	padding-bottom: var(--bs-ds-space-md);
 }
 
+/* The whole name, on as many lines as it takes: cut off with an ellipsis it
+   read as another site's. A word longer than the card breaks inside it. */
 .bs-ds-setup-visual__host {
 	max-width: 100%;
-	overflow: hidden;
 	font-size: var(--bs-ds-size-display);
 	font-weight: 500;
 	line-height: 1.2;
 	letter-spacing: -0.02em;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	overflow-wrap: anywhere;
 	color: var(--bs-ds-color-text-primary);
 }
 
@@ -270,6 +270,10 @@
 
 .bs-ds-setup-visual__host.is-longer {
 	font-size: var(--bs-ds-size-heading-medium);
+}
+
+.bs-ds-setup-visual__host.is-longest {
+	font-size: var(--bs-ds-size-large);
 }
 
 .bs-ds-setup-visual__ready {

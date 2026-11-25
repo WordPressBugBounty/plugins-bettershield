@@ -248,6 +248,19 @@ final class Manager {
 			'^\.well-known/oauth-(protected-resource|authorization-server)/bettershield/mcp/?$' => 'index.php?' . self::VAR_WELLKNOWN . '=$matches[1]',
 			'^bettershield/mcp/\.well-known/oauth-(protected-resource|authorization-server)/?$' => 'index.php?' . self::VAR_WELLKNOWN . '=$matches[1]',
 
+			/*
+			 * The OpenID form of the server metadata, which the specification
+			 * has a client try after the two above, in both positions. For a
+			 * site whose address has a path, the one after the issuer is the
+			 * only discovery address that always reaches WordPress: the other
+			 * two start at the domain's root, which may be another
+			 * application. The key set it names is empty, as no ID token is
+			 * ever issued here.
+			 */
+			'^\.well-known/(openid-configuration)/bettershield/mcp/?$' => 'index.php?' . self::VAR_WELLKNOWN . '=$matches[1]',
+			'^bettershield/mcp/\.well-known/(openid-configuration)/?$' => 'index.php?' . self::VAR_WELLKNOWN . '=$matches[1]',
+			'^bettershield/mcp/\.well-known/(jwks)\.json/?$' => 'index.php?' . self::VAR_WELLKNOWN . '=$matches[1]',
+
 			'^bettershield/authorize/?$' => 'index.php?' . self::VAR_AUTHORIZE . '=1',
 		);
 	}
@@ -464,7 +477,7 @@ final class Manager {
 
 		$which = (string) $value;
 
-		return in_array( $which, array( 'authorization-server', 'protected-resource' ), true ) ? $which : '';
+		return in_array( $which, array( 'authorization-server', 'protected-resource', 'openid-configuration', 'jwks' ), true ) ? $which : '';
 	}
 
 	/**
@@ -513,6 +526,14 @@ final class Manager {
 			$this->serve_discovery( $which );
 		}
 
+		if ( ! is_multisite() ) {
+			$which = self::home_path_discovery( $uri, home_url( '/' ) );
+
+			if ( '' !== $which ) {
+				$this->serve_discovery( $which );
+			}
+		}
+
 		$subsite = self::subsite_discovery( $uri );
 
 		if ( null !== $subsite ) {
@@ -547,7 +568,7 @@ final class Manager {
 
 		$path = trim( explode( '?', $uri, 2 )[0], '/' );
 
-		if ( 1 !== preg_match( '#^\.well-known/oauth-(protected-resource|authorization-server)/(.+)/bettershield/mcp/?$#', $path, $matches ) ) {
+		if ( 1 !== preg_match( self::ROOT_DISCOVERY, $path, $matches ) ) {
 			return null;
 		}
 
@@ -565,8 +586,49 @@ final class Manager {
 
 		return array(
 			'site'  => (int) $site->blog_id,
-			'which' => self::wellknown_name( $matches[1] ),
+			'which' => self::wellknown_name( preg_replace( '/^oauth-/', '', $matches[1] ) ),
 		);
+	}
+
+	/**
+	 * A discovery address at the domain's root with a directory before this
+	 * endpoint's path, as the specification builds it for an issuer with a
+	 * path: the protected resource, the server metadata and its OpenID form.
+	 */
+	private const ROOT_DISCOVERY = '#^\.well-known/(oauth-protected-resource|oauth-authorization-server|openid-configuration)/(.+)/bettershield/mcp/?$#';
+
+	/**
+	 * Which document a root-anchored discovery address names, for a single
+	 * site whose address has a path, or an empty string.
+	 *
+	 * The issuer of a site at `https://example.com/wp` is
+	 * `https://example.com/wp/bettershield/mcp`, and the specification has a
+	 * client look first at `/.well-known/oauth-authorization-server/wp/
+	 * bettershield/mcp` from the domain's root. Where that request reaches
+	 * this WordPress (its files at the root with the site address in a
+	 * folder, or a host that routes the root to it), its own rules, which
+	 * cover only its own path, left it to the home page. Answered for this
+	 * site's own directory and this endpoint's path only.
+	 *
+	 * Pure, and public, so it can be exercised without a request.
+	 *
+	 * @param string $uri  The request line's path and query.
+	 * @param string $home The site's home URL.
+	 */
+	public static function home_path_discovery( string $uri, string $home ): string {
+		$base = strtolower( trim( (string) wp_parse_url( $home, PHP_URL_PATH ), '/' ) );
+
+		if ( '' === $base ) {
+			return '';
+		}
+
+		$path = trim( explode( '?', $uri, 2 )[0], '/' );
+
+		if ( 1 !== preg_match( self::ROOT_DISCOVERY, $path, $matches ) || strtolower( trim( $matches[2], '/' ) ) !== $base ) {
+			return '';
+		}
+
+		return self::wellknown_name( preg_replace( '/^oauth-/', '', $matches[1] ) );
 	}
 
 	/**
@@ -718,9 +780,19 @@ final class Manager {
 			$this->gone();
 		}
 
-		$document = 'authorization-server' === $which
-			? OAuth::authorization_server_metadata()
-			: OAuth::protected_resource_metadata();
+		switch ( $which ) {
+			case 'authorization-server':
+				$document = OAuth::authorization_server_metadata();
+				break;
+			case 'openid-configuration':
+				$document = OAuth::openid_configuration();
+				break;
+			case 'jwks':
+				$document = OAuth::key_set();
+				break;
+			default:
+				$document = OAuth::protected_resource_metadata();
+		}
 
 		status_header( 200 );
 		self::send_page_headers();

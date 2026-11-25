@@ -432,6 +432,10 @@ final class Writer {
 		'two_factor_imported',
 		'two_factor_import_failed',
 		'two_factor_import_undone',
+		// Another plugin's rule for who must use two-factor, held for the way
+		// back in and brought over once it exists.
+		'two_factor_rule_held',
+		'two_factor_rule_imported',
 		'two_factor_moved',
 		'two_factor_not_moved',
 		// Enrolling a way in, losing one, and a refusal that can mean a
