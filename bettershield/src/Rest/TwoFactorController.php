@@ -312,6 +312,13 @@ final class TwoFactorController {
 									'in_use'          => \BetterShield\TwoFactor\Manager::instance()->in_use(),
 									// Another plugin's rule waiting for the way back in, or null.
 									'held_rule'       => \BetterShield\Onboarding\QuickSetup::held_rule_waiting(),
+									// The accounts named in each list, as the
+									// screen shows them: the ids alone say
+									// nothing to the person choosing.
+									'people'          => array(
+										'users'    => Policy::describe( Policy::instance()->settings()['users'] ),
+										'excluded' => Policy::describe( Policy::instance()->settings()['excluded'] ),
+									),
 								)
 							)
 						);
@@ -335,6 +342,22 @@ final class TwoFactorController {
 						),
 						'grace_days' => array(
 							'type'              => 'integer',
+							'required'          => false,
+							'validate_callback' => 'rest_validate_request_arg',
+							'sanitize_callback' => 'rest_sanitize_request_arg',
+						),
+						'users'      => array(
+							'type'              => 'array',
+							'items'             => array( 'type' => 'integer', 'minimum' => 1 ),
+							'maxItems'          => Policy::MAX_PEOPLE,
+							'required'          => false,
+							'validate_callback' => 'rest_validate_request_arg',
+							'sanitize_callback' => 'rest_sanitize_request_arg',
+						),
+						'excluded'   => array(
+							'type'              => 'array',
+							'items'             => array( 'type' => 'integer', 'minimum' => 1 ),
+							'maxItems'          => Policy::MAX_PEOPLE,
 							'required'          => false,
 							'validate_callback' => 'rest_validate_request_arg',
 							'sanitize_callback' => 'rest_sanitize_request_arg',
@@ -365,8 +388,10 @@ final class TwoFactorController {
 						 * proved way back in, as a sign-in hardening item does.
 						 * Narrowing or keeping the roles is never held up.
 						 */
-						$current = Policy::instance()->settings()['roles'];
-						$widened = array() !== array_diff( array_map( 'strval', array_filter( (array) ( $body['roles'] ?? $current ), 'is_scalar' ) ), $current );
+						$settings = Policy::instance()->settings();
+						$current  = $settings['roles'];
+						$widened  = array() !== array_diff( array_map( 'strval', array_filter( (array) ( $body['roles'] ?? $current ), 'is_scalar' ) ), $current )
+							|| array() !== array_diff( array_map( 'intval', array_filter( (array) ( $body['users'] ?? $settings['users'] ), 'is_scalar' ) ), $settings['users'] );
 						$failure = $widened ? Preflight::failure() : null;
 
 						if ( null !== $failure && ! $override ) {
@@ -394,6 +419,68 @@ final class TwoFactorController {
 						return Permissions::interactive_manage_if( Policy::instance()->weakens( is_array( $body ) ? $body : array() ) );
 					},
 				),
+			)
+		);
+
+		/*
+		 * Accounts of this site matching a search, for naming one in either
+		 * list. Only what picking needs: the id, the display name, the
+		 * username and the roles, and never more than a short page.
+		 */
+		register_rest_route(
+			'bettershield/v1',
+			'/two-factor/policy/accounts',
+			array(
+				'methods'             => \WP_REST_Server::READABLE,
+				'args'                => array(
+					'search' => array(
+						'type'              => 'string',
+						'required'          => true,
+						'minLength'         => 1,
+						'maxLength'         => 60,
+						'validate_callback' => 'rest_validate_request_arg',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+				'callback'            => static function ( \WP_REST_Request $request ): \WP_REST_Response {
+					$query = new \WP_User_Query(
+						array(
+							'search'         => '*' . (string) $request['search'] . '*',
+							'search_columns' => array( 'user_login', 'user_email', 'display_name' ),
+							'number'         => 10,
+							'count_total'    => false,
+							'orderby'        => 'display_name',
+							'blog_id'        => get_current_blog_id(),
+						)
+					);
+					$found = array();
+					$names = wp_roles()->get_names();
+
+					foreach ( (array) $query->get_results() as $user ) {
+						if ( ! $user instanceof \WP_User ) {
+							continue;
+						}
+
+						$found[] = array(
+							'id'    => (int) $user->ID,
+							'name'  => (string) $user->display_name,
+							'login' => (string) $user->user_login,
+							'roles' => array_values(
+								array_map(
+									static function ( $slug ) use ( $names ): string {
+										return isset( $names[ $slug ] ) ? translate_user_role( (string) $names[ $slug ] ) : (string) $slug;
+									},
+									(array) $user->roles
+								)
+							),
+						);
+					}
+
+					return rest_ensure_response( $found );
+				},
+				'permission_callback' => static function () {
+					return Permissions::manage();
+				},
 			)
 		);
 

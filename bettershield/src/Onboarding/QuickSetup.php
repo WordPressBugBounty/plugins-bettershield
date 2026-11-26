@@ -733,7 +733,7 @@ final class QuickSetup {
 			'recovery_url' => admin_url( 'admin.php?page=bettershield-protect&tab=recovery' ),
 			// The plugins it waits for, by name, while they are still on, and
 			// where they are switched off.
-			'waits_for'    => array_values( $on ),
+			'waits_for'    => array_values( array_map( array( Coexistence::class, 'short_name' ), array_map( 'strval', $on ) ) ),
 			'plugins_url'  => is_multisite() && is_network_admin() ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ),
 		);
 	}

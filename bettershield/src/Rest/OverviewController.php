@@ -343,7 +343,7 @@ final class OverviewController {
 	}
 
 	/**
-	 * @return array{setup: ?array{url: string, resume: bool}, rerun: ?string, usage_reminder: bool, switch_off: array<int, array<string, mixed>>}
+	 * @return array{setup: ?array{url: string, resume: bool}, rerun: ?string, usage_reminder: bool, switch_off: array<int, array<string, mixed>>, migrate: array<int, array<string, mixed>>}
 	 */
 	private static function onboarding(): array {
 		if ( ! current_user_can( Capabilities::MANAGE ) ) {
@@ -352,6 +352,7 @@ final class OverviewController {
 				'rerun'          => null,
 				'usage_reminder' => false,
 				'switch_off'     => array(),
+				'migrate'        => array(),
 			);
 		}
 
@@ -370,6 +371,8 @@ final class OverviewController {
 			'usage_reminder' => Usage::reminder_due(),
 			// Plugins the setup handed jobs from that are still on.
 			'switch_off'     => \BetterShield\Onboarding\Coexistence::awaiting_deactivation(),
+			// Plugins still doing a job BetterShield can take over.
+			'migrate'        => \BetterShield\Onboarding\Coexistence::awaiting_migration(),
 		);
 	}
 

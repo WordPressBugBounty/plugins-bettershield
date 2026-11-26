@@ -530,6 +530,31 @@ export function StoreProvider( { children } ) {
 					},
 				} ),
 
+			// Hand another plugin's jobs over; then WordPress's own Deactivate
+			// where the person may follow it, or the screen read again.
+			migrateFrom: ( file ) =>
+				act( {
+					path: '/bettershield/v1/coexistence/migrate',
+					key: 'migrate',
+					data: { file },
+					then: ( data ) => {
+						if ( data?.deactivate_url ) {
+							window.location.assign( data.deactivate_url );
+							return;
+						}
+
+						load( 'overview', { force: true } );
+					},
+				} ),
+
+			dismissMigrate: ( file ) =>
+				act( {
+					path: '/bettershield/v1/coexistence/migrate/dismiss',
+					key: 'migrate-dismiss',
+					data: { file },
+					then: () => load( 'overview', { force: true } ),
+				} ),
+
 			dismissSwitchOff: ( file ) =>
 				act( {
 					path: '/bettershield/v1/coexistence/notice/dismiss',

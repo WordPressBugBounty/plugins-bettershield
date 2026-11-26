@@ -19,6 +19,7 @@ import { ExternalLink } from '@wordpress/components';
 import apiFetch from '@wordpress/api-fetch';
 import { useEffect, useId, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
+import { tabUrl } from '../../nav';
 import { listOf } from '../../setup/format';
 import { formatTime, isWorking, useResource, useStore } from '../../store';
 import { offer } from '../../ui/TierOffer';
@@ -414,18 +415,24 @@ function Rule( { title, help, tip = null, checked, disabled, onChange, status, t
 	);
 }
 
-/** The four facts' names, shared by the strip and the page's stand-in. */
+/**
+ * The five facts' names, shared by the strip and the page's stand-in. The
+ * protections are named as sign-in protections, and two-factor has its own
+ * count, so "7 of 16" beside the accounts signed in isn't read as accounts
+ * with two-factor (#3107).
+ */
 function glanceLabels() {
 	return {
 		connection: __( 'Visitor addresses', 'bettershield' ),
 		lockouts: __( 'Lockouts', 'bettershield' ),
-		rules: __( 'Protections', 'bettershield' ),
+		rules: __( 'Sign-in protections', 'bettershield' ),
+		twoFactor: __( 'Two-factor', 'bettershield' ),
 		people: __( 'Signed in', 'bettershield' ),
 	};
 }
 
 /**
- * The page in four facts, before any of the controls that change them.
+ * The page in five facts, before any of the controls that change them.
  *
  * @param {Object} props
  * @param {Object} props.data The login-protection payload.
@@ -440,6 +447,11 @@ function AccessSummary( { data } ) {
 	const { resource: hardening } = useResource( 'hardening' );
 	const signIn = hardening?.data?.count?.screens?.login || null;
 	const signInFailed = ! signIn && hardening && 'error' === hardening.status;
+	// The accounts that sign in with a code, as the Two-Factor tab counts them.
+	const { resource: policy } = useResource( 'twoFactorPolicy' );
+	const inUse = policy?.data?.in_use || null;
+	const codeAccounts = inUse ? Number( inUse.accounts ) || 0 : null;
+	const codeFailed = null === codeAccounts && policy && ( 'error' === policy.status || Boolean( policy.data ) );
 	// Counted by the server: the list it sends is one page of it.
 	const people = resource && resource.data ? resource.data.total ?? ( resource.data.sessions || [] ).length : null;
 
@@ -487,6 +499,23 @@ function AccessSummary( { data } ) {
 				: '—',
 			detail: signInFailed ? __( 'Could not be read', 'bettershield' ) : __( 'Switched on', 'bettershield' ),
 			pending: ! signIn && ! signInFailed,
+		},
+		{
+			key: 'two-factor',
+			icon: 'smartphone',
+			label: labels.twoFactor,
+			value: null === codeAccounts ? '—' : String( codeAccounts ),
+			detail: ( () => {
+				if ( codeFailed ) {
+					return __( 'Could not be read', 'bettershield' );
+				}
+
+				const words = _n( 'Account with it on', 'Accounts with it on', codeAccounts || 0, 'bettershield' );
+				const where = tabUrl( 'bettershield-protect', 'two-factor' );
+
+				return where ? <a href={ where }>{ words }</a> : words;
+			} )(),
+			pending: null === codeAccounts && ! codeFailed,
 		},
 		{
 			key: 'people',

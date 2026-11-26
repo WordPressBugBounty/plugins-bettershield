@@ -149,6 +149,7 @@ final class AdminGate {
 		// Priority 0 on init: before auth_redirect() in wp-admin/admin.php gets
 		// its chance to send the visitor to the login form.
 		add_action( 'init', array( self::class, 'gate' ), 0 );
+		\BetterShield\Hardening\MissingPage::register();
 
 		// Core sends signed-out visitors to sign in from other moments too:
 		// the Customizer on setup_theme, before init, and pages such as the
@@ -301,6 +302,16 @@ final class AdminGate {
 			nocache_headers();
 			wp_safe_redirect( $to );
 			exit;
+		}
+
+		// A GET or HEAD gets the site's own "Page not found", as a visitor
+		// gets it for any missing address, so the dashboard doesn't stand out
+		// (#3097). It is fetched from the site, never drawn here: this request
+		// has every plugin's dashboard code loaded. When it can't be had, and
+		// for anything posted, the plain page below.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- compared against fixed words.
+		if ( in_array( strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ), array( 'GET', 'HEAD' ), true ) ) {
+			\BetterShield\Hardening\MissingPage::serve();
 		}
 
 		status_header( 404 );

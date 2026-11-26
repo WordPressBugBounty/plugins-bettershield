@@ -42,6 +42,7 @@ namespace BetterShield\TwoFactor;
 use BetterShield\Events\Writer;
 use BetterShield\Network\Policies as NetworkPolicies;
 use BetterShield\Recovery\SafeMode;
+use BetterShield\Support\NamedAccounts;
 use BetterShield\Undo\SettingsLedger;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -98,6 +99,12 @@ final class Policy {
 	public static function forget( int $user_id ): void {
 		delete_user_meta( $user_id, self::instance()->since_key() );
 	}
+
+	/**
+	 * The most accounts either list holds. A list is for the handful a role
+	 * cannot describe; a site with more than this many exceptions wants a role.
+	 */
+	public const MAX_PEOPLE = NamedAccounts::MAX;
 
 	/** Not required · inside the grace window · owed now. */
 	public const NOT_REQUIRED = 'not_required';
@@ -160,9 +167,7 @@ final class Policy {
 			return $allowed;
 		}
 
-		$roles = NetworkPolicies::effective_two_factor_roles( $this->settings()['roles'] );
-
-		if ( array() !== array_intersect( (array) $user->roles, $roles ) ) {
+		if ( $this->covers( $user ) ) {
 			return false;
 		}
 
@@ -188,10 +193,7 @@ final class Policy {
 			switch_to_blog( (int) $site_id );
 
 			try {
-				$covered = NetworkPolicies::effective_two_factor_roles( $this->settings()['roles'] );
-				$there   = ( new \WP_User( (int) $user->ID, '', (int) $site_id ) )->roles;
-
-				if ( array() !== array_intersect( (array) $there, $covered ) ) {
+				if ( $this->covers( new \WP_User( (int) $user->ID, '', (int) $site_id ) ) ) {
 					return true;
 				}
 			} finally {
@@ -298,15 +300,93 @@ final class Policy {
 			return;
 		}
 
-		$roles = NetworkPolicies::effective_two_factor_roles( $this->settings()['roles'] );
-
-		if ( array() === array_intersect( (array) $user->roles, $roles ) ) {
+		if ( ! $this->covers( $user ) ) {
 			self::forget( (int) $user->ID );
 		}
 	}
 
 	/**
-	 * @return array{roles: string[], grace_days: int, store_tab: bool, account_page: int}
+	 * Whether this site asks a second factor of this account: by one of its
+	 * roles here or the network's, or by name, and not left alone by name.
+	 *
+	 * A role is the usual unit, and two lists sit beside it for what it
+	 * cannot say: accounts asked whatever their role, and accounts this
+	 * site's roles leave alone, such as a shared or service account.
+	 *
+	 * Leaving an account alone answers for this site's own roles and nothing
+	 * more. A role the network requires still reaches it — a site may add to
+	 * what the network asks and may never take part of it away — and naming
+	 * an account in both lists is refused when it is saved.
+	 */
+	public function covers( \WP_User $user ): bool {
+		$settings = $this->settings();
+		$id       = (int) $user->ID;
+		$held     = (array) $user->roles;
+
+		if ( array() !== array_intersect( $held, NetworkPolicies::two_factor()['roles'] ) ) {
+			return true;
+		}
+
+		if ( in_array( $id, $settings['excluded'], true ) ) {
+			return false;
+		}
+
+		if ( in_array( $id, $settings['users'], true ) ) {
+			return true;
+		}
+
+		return array() !== array_intersect( $held, NetworkPolicies::effective_two_factor_roles( $settings['roles'] ) );
+	}
+
+	/**
+	 * Forget the clocks of accounts a save took out of the requirement, or
+	 * named into it from outside any covered role, so a clock this
+	 * requirement did not start never decides their deadline: one left from
+	 * an earlier spell would make an account named today overdue at once.
+	 *
+	 * An account named that a covered role already reaches keeps its clock,
+	 * or naming it would hand it a fresh window.
+	 *
+	 * @param array{users: int[], excluded: int[]} $before
+	 * @param array{users: int[], excluded: int[]} $after
+	 */
+	private function people_moved( array $before, array $after ): void {
+		$touched = array_merge(
+			array_diff( $after['excluded'], $before['excluded'] ),
+			array_diff( $before['users'], $after['users'] )
+		);
+
+		foreach ( array_unique( $touched ) as $id ) {
+			$user = get_userdata( (int) $id );
+
+			if ( $user instanceof \WP_User && ! $this->covers( $user ) ) {
+				self::forget( (int) $id );
+			}
+		}
+
+		$roles = NetworkPolicies::effective_two_factor_roles( $this->settings()['roles'] );
+
+		foreach ( array_diff( $after['users'], $before['users'] ) as $id ) {
+			$user = get_userdata( (int) $id );
+
+			if ( $user instanceof \WP_User && array() === array_intersect( (array) $user->roles, $roles ) ) {
+				self::forget( (int) $id );
+			}
+		}
+	}
+
+	/**
+	 * Each named account as the screen shows it, skipping any gone since.
+	 *
+	 * @param int[] $ids
+	 * @return array<int, array{id: int, name: string, login: string}>
+	 */
+	public static function describe( array $ids ): array {
+		return NamedAccounts::describe( $ids );
+	}
+
+	/**
+	 * @return array{roles: string[], grace_days: int, users: int[], excluded: int[], store_tab: bool, account_page: int}
 	 */
 	public function settings(): array {
 		$stored = get_option( self::OPTION, array() );
@@ -317,6 +397,10 @@ final class Policy {
 			// Long enough that somebody on holiday is not shut out of their own
 			// dashboard on their first day back.
 			'grace_days'   => max( 0, min( 90, (int) ( $stored['grace_days'] ?? 14 ) ) ),
+			// Accounts asked whatever their role, and accounts this site's
+			// roles leave alone. Ids, which mean nothing on another site.
+			'users'        => NamedAccounts::ids( $stored['users'] ?? array() ),
+			'excluded'     => NamedAccounts::ids( $stored['excluded'] ?? array() ),
 			// Whether a store's My Account page offers the Sign-in security
 			// tab to accounts nothing asks it of. On until an owner says not.
 			'store_tab'    => false !== ( $stored['store_tab'] ?? true ),
@@ -333,7 +417,7 @@ final class Policy {
 	 * and a section without one could only be planned by guessing.
 	 *
 	 * @param array<string, mixed> $input
-	 * @return array{roles: string[], grace_days: int, store_tab: bool, account_page: int}|\WP_Error
+	 * @return array{roles: string[], grace_days: int, users: int[], excluded: int[], store_tab: bool, account_page: int}|\WP_Error
 	 */
 	public function validate( array $input ) {
 		$current = $this->settings();
@@ -385,6 +469,12 @@ final class Policy {
 			);
 		}
 
+		$people = NamedAccounts::clean( $input, $current );
+
+		if ( is_wp_error( $people ) ) {
+			return $people;
+		}
+
 		if ( isset( $input['store_tab'] ) && ! is_scalar( $input['store_tab'] ) ) {
 			return new \WP_Error( 'bettershield_bad_store_tab', __( 'The My Account setting needs to be on or off.', 'bettershield' ), array( 'status' => 400 ) );
 		}
@@ -398,6 +488,8 @@ final class Policy {
 		return array(
 			'roles'        => $next,
 			'grace_days'   => $days,
+			'users'        => $people['users'],
+			'excluded'     => $people['excluded'],
 			'store_tab'    => isset( $input['store_tab'] ) ? rest_sanitize_boolean( $input['store_tab'] ) : $current['store_tab'],
 			'account_page' => (int) $page,
 		);
@@ -420,12 +512,47 @@ final class Policy {
 
 		$current = $this->settings();
 
-		return array() !== array_diff( $current['roles'], $next['roles'] ) || $next['grace_days'] > $current['grace_days'];
+		return array() !== self::weakened( $current, $next );
+	}
+
+	/**
+	 * What a change takes away, named: each is a way an account ends up
+	 * without a second factor it was asked for.
+	 *
+	 * Roles are compared by identity rather than by count: swapping the
+	 * administrators for the editors covers the same number of roles and
+	 * leaves the administrators with nothing required of them. Accounts are
+	 * the same: one named in, another named out, is still one let off.
+	 *
+	 * @param array<string, mixed> $current
+	 * @param array<string, mixed> $next
+	 * @return string[]
+	 */
+	private static function weakened( array $current, array $next ): array {
+		$weakened = array();
+
+		if ( array() !== array_diff( $current['roles'], $next['roles'] ) ) {
+			$weakened[] = 'roles no longer required';
+		}
+
+		if ( $next['grace_days'] > $current['grace_days'] ) {
+			$weakened[] = 'grace period lengthened';
+		}
+
+		if ( array() !== array_diff( $current['users'], $next['users'] ) ) {
+			$weakened[] = 'accounts no longer required';
+		}
+
+		if ( array() !== array_diff( $next['excluded'], $current['excluded'] ) ) {
+			$weakened[] = 'accounts left out';
+		}
+
+		return $weakened;
 	}
 
 	/**
 	 * @param array<string, mixed> $input
-	 * @return array{roles: string[], grace_days: int, store_tab: bool, account_page: int}|\WP_Error
+	 * @return array{roles: string[], grace_days: int, users: int[], excluded: int[], store_tab: bool, account_page: int}|\WP_Error
 	 */
 	public function update_settings( array $input ) {
 		$current = $this->settings();
@@ -437,7 +564,8 @@ final class Policy {
 
 		// The same roles in another order and the same window are what is
 		// stored already: no undo row, no write and no event for nothing.
-		$same_requirement = array() === array_diff( $current['roles'], $next['roles'] ) && array() === array_diff( $next['roles'], $current['roles'] ) && $current['grace_days'] === $next['grace_days'];
+		$same_requirement = self::same_set( $current['roles'], $next['roles'] ) && $current['grace_days'] === $next['grace_days']
+			&& self::same_set( $current['users'], $next['users'] ) && self::same_set( $current['excluded'], $next['excluded'] );
 
 		if ( $same_requirement && $current['store_tab'] === $next['store_tab'] && $current['account_page'] === $next['account_page'] ) {
 			return $current;
@@ -451,6 +579,8 @@ final class Policy {
 		}
 
 		update_option( self::OPTION, $next, false );
+
+		$this->people_moved( $current, $next );
 
 		// What a menu shows is not what the site requires, and the requirement's
 		// own row feeds the incident engine.
@@ -489,20 +619,8 @@ final class Policy {
 		 * carries the severity of the weakest thing in it — removing the
 		 * requirement from every administrator cannot be quieter than removing
 		 * it from one of them.
-		 *
-		 * Roles are compared by identity rather than by count: swapping the
-		 * administrators for the editors covers the same number of roles and
-		 * leaves the administrators with nothing required of them.
 		 */
-		$weakened = array();
-
-		if ( array() !== array_diff( $current['roles'], $next['roles'] ) ) {
-			$weakened[] = 'roles no longer required';
-		}
-
-		if ( $next['grace_days'] > $current['grace_days'] ) {
-			$weakened[] = 'grace period lengthened';
-		}
+		$weakened = self::weakened( $current, $next );
 
 		Writer::instance()->record(
 			'two_factor_policy_changed',
@@ -512,12 +630,24 @@ final class Policy {
 				'context'     => array(
 					'roles'      => $next['roles'],
 					'grace_days' => $next['grace_days'],
+					'users'      => count( $next['users'] ),
+					'excluded'   => count( $next['excluded'] ),
 					'weakened'   => $weakened,
 				),
 			)
 		);
 
 		return $next;
+	}
+
+	/**
+	 * Whether two lists hold the same members, in any order.
+	 *
+	 * @param array<int, int|string> $a
+	 * @param array<int, int|string> $b
+	 */
+	private static function same_set( array $a, array $b ): bool {
+		return array() === array_diff( $a, $b ) && array() === array_diff( $b, $a );
 	}
 
 	/**
@@ -595,7 +725,7 @@ final class Policy {
 		$roles = NetworkPolicies::effective_two_factor_roles( $settings['roles'] );
 		$grace = NetworkPolicies::effective_grace( $settings['grace_days'] );
 
-		if ( array() === $roles || array() === array_intersect( (array) $user->roles, $roles ) ) {
+		if ( ! $this->covers( $user ) ) {
 			return $none;
 		}
 
@@ -610,7 +740,10 @@ final class Policy {
 		$since = (int) get_user_meta( $user->ID, $key, true );
 
 		// A clock from an earlier spell of the requirement is not this one's.
-		if ( 0 !== $since && $since < $this->spell_began( $user, $roles ) ) {
+		// An account named in has no spell but its own, and its clock was
+		// forgotten when it was named from outside a covered role, so a role
+		// joining the list later does not hand it a fresh window.
+		if ( 0 !== $since && ! in_array( (int) $user->ID, $settings['users'], true ) && $since < $this->spell_began( $user, $roles ) ) {
 			$since = 0;
 		}
 
@@ -738,33 +871,57 @@ final class Policy {
 	 * @return array<int, int> When each clock started, by account id.
 	 */
 	public function clocks_started_between( int $after, int $through, int $limit ): array {
-		$roles = NetworkPolicies::effective_two_factor_roles( $this->settings()['roles'] );
+		$settings = $this->settings();
+		$roles    = NetworkPolicies::effective_two_factor_roles( $settings['roles'] );
 
-		if ( array() === $roles || $through <= $after || $limit < 1 ) {
+		if ( ( array() === $roles && array() === $settings['users'] ) || $through <= $after || $limit < 1 ) {
 			return array();
 		}
 
-		$query = new \WP_User_Query(
-			array(
-				'number'      => $limit,
-				'fields'      => 'ids',
-				'count_total' => false,
-				'role__in'    => $roles,
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- a daily task's bounded page, never a front-end request.
-				'meta_query'  => array(
-					'clock' => array(
-						'key'     => $this->since_key(),
-						'value'   => array( $after + 1, $through ),
-						'compare' => 'BETWEEN',
-						'type'    => 'NUMERIC',
-					),
-				),
-				'orderby'     => 'clock',
-				'order'       => 'ASC',
-			)
-		);
+		/*
+		 * The covered roles and the accounts named are two reads, since one
+		 * query cannot ask for either; the page is then the oldest of both,
+		 * and an account the site's roles leave alone is passed over unless
+		 * the network's reach it.
+		 */
+		$reads = array();
 
-		$ids = array_map( 'intval', (array) $query->get_results() );
+		if ( array() !== $roles ) {
+			$reads[] = array( 'role__in' => $roles );
+		}
+
+		if ( array() !== $settings['users'] ) {
+			$reads[] = array( 'include' => $settings['users'] );
+		}
+
+		$found = array();
+
+		foreach ( $reads as $read ) {
+			$query = new \WP_User_Query(
+				$read + array(
+					'number'      => $limit + count( $settings['excluded'] ),
+					'fields'      => 'ids',
+					'count_total' => false,
+					// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- a daily task's bounded page, never a front-end request.
+					'meta_query'  => array(
+						'clock' => array(
+							'key'     => $this->since_key(),
+							'value'   => array( $after + 1, $through ),
+							'compare' => 'BETWEEN',
+							'type'    => 'NUMERIC',
+						),
+					),
+					'orderby'     => 'clock',
+					'order'       => 'ASC',
+				)
+			);
+
+			foreach ( (array) $query->get_results() as $id ) {
+				$found[ (int) $id ] = true;
+			}
+		}
+
+		$ids = array_keys( $found );
 
 		// One read for the page's accounts and their meta together.
 		if ( array() !== $ids ) {
@@ -774,10 +931,16 @@ final class Policy {
 		$clocks = array();
 
 		foreach ( $ids as $id ) {
-			$clocks[ $id ] = (int) get_user_meta( $id, $this->since_key(), true );
+			$user = get_userdata( $id );
+
+			if ( $user instanceof \WP_User && $this->covers( $user ) ) {
+				$clocks[ $id ] = (int) get_user_meta( $id, $this->since_key(), true );
+			}
 		}
 
-		return $clocks;
+		asort( $clocks );
+
+		return array_slice( $clocks, 0, $limit, true );
 	}
 
 	private function is_enrollment_screen(): bool {

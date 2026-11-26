@@ -10,6 +10,7 @@
 import './SwitchOffNotice.css';
 
 import { __, sprintf } from '@wordpress/i18n';
+import { listOf } from '../../setup/format';
 import { useStore } from '../../store';
 import Alert from '../ui/Alert';
 import Button from '../ui/Button';
@@ -21,7 +22,7 @@ import Button from '../ui/Button';
  * @param {string[]} jobs Job slugs the plugin keeps doing.
  * @return {string[]} Each in words.
  */
-function alsoStops( jobs ) {
+export function alsoStops( jobs ) {
 	const named = {
 		firewall: __( 'its firewall', 'bettershield' ),
 		backups: __( 'its backups', 'bettershield' ),
@@ -60,7 +61,7 @@ export function switchOffText( plugin ) {
 				/* translators: 1: a plugin's name, 2: what else it does, e.g. "its firewall". */
 				__( 'Deactivating %1$s also switches off %2$s.', 'bettershield' ),
 				plugin.name,
-				also.join( ', ' )
+				listOf( also )
 			)
 		);
 	}

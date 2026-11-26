@@ -25,6 +25,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class PasskeyPolicyController {
 
+	/** The coverage line of the accounts named one by one. A role slug never holds a space. */
+	public const NAMED = 'named people';
+
 	public function register(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 	}
@@ -100,6 +103,11 @@ final class PasskeyPolicyController {
 				 * doing anything yet.
 				 */
 				'coverage'  => self::coverage( $policy ),
+				// The accounts named in each list, as the screen shows them.
+				'people'    => array(
+					'users'    => \BetterShield\Support\NamedAccounts::describe( $policy->settings()['users'] ),
+					'excluded' => \BetterShield\Support\NamedAccounts::describe( $policy->settings()['excluded'] ),
+				),
 			)
 		);
 	}
@@ -141,9 +149,11 @@ final class PasskeyPolicyController {
 		foreach ( NetworkPolicies::effective_passkey_roles( $policy->settings()['roles'] ) as $role ) {
 			$users = get_users(
 				array(
-					'role'   => $role,
-					'number' => $cap + 1,
-					'fields' => array( 'ID' ),
+					'role'    => $role,
+					'number'  => $cap + 1,
+					'fields'  => array( 'ID' ),
+					// Left out by name, so not held to a passkey by the role.
+					'exclude' => $policy->settings()['excluded'],
 				)
 			);
 
@@ -166,6 +176,19 @@ final class PasskeyPolicyController {
 				 */
 				'enrolled' => Store::count_enrolled_among( $ids ),
 				'capped'   => $capped,
+			);
+		}
+
+		// The accounts named one by one, as one more line, under a key no
+		// role can have.
+		$named = $policy->settings()['users'];
+
+		if ( array() !== $named ) {
+			$out[] = array(
+				'role'     => self::NAMED,
+				'accounts' => count( $named ),
+				'enrolled' => Store::count_enrolled_among( $named ),
+				'capped'   => false,
 			);
 		}
 

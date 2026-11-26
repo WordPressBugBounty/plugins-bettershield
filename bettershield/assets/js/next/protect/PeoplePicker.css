@@ -1,0 +1,65 @@
+/*
+ * Two-factor › the accounts named in a list: each as a row with its username
+ * under the name, and the search results the same shape, so what is picked
+ * reads as what was found.
+ */
+.bs-ds-people {
+	display: flex;
+	flex-direction: column;
+	gap: var(--bs-ds-space-xs);
+	max-width: 560px;
+}
+
+.bs-ds-app .bs-ds-people__label {
+	margin: 0;
+	font-size: var(--bs-ds-size-small);
+	font-weight: 500;
+	color: var(--bs-ds-color-text-primary);
+}
+
+.bs-ds-app .bs-ds-people__none {
+	margin: 0;
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}
+
+.bs-ds-app .bs-ds-people__chosen,
+.bs-ds-app .bs-ds-people__found {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	border: 1px solid var(--bs-ds-color-border-primary);
+	border-radius: 8px;
+}
+
+.bs-ds-app .bs-ds-people__person,
+.bs-ds-app .bs-ds-people__result {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--bs-ds-space-sm);
+	margin: 0;
+	padding: var(--bs-ds-space-xs) var(--bs-ds-space-sm);
+}
+
+.bs-ds-app .bs-ds-people__person + .bs-ds-people__person,
+.bs-ds-app .bs-ds-people__result + .bs-ds-people__result {
+	border-top: 1px solid var(--bs-ds-color-border-primary);
+}
+
+.bs-ds-people__name {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	font-size: var(--bs-ds-size-small);
+	color: var(--bs-ds-color-text-primary);
+	overflow-wrap: anywhere;
+}
+
+.bs-ds-people__login,
+.bs-ds-people__why {
+	font-size: var(--bs-ds-size-xsmall);
+	color: var(--bs-ds-color-text-secondary);
+}

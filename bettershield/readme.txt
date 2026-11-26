@@ -4,7 +4,7 @@ Tags: 2fa, passkeys, hardening, activity log, two factor authentication
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.13
+Stable tag: 1.1.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -367,6 +367,14 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 
 == Changelog ==
 
+= 1.1.14 - 26/11/2026 =
+
+- Added: Two-Factor | Require two-factor for specific people, or leave people out, not only whole roles
+- Added: Passkeys | Hold specific people to passkey-only sign-in, or leave them out, alongside whole roles
+- Added: Settings migration | Move sign-in jobs over from another security plugin at any time, with a warning before accounts are left on password only
+- Improved: Dashboard privacy | Signed-out visitors to the dashboard now see your site's own "Page not found" page
+- Improved: Login & Access | The overview names its sign-in protections and shows how many accounts use two-factor
+
 = 1.1.13 - 25/11/2026 =
 
 - Fixed: Login Protection | Cloudflare sites whose host already passes on visitor addresses no longer see a false bypass warning or finding
@@ -691,6 +699,10 @@ Everything that runs is readable in the plugin folder. The PHP in `src/` is not 
 - Added: Multisite | Every site's score in one table and rules a network can set once
 
 == Upgrade Notice ==
+
+= 1.1.14 =
+
+Two-factor and passkey requirements can now name specific people. Moving sign-in jobs from another security plugin now warns before accounts are left on password only. Using BetterShield Ultra? Update it to 1.1.0 too. Recommended for all sites.
 
 = 1.1.13 =
 

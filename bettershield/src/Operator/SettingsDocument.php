@@ -126,9 +126,25 @@ final class SettingsDocument {
 			 * and carrying it to another site would close a site nobody had
 			 * decided to close.
 			 */
-			// Without the chosen page: its ID means nothing on another site.
-			'two_factor_policy' => array_diff_key( TwoFactorPolicy::instance()->settings(), array( 'account_page' => 0 ) ),
-			'passkey_policy'    => PasskeyPolicy::instance()->settings(),
+			// Without the chosen page or the accounts named: their IDs mean
+			// nothing on another site, or worse, a different person.
+			'two_factor_policy' => array_diff_key(
+				TwoFactorPolicy::instance()->settings(),
+				array(
+					'account_page' => 0,
+					'users'        => 0,
+					'excluded'     => 0,
+				)
+			),
+			// Without the accounts named: their IDs mean nothing on another
+			// site, or worse, a different person.
+			'passkey_policy'    => array_diff_key(
+				PasskeyPolicy::instance()->settings(),
+				array(
+					'users'    => 0,
+					'excluded' => 0,
+				)
+			),
 			'security_txt'      => SecurityTxt::instance()->settings(),
 			/*
 			 * How the site treats the credentials agents authenticate with, and

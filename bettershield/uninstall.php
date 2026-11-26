@@ -361,6 +361,7 @@ if ( ! function_exists( 'bettershield_uninstall_site' ) ) {
 			'bettershield_first_scan',
 			'bettershield_quick_setup',
 			'bettershield_coexistence_notice_dismissed',
+			'bettershield_coexistence_migrate_dismissed',
 			'bettershield_setup_fix_set',
 			'bettershield_setup_fix_applied',
 			'bettershield_activity_baseline',
@@ -455,6 +456,7 @@ if ( ! function_exists( 'bettershield_uninstall_site' ) ) {
 		delete_transient( 'bettershield_guards_complete' );
 		delete_transient( 'bettershield_server_headers_rechecked' );
 		delete_transient( 'bettershield_mcp_route_answers' );
+		delete_transient( 'bettershield_missing_page' );
 		// Per-account throttles are transients named by user ID; match by prefix.
 		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\_transient\_bettershield\_reset\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_reset\_%' OR option_name LIKE '\_transient\_bettershield\_lfail\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_lfail\_%' OR option_name LIKE '\_transient\_bettershield\_manifest\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_manifest\_%' OR option_name LIKE '\_transient\_bettershield\_2fa\_skipped\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_2fa\_skipped\_%' OR option_name LIKE '\_transient\_bettershield\_2fa\_step\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_2fa\_step\_%' OR option_name LIKE '\_transient\_bettershield\_2fa\_done\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_2fa\_done\_%' OR option_name LIKE '\_transient\_bettershield\_pkchal\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_pkchal\_%' OR option_name LIKE '\_transient\_bettershield\_passkey\_proof\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_passkey\_proof\_%' OR option_name LIKE '\_transient\_bettershield\_note\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_note\_%' OR option_name LIKE '\_transient\_bettershield\_pwrange\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_pwrange\_%' OR option_name LIKE '\_transient\_bettershield\_unusual\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_unusual\_%' OR option_name LIKE '\_transient\_bettershield\_pwlimit\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_pwlimit\_%' OR option_name LIKE '\_transient\_bettershield\_upload\_types\_%' OR option_name LIKE '\_transient\_timeout\_bettershield\_upload\_types\_%' OR option_name LIKE '\_site\_transient\_bettershield\_unlock\_alias\_%' OR option_name LIKE '\_site\_transient\_timeout\_bettershield\_unlock\_alias\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- no API lists transients by prefix. The unlock aliases are site transients, which a single site keeps among its options.
 

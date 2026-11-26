@@ -24,7 +24,6 @@ declare( strict_types=1 );
 
 namespace BetterShield\Login;
 
-use BetterShield\Network\Policies as NetworkPolicies;
 use BetterShield\Passkeys\Policy as PasskeyPolicy;
 use BetterShield\Passkeys\ProfilePanel as PasskeysPanel;
 use BetterShield\Passkeys\Store as PasskeyStore;
@@ -259,14 +258,14 @@ final class StoreAccount {
 			return true;
 		}
 
+		if ( TwoFactorPolicy::instance()->covers( $user ) ) {
+			return true;
+		}
+
 		// The roles an add-on asks two-factor of under rules of its own.
 		$elsewhere = apply_filters( 'bettershield_two_factor_roles_required_elsewhere', array() );
-		$required  = array_merge(
-			NetworkPolicies::effective_two_factor_roles( TwoFactorPolicy::instance()->settings()['roles'] ),
-			array_map( 'strval', is_array( $elsewhere ) ? $elsewhere : array() )
-		);
 
-		return array() !== array_intersect( (array) $user->roles, $required );
+		return array() !== array_intersect( (array) $user->roles, array_map( 'strval', is_array( $elsewhere ) ? $elsewhere : array() ) );
 	}
 
 	/**

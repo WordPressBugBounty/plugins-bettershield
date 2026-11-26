@@ -269,6 +269,28 @@ final class Coexistence {
 	}
 
 	/**
+	 * A plugin's name as its header gives it, without the tagline some put
+	 * after it: "WP 2FA - Two-factor authentication for WordPress" is read
+	 * in every sentence it is named in, and the owner knows it by the part
+	 * the Plugins screen shows first. What follows the dash is a tagline only
+	 * when it is a phrase: one or two words there are the brand itself, as in
+	 * "WordPress Backup & Security Plugin - BlogVault", and the name stays whole.
+	 */
+	public static function short_name( string $name ): string {
+		$name  = trim( $name );
+		$parts = preg_split( '/\s+[-–—|:]\s+/u', $name, 2 );
+
+		if ( ! is_array( $parts ) || 2 !== count( $parts ) ) {
+			return $name;
+		}
+
+		$first = trim( (string) $parts[0] );
+		$rest  = preg_split( '/\s+/u', trim( (string) $parts[1] ) );
+
+		return mb_strlen( $first ) >= 2 && is_array( $rest ) && count( $rest ) >= 3 ? $first : $name;
+	}
+
+	/**
 	 * The listed plugins that are active here, with the jobs they do.
 	 *
 	 * @return array<string, array{name: string, jobs: string[]}>
@@ -400,7 +422,7 @@ final class Coexistence {
 				$jobs[] = 'backups';
 			}
 
-			$name = isset( $installed[ $file ]['Name'] ) ? wp_strip_all_tags( (string) $installed[ $file ]['Name'] ) : '';
+			$name = isset( $installed[ $file ]['Name'] ) ? self::short_name( wp_strip_all_tags( (string) $installed[ $file ]['Name'] ) ) : '';
 
 			$found[ $file ] = array(
 				'name' => '' !== $name ? $name : dirname( $file ),
@@ -1864,6 +1886,9 @@ final class Coexistence {
 	/** The plugins whose "deactivate it" notice the owner closed, by file. */
 	public const NOTICE_DISMISSED_OPTION = 'bettershield_coexistence_notice_dismissed';
 
+	/** The plugins whose "BetterShield can take over" notice was closed. */
+	public const MIGRATE_DISMISSED_OPTION = 'bettershield_coexistence_migrate_dismissed';
+
 	/**
 	 * The plugins still active after the finished setup handed one of their
 	 * jobs to BetterShield: their settings came over, and BetterShield's
@@ -1891,6 +1916,7 @@ final class Coexistence {
 		$choices   = (array) $state['coexistence'];
 		$dismissed = array_map( 'strval', (array) get_option( self::NOTICE_DISMISSED_OPTION, array() ) );
 		$found     = array();
+		$migrating = array_flip( array_column( self::awaiting_migration(), 'file' ) );
 
 		foreach ( self::active() as $file => $plugin ) {
 			$file   = (string) $file;
@@ -1903,6 +1929,12 @@ final class Coexistence {
 			);
 
 			if ( array() === $handed || in_array( $file, $dismissed, true ) ) {
+				continue;
+			}
+
+			// Still keeping a job BetterShield could take: the migrate notice
+			// speaks for it, and switching it off would end that job.
+			if ( isset( $migrating[ $file ] ) ) {
 				continue;
 			}
 
@@ -1921,6 +1953,193 @@ final class Coexistence {
 		}
 
 		return $found;
+	}
+
+	/**
+	 * After the Quick Setup, each security plugin still doing a job
+	 * BetterShield can take over — kept in the setup, or never asked because
+	 * the step was skipped — for the screens to offer the move the setup
+	 * would have made.
+	 *
+	 * Not Patchstack, which this plugin runs beside, and not a plugin whose
+	 * notice was closed: closing it is keeping the plugin, and the Overview
+	 * still offers the move.
+	 *
+	 * @return array<int, array{file: string, name: string, jobs: string[], accounts: int, can_deactivate: bool, also: string[], plugins_url: string}>
+	 */
+	public static function awaiting_migration(): array {
+		if ( ! class_exists( QuickSetup::class ) || ! QuickSetup::is_done() ) {
+			return array();
+		}
+
+		$state     = QuickSetup::state();
+		$choices   = $state['coexistence_saved'] ? (array) $state['coexistence'] : array();
+		$dismissed = array_map( 'strval', (array) get_option( self::MIGRATE_DISMISSED_OPTION, array() ) );
+		$found     = array();
+
+		foreach ( self::active() as $file => $plugin ) {
+			$file = (string) $file;
+
+			if ( 'patchstack/patchstack.php' === $file || in_array( $file, $dismissed, true ) ) {
+				continue;
+			}
+
+			// A job nobody chose here is still the other plugin's.
+			$kept = array_values(
+				array_filter(
+					(array) $plugin['jobs'],
+					static fn( string $job ): bool => in_array( $job, self::CHOICE_JOBS, true ) && 'bettershield' !== ( $choices[ $job ] ?? 'keep' )
+				)
+			);
+
+			if ( array() === $kept ) {
+				continue;
+			}
+
+			$network = is_multisite() && is_plugin_active_for_network( $file );
+
+			$found[] = array(
+				'file'           => $file,
+				'name'           => (string) $plugin['name'],
+				'jobs'           => $kept,
+				// The accounts whose authenticator moves with it.
+				'accounts'       => in_array( 'two_factor', $kept, true ) && \BetterShield\TwoFactor\Import::reads( $file ) ? count( \BetterShield\TwoFactor\Import::accounts( $file ) ) : 0,
+				'can_deactivate' => '' === self::why_not_deactivate( $file ),
+				// What else switching it off stops, which BetterShield does not take over.
+				'also'           => array_values( array_diff( (array) $plugin['jobs'], self::CHOICE_JOBS ) ),
+				'plugins_url'    => $network ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' ),
+			);
+		}
+
+		return $found;
+	}
+
+	/**
+	 * Hand the jobs one plugin still keeps to BetterShield and bring its
+	 * settings over, as the setup's Coexistence step does for the same
+	 * choices: the same save, so every guard it keeps — the two-factor rule
+	 * held for the way back in, the address held until then, the undo rows
+	 * and the events — holds here too.
+	 *
+	 * It never switches the plugin off itself. Where the person may, the
+	 * answer carries WordPress's own Deactivate for them to follow, which is
+	 * the owner switching it off, and moves its two-factor accounts as it
+	 * goes; elsewhere it names the Plugins screen.
+	 *
+	 * @return array{deactivate_url: string, plugins_url: string}|\WP_Error
+	 */
+	public static function migrate( string $file ) {
+		$offered = array_column( self::awaiting_migration(), null, 'file' );
+
+		if ( ! isset( $offered[ $file ] ) ) {
+			return new \WP_Error(
+				'bettershield_nothing_to_migrate',
+				__( 'That plugin has no job left for BetterShield to take over, so nothing was changed.', 'bettershield' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$state   = QuickSetup::state();
+		$choices = $state['coexistence_saved'] ? self::clean( $state['coexistence'] ) : array();
+
+		/*
+		 * Only this plugin's jobs change. A job nobody decided stays
+		 * undecided rather than becoming "keep": keeping sign-in limits
+		 * elsewhere switches this plugin's own attempt limit off, which is
+		 * not what moving another job asked for.
+		 */
+		foreach ( $offered[ $file ]['jobs'] as $job ) {
+			$choices[ $job ] = 'bettershield';
+		}
+
+		$keys = array();
+
+		foreach ( self::imports() as $row ) {
+			if ( in_array( $file, \BetterShield\Operator\Migrate::files_of( (string) $row['key'] ), true ) ) {
+				$keys[] = (string) $row['key'];
+			}
+		}
+
+		$saved = QuickSetup::save_coexistence( self::clean( $choices ), $keys );
+
+		if ( is_wp_error( $saved ) ) {
+			return $saved;
+		}
+
+		return array(
+			'deactivate_url' => $offered[ $file ]['can_deactivate'] ? self::deactivate_url( $file ) : '',
+			'plugins_url'    => $offered[ $file ]['plugins_url'],
+		);
+	}
+
+	/**
+	 * On the Plugins screen, under another plugin that has two-factor set up
+	 * for accounts here while two-factor was never handed to BetterShield:
+	 * switched off now, those accounts move nowhere and sign in with a
+	 * password alone, and nothing said so. A line under its row says it
+	 * before the Deactivate is pressed, with the way to move them first.
+	 */
+	public static function warn_unmoved_two_factor(): void {
+		if ( is_network_admin() || ! current_user_can( \BetterShield\Capabilities::MANAGE ) || \BetterShield\TwoFactor\Import::chosen() ) {
+			return;
+		}
+
+		add_action( 'after_plugin_row', array( self::class, 'unmoved_two_factor_row' ), 10, 1 );
+	}
+
+	/**
+	 * The line itself, for one row of the Plugins screen.
+	 *
+	 * @param mixed $file The row's plugin file.
+	 */
+	public static function unmoved_two_factor_row( $file ): void {
+		$file   = is_string( $file ) ? $file : '';
+		$active = self::active();
+
+		if ( ! isset( $active[ $file ] ) || ! in_array( 'two_factor', (array) $active[ $file ]['jobs'], true ) || ! \BetterShield\TwoFactor\Import::reads( $file ) ) {
+			return;
+		}
+
+		$count = count( \BetterShield\TwoFactor\Import::accounts( $file ) );
+
+		if ( $count < 1 ) {
+			return;
+		}
+
+		global $wp_list_table;
+
+		$columns = is_object( $wp_list_table ) && method_exists( $wp_list_table, 'get_column_count' ) ? (int) $wp_list_table->get_column_count() : 4;
+		$name    = (string) $active[ $file ]['name'];
+
+		printf(
+			'<tr class="plugin-update-tr active bettershield-unmoved"><td colspan="%1$d" class="plugin-update colspanchange"><div class="notice inline notice-warning notice-alt"><p>%2$s <a href="%3$s">%4$s</a></p></div></td></tr>',
+			(int) $columns,
+			esc_html(
+				sprintf(
+					/* translators: 1: a plugin's name, 2: how many accounts. */
+					_n(
+						'%1$s has two-factor set up for %2$d account. If you deactivate it now, that account signs in with a password only, because its two-factor doesn’t move to BetterShield.',
+						'%1$s has two-factor set up for %2$d accounts. If you deactivate it now, they sign in with a password only, because their two-factor doesn’t move to BetterShield.',
+						$count,
+						'bettershield'
+					),
+					$name,
+					$count
+				)
+			),
+			esc_url( admin_url( 'admin.php?page=bettershield' ) ),
+			esc_html__( 'Move it to BetterShield first', 'bettershield' )
+		);
+	}
+
+	/** Close the migrate notice for one plugin, for every administrator. */
+	public static function dismiss_migrate_notice( string $file ): void {
+		$dismissed = array_map( 'strval', (array) get_option( self::MIGRATE_DISMISSED_OPTION, array() ) );
+
+		if ( ! in_array( $file, $dismissed, true ) ) {
+			$dismissed[] = $file;
+			update_option( self::MIGRATE_DISMISSED_OPTION, array_values( $dismissed ), false );
+		}
 	}
 
 	/** Close the notice for one plugin, for every administrator. */
@@ -2288,6 +2507,104 @@ final class Coexistence {
 	}
 
 	/**
+	 * Every account an active security plugin has two-factor set up for, as
+	 * `two_factor_for_user()` reads each one, lowest ID first.
+	 *
+	 * One query per plugin, IDs only, so a caller counting a site's accounts
+	 * reads these few rather than walking every account with its meta. On a
+	 * network the accounts a plugin's user meta marks are the whole host's,
+	 * where user meta is shared, and may include accounts not on this site:
+	 * a caller keeps the ones on its own site. Accounts covered by role, and
+	 * Wordfence's, are read for this site, as each account's roles are.
+	 *
+	 * A plugin whose per-account record is not known here is not read: the
+	 * per-account filter for it can't be asked of every account at once.
+	 * `two_factor_unread_elsewhere()` says when such a plugin is active.
+	 *
+	 * @return int[]
+	 */
+	public static function two_factor_set_up_accounts(): array {
+		$ids = array();
+
+		foreach ( self::active() as $file => $plugin ) {
+			if ( ! in_array( 'two_factor', $plugin['jobs'], true ) ) {
+				continue;
+			}
+
+			// Every account in the roles it emails codes to, not only the first it would name.
+			if ( array() !== self::role_two_factor( (string) $file ) ) {
+				$in_roles = get_users(
+					array(
+						'role__in' => self::role_two_factor( (string) $file ),
+						'fields'   => 'ID',
+					)
+				);
+				$ids      = array_merge( $ids, array_map( 'intval', $in_roles ) );
+			}
+
+			$recorded = self::two_factor_recorded_ids( (string) $file );
+
+			if ( 'wfls_2fa_secrets' === ( self::two_factor_record( (string) $file )['table'] ?? '' ) ) {
+				$recorded = self::wfls_asked( $recorded );
+			}
+
+			$ids = array_merge( $ids, $recorded );
+		}
+
+		$ids = array_values( array_unique( $ids ) );
+		sort( $ids );
+
+		return $ids;
+	}
+
+	/**
+	 * Of the accounts with a Wordfence secret, those it asks for a code, as
+	 * `two_factor_set_up()` reads each: none while its two-factor is switched
+	 * off, else those allowed to use it, by role, by their own right, or as a
+	 * network's super admins. Read by ID, never by loading each account.
+	 *
+	 * @param int[] $ids
+	 * @return int[]
+	 */
+	private static function wfls_asked( array $ids ): array {
+		if ( array() === $ids || ! self::wfls_two_factor_on() ) {
+			return array();
+		}
+
+		$asked = array();
+
+		// A super admin holds every capability on each site of the network.
+		if ( is_multisite() ) {
+			foreach ( get_super_admins() as $login ) {
+				$admin = get_user_by( 'login', $login );
+
+				if ( $admin instanceof \WP_User && in_array( (int) $admin->ID, $ids, true ) ) {
+					$asked[] = (int) $admin->ID;
+				}
+			}
+		}
+
+		foreach ( array_chunk( $ids, 1000 ) as $chunk ) {
+			$asked = array_merge(
+				$asked,
+				array_map(
+					'intval',
+					get_users(
+						array(
+							'include'    => $chunk,
+							'capability' => 'wf2fa_activate_2fa_self',
+							'fields'     => 'ID',
+							'number'     => count( $chunk ),
+						)
+					)
+				)
+			);
+		}
+
+		return array_values( array_unique( $asked ) );
+	}
+
+	/**
 	 * The plugin whose own two-factor this sign-in's gate leaves the account
 	 * to, or '': as two_factor_for_user(), less a plugin that asks for its
 	 * code inside core's password check and stops the request there.
@@ -2641,10 +2958,6 @@ final class Coexistence {
 	 * @return int[]
 	 */
 	private static function two_factor_set_up_ids( string $file ): array {
-		global $wpdb;
-
-		$record = self::two_factor_record( $file );
-
 		// Every account in the roles it emails codes to, whether or not it set up the app too.
 		if ( array() !== self::role_two_factor( $file ) ) {
 			$query = new \WP_User_Query(
@@ -2662,7 +2975,21 @@ final class Coexistence {
 			return array_map( 'intval', (array) $query->get_results() );
 		}
 
-		$ids = array();
+		return self::two_factor_recorded_ids( $file );
+	}
+
+	/**
+	 * The accounts a plugin's own per-account record marks as set up, from
+	 * its user meta or its table, lowest ID first. Not the accounts it covers
+	 * by role.
+	 *
+	 * @return int[]
+	 */
+	private static function two_factor_recorded_ids( string $file ): array {
+		global $wpdb;
+
+		$record = self::two_factor_record( $file );
+		$ids    = array();
 
 		if ( isset( $record['meta'] ) ) {
 			list( $where, $args ) = self::two_factor_meta_where( $record );

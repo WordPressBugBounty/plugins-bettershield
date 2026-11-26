@@ -1057,6 +1057,8 @@ final class Plugin {
 			( new Onboarding\FirstRun() )->register();
 			// Back to the setup after its link switches a plugin off (#1964).
 			add_action( 'load-plugins.php', array( Onboarding\Coexistence::class, 'watch_deactivate_link' ) );
+			// A plugin whose two-factor accounts would not come over if switched off now.
+			add_action( 'load-plugins.php', array( Onboarding\Coexistence::class, 'warn_unmoved_two_factor' ) );
 			( new Admin\QuickSetupPage() )->register();
 			// Core's Plugins and Updates screens: which waiting update fixes a
 			// known vulnerability, read from what the last check stored.

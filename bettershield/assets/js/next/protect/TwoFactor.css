@@ -250,3 +250,10 @@
 	transform: scaleX(var(--bs-ds-coverage));
 	transform-origin: left;
 }
+
+/* The two lists of people, side by side where there is room. */
+.bs-ds-2fa__people {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+	gap: var(--bs-ds-space-md);
+}

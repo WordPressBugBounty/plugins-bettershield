@@ -38,6 +38,7 @@ import { Resource } from '../ui/States';
 import Topics from '../ui/Topics';
 import Codes from './Codes';
 import Passkeys from './Passkeys';
+import PeoplePicker from './PeoplePicker';
 import SafeMode from './SafeMode';
 
 
@@ -737,11 +738,30 @@ function RolePolicy() {
 					 */
 					const grace = String( policy.grace_days ).trim();
 					const graceProblem = graceDaysProblem( grace );
-					const dirty = draft && ( ! sameRoles( draft.roles, saved.roles ) || Boolean( graceProblem ) || Number( grace ) !== saved.grace_days );
-					// Another plugin kept for two-factor: a role added here is
-					// asked for this plugin's code on top of that one's.
-					const adding = Boolean( saved.handled_by ) && roles.some( ( role ) => ! ( saved.roles || [] ).includes( role ) );
-					const save = () => saveTwoFactorPolicy( { roles, grace_days: Number( grace ) }, () => setDraft( null ) );
+					// The accounts named in each list, as { id, name, login }.
+					const savedPeople = saved.people || { users: [], excluded: [] };
+					const users = policy.peopleUsers || savedPeople.users || [];
+					const excluded = policy.peopleExcluded || savedPeople.excluded || [];
+					const ids = ( list ) => list.map( ( person ) => person.id );
+					const dirty =
+						draft &&
+						( ! sameRoles( draft.roles, saved.roles ) ||
+							Boolean( graceProblem ) ||
+							Number( grace ) !== saved.grace_days ||
+							! sameRoles( ids( users ), ids( savedPeople.users || [] ) ) ||
+							! sameRoles( ids( excluded ), ids( savedPeople.excluded || [] ) ) );
+					// Another plugin kept for two-factor: a role or account added
+					// here is asked for this plugin's code on top of that one's.
+					const adding =
+						Boolean( saved.handled_by ) &&
+						( roles.some( ( role ) => ! ( saved.roles || [] ).includes( role ) ) || ids( users ).some( ( id ) => ! ids( savedPeople.users || [] ).includes( id ) ) );
+					// The lists go only when they changed, so a save of the roles
+					// alone reads as it always has.
+					const peopleMoved = {
+						...( sameRoles( ids( users ), ids( savedPeople.users || [] ) ) ? {} : { users: ids( users ) } ),
+						...( sameRoles( ids( excluded ), ids( savedPeople.excluded || [] ) ) ? {} : { excluded: ids( excluded ) } ),
+					};
+					const save = () => saveTwoFactorPolicy( { roles, grace_days: Number( grace ), ...peopleMoved }, () => setDraft( null ) );
 					const held = saved.held_rule;
 
 					return (
@@ -836,6 +856,27 @@ function RolePolicy() {
 							/>
 							<NetworkRolesNote required={ network } roles={ saved.available_roles } />
 							<StoreRoleNote picked={ roles } roles={ saved.available_roles } kind="two-factor" />
+
+							<div className="bs-ds-2fa__people">
+								<PeoplePicker
+									label={ __( 'Also require it for these people', 'bettershield' ) }
+									help={ __( 'Whatever their role. They get the same grace period.', 'bettershield' ) }
+									people={ users }
+									taken={ ids( excluded ) }
+									takenWhy={ __( 'Left out below. Remove them there first.', 'bettershield' ) }
+									disabled={ saving }
+									onChange={ ( next ) => setDraft( { ...policy, peopleUsers: next } ) }
+								/>
+								<PeoplePicker
+									label={ __( 'Leave these people out', 'bettershield' ) }
+									help={ __( 'For accounts a person never signs in to, like a shared or service account. Roles the network requires still apply.', 'bettershield' ) }
+									people={ excluded }
+									taken={ ids( users ) }
+									takenWhy={ __( 'Required above. Remove them there first.', 'bettershield' ) }
+									disabled={ saving }
+									onChange={ ( next ) => setDraft( { ...policy, peopleExcluded: next } ) }
+								/>
+							</div>
 
 							<Field
 								className="bs-ds-2fa__grace"
@@ -1004,7 +1045,17 @@ function PasskeyPolicy() {
 				{ ( data ) => {
 					const saved = data.policy.roles || [];
 					const roles = draft ? draft.roles : saved;
-					const dirty = draft && ! sameRoles( draft.roles, saved );
+					// The accounts named in each list, as { id, name, login }.
+					const savedPeople = data.people || { users: [], excluded: [] };
+					const users = ( draft && draft.users ) || savedPeople.users || [];
+					const excluded = ( draft && draft.excluded ) || savedPeople.excluded || [];
+					const ids = ( list ) => list.map( ( person ) => person.id );
+					const usersMoved = ! sameRoles( ids( users ), ids( savedPeople.users || [] ) );
+					const excludedMoved = ! sameRoles( ids( excluded ), ids( savedPeople.excluded || [] ) );
+					const dirty = draft && ( ! sameRoles( draft.roles, saved ) || usersMoved || excludedMoved );
+					// The lists go only when they changed, so a save of the roles
+					// alone reads as it always has.
+					const body = { roles, ...( usersMoved ? { users: ids( users ) } : {} ), ...( excludedMoved ? { excluded: ids( excluded ) } : {} ) };
 					// Required of every site by the network, whatever this one names.
 					const network = networkRoles( data );
 
@@ -1028,6 +1079,7 @@ function PasskeyPolicy() {
 					( data.roles || [] ).forEach( ( role ) => {
 						labels[ role.slug ] = role.label;
 					} );
+					labels[ 'named people' ] = __( 'People named one by one', 'bettershield' );
 
 					const coverage = data.coverage || [];
 
@@ -1076,9 +1128,32 @@ function PasskeyPolicy() {
 									disabled: ( off && ! saved.includes( role.slug ) ) || network.includes( role.slug ),
 								} ) ) }
 								// The network's roles are drawn ticked, not saved as the site's own.
-								onChange={ ( next ) => setDraft( { roles: next.filter( ( slug ) => ! network.includes( slug ) || roles.includes( slug ) ) } ) }
+								onChange={ ( next ) => setDraft( { users, excluded, roles: next.filter( ( slug ) => ! network.includes( slug ) || roles.includes( slug ) ) } ) }
 							/>
 							<NetworkRolesNote required={ network } roles={ data.roles } />
+
+							<div className="bs-ds-2fa__people">
+								<PeoplePicker
+									label={ __( 'Also hold these people to a passkey', 'bettershield' ) }
+									help={ __( 'Whatever their role. As with roles, nothing changes for them until they add a passkey.', 'bettershield' ) }
+									people={ users }
+									taken={ ids( excluded ) }
+									takenWhy={ __( 'Left out beside this. Remove them there first.', 'bettershield' ) }
+									disabled={ saving }
+									// Where passkeys are off nobody can be added, as no role can.
+									canAdd={ ! off }
+									onChange={ ( next ) => setDraft( { roles, excluded, users: next } ) }
+								/>
+								<PeoplePicker
+									label={ __( 'Leave these people out', 'bettershield' ) }
+									help={ __( 'They keep signing in with a password even in a role above. Roles the network requires still apply.', 'bettershield' ) }
+									people={ excluded }
+									taken={ ids( users ) }
+									takenWhy={ __( 'Held to a passkey beside this. Remove them there first.', 'bettershield' ) }
+									disabled={ saving }
+									onChange={ ( next ) => setDraft( { roles, users, excluded: next } ) }
+								/>
+							</div>
 
 							{ off ? (
 								<div role="status">
@@ -1152,7 +1227,7 @@ function PasskeyPolicy() {
 									size="sm"
 									isBusy={ saving }
 									disabled={ saving || ! dirty }
-									onClick={ () => savePasskeyPolicy( { roles }, () => setDraft( null ) ) }
+									onClick={ () => savePasskeyPolicy( body, () => setDraft( null ) ) }
 								>
 									{ __( 'Save Requirement', 'bettershield' ) }
 								</Button>
@@ -1250,6 +1325,27 @@ function AtAGlance() {
 	// add-on asks under its own rules, so nobody asked is left uncounted.
 	const elsewhereRoles = ( required.data && required.data.elsewhere && Array.isArray( required.data.elsewhere.roles ) && required.data.elsewhere.roles ) || [];
 	const requiredRoles = bothRoles( bothRoles( ( required.data && required.data.roles ) || [], networkRoles( required.data ) ), elsewhereRoles );
+	// Accounts named one by one, on top of the roles, and those left out.
+	const namedCount = ( ( required.data && required.data.users ) || [] ).length;
+	const leftCount = ( ( required.data && required.data.excluded ) || [] ).length;
+	const peopleNote = [
+		namedCount
+			? sprintf(
+					/* translators: %d: number of accounts required by name. */
+					_n( 'plus %d person', 'plus %d people', namedCount, 'bettershield' ),
+					namedCount
+			  )
+			: '',
+		leftCount
+			? sprintf(
+					/* translators: %d: number of accounts left out of the requirement. */
+					_n( '%d person left out', '%d people left out', leftCount, 'bettershield' ),
+					leftCount
+			  )
+			: '',
+	]
+		.filter( Boolean )
+		.join( ' · ' );
 	const passkeyRoles = bothRoles( ( passkeys.data && passkeys.data.policy && passkeys.data.policy.roles ) || [], networkRoles( passkeys.data ) );
 
 	// Named roles on a site where passkeys are off are stored, not enforced.
@@ -1317,12 +1413,28 @@ function AtAGlance() {
 			icon: 'users',
 			// Nothing required yet, but accounts already use it: name their
 			// roles rather than "No roles", and say it is not required.
-			label: ! requiredRoles.length && inUseRoles.length ? __( 'Two-factor in use by', 'bettershield' ) : __( 'Two-factor required for', 'bettershield' ),
-			value: required.data ? roleCount( requiredRoles.length || inUseRoles.length ) : '—',
-			tone: requiredRoles.length > 0 || inUseRoles.length > 0 ? 'good' : undefined,
+			label: ! requiredRoles.length && ! namedCount && inUseRoles.length ? __( 'Two-factor in use by', 'bettershield' ) : __( 'Two-factor required for', 'bettershield' ),
+			value: ( () => {
+				if ( ! required.data ) {
+					return '—';
+				}
+
+				return ! requiredRoles.length && namedCount
+					? sprintf(
+							/* translators: %d: number of accounts required by name. */
+							_n( '%d person', '%d people', namedCount, 'bettershield' ),
+							namedCount
+					  )
+					: roleCount( requiredRoles.length || inUseRoles.length );
+			} )(),
+			tone: requiredRoles.length > 0 || namedCount > 0 || inUseRoles.length > 0 ? 'good' : undefined,
 			detail: ( () => {
 				if ( requiredRoles.length ) {
-					return named( requiredRoles, required.data.available_roles );
+					return [ named( requiredRoles, required.data.available_roles ), peopleNote ].filter( Boolean ).join( ' · ' );
+				}
+
+				if ( namedCount ) {
+					return [ __( 'Named one by one', 'bettershield' ), leftCount ? peopleNote.split( ' · ' ).pop() : '' ].filter( Boolean ).join( ' · ' );
 				}
 
 				return inUseRoles.length

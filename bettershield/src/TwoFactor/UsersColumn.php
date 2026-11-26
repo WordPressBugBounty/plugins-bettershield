@@ -84,6 +84,26 @@ final class UsersColumn {
 			);
 		}
 
+		// Said only where the requirement makes it news: an account owing
+		// it, or one the owner chose to leave out. Not on the network's Users
+		// screen: the requirement is each site's, and read there it would be
+		// the main site's answer printed against accounts of every site.
+		if ( is_network_admin() ) {
+			return self::off();
+		}
+
+		if ( $user instanceof \WP_User && Policy::instance()->covers( $user ) ) {
+			return esc_html__( 'Required, not set up', 'bettershield' );
+		}
+
+		if ( in_array( $user_id, Policy::instance()->settings()['excluded'], true ) ) {
+			return esc_html__( 'Off, left out', 'bettershield' );
+		}
+
+		return self::off();
+	}
+
+	private static function off(): string {
 		return '<span aria-hidden="true">—</span><span class="screen-reader-text">' . esc_html__( 'Off', 'bettershield' ) . '</span>';
 	}
 }

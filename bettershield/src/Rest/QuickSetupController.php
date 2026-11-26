@@ -799,6 +799,61 @@ final class QuickSetupController {
 			)
 		);
 
+		/*
+		 * Hand the jobs another security plugin still keeps to BetterShield,
+		 * after the setup, from the notice that offers it: the setup's own
+		 * save for those choices. It changes who does a sign-in job, so it
+		 * asks for the password, as the step does. It never switches the
+		 * plugin off; the answer carries WordPress's own Deactivate.
+		 */
+		register_rest_route(
+			self::NS,
+			'/coexistence/migrate',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'args'                => array(
+					'file' => array(
+						'type'              => 'string',
+						'required'          => true,
+						'maxLength'         => 255,
+						'validate_callback' => 'rest_validate_request_arg',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+				'callback'            => static function ( \WP_REST_Request $request ) {
+					$moved = Coexistence::migrate( (string) $request['file'] );
+
+					return is_wp_error( $moved ) ? $moved : rest_ensure_response( $moved );
+				},
+				'permission_callback' => array( Permissions::class, 'interactive_manage' ),
+			)
+		);
+
+		// Close the "BetterShield can take over" notice for one plugin: keeping it.
+		register_rest_route(
+			self::NS,
+			'/coexistence/migrate/dismiss',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'args'                => array(
+					'file' => array(
+						'type'              => 'string',
+						'required'          => true,
+						'maxLength'         => 255,
+						'validate_callback' => 'rest_validate_request_arg',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+				'callback'            => static function ( \WP_REST_Request $request ): \WP_REST_Response {
+					Coexistence::dismiss_migrate_notice( (string) $request['file'] );
+
+					return rest_ensure_response( array( 'migrate' => Coexistence::awaiting_migration() ) );
+				},
+				// A person closing a notice on the screen: a stored credential has no notice to close.
+				'permission_callback' => array( Permissions::class, 'interactive_manage' ),
+			)
+		);
+
 		// Close the "deactivate it" notice for one plugin the setup handed jobs from.
 		register_rest_route(
 			self::NS,

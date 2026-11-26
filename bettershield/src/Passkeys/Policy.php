@@ -26,6 +26,7 @@ use BetterShield\Recovery\RecoveryLink;
 use BetterShield\Recovery\SafeMode;
 use BetterShield\Support\Claim;
 use BetterShield\Support\LoginForms;
+use BetterShield\Support\NamedAccounts;
 use BetterShield\TwoFactor\Manager as TwoFactorManager;
 use BetterShield\Undo\SettingsLedger;
 
@@ -119,7 +120,7 @@ final class Policy {
 	 * The roles held to a passkey, and whether the sign-in form offers a
 	 * saved passkey in the username field's autofill.
 	 *
-	 * @return array{roles: string[], autofill: bool}
+	 * @return array{roles: string[], users: int[], excluded: int[], autofill: bool}
 	 */
 	public function settings(): array {
 		$stored = get_option( self::OPTION, array() );
@@ -127,6 +128,11 @@ final class Policy {
 
 		return array(
 			'roles'    => array_values( array_filter( array_map( 'strval', (array) ( $stored['roles'] ?? array() ) ) ) ),
+			// Accounts held to a passkey whatever their role, and accounts
+			// this site's roles leave alone. Ids, which mean nothing on
+			// another site.
+			'users'    => NamedAccounts::ids( $stored['users'] ?? array() ),
+			'excluded' => NamedAccounts::ids( $stored['excluded'] ?? array() ),
 			// On unless it was switched off: a policy saved before the switch
 			// existed has no key, and gets the default.
 			'autofill' => ! array_key_exists( 'autofill', $stored ) || (bool) $stored['autofill'],
@@ -138,11 +144,13 @@ final class Policy {
 	 * release panel's honesty test and a settings import all read the same
 	 * shape.
 	 *
-	 * @return array{roles: string[], autofill: bool}
+	 * @return array{roles: string[], users: int[], excluded: int[], autofill: bool}
 	 */
 	public function defaults(): array {
 		return array(
 			'roles'    => array(),
+			'users'    => array(),
+			'excluded' => array(),
 			'autofill' => true,
 		);
 	}
@@ -157,7 +165,7 @@ final class Policy {
 	 * fresh site is the likeliest one to have none.
 	 *
 	 * @param array<string, mixed> $input
-	 * @return array{roles: string[], autofill: bool}|\WP_Error
+	 * @return array{roles: string[], users: int[], excluded: int[], autofill: bool}|\WP_Error
 	 */
 	public function validate( array $input ) {
 		$current = $this->settings();
@@ -184,8 +192,16 @@ final class Policy {
 			$clean[] = $role;
 		}
 
+		$people = NamedAccounts::clean( $input, $current );
+
+		if ( is_wp_error( $people ) ) {
+			return $people;
+		}
+
 		$next = array(
 			'roles'    => array_values( array_unique( $clean ) ),
+			'users'    => $people['users'],
+			'excluded' => $people['excluded'],
 			'autofill' => array_key_exists( 'autofill', $input ) ? rest_sanitize_boolean( $input['autofill'] ) : $current['autofill'],
 		);
 
@@ -233,7 +249,15 @@ final class Policy {
 			);
 		}
 
-		$widened = array_diff( $next['roles'], $current['roles'] );
+		/*
+		 * An account named in, or one no longer left out, is armed by the
+		 * save as surely as a role added, so each is widening too.
+		 */
+		$widened = array_merge(
+			array_diff( $next['roles'], $current['roles'] ),
+			array_diff( $next['users'], $current['users'] ),
+			array_diff( $current['excluded'], $next['excluded'] )
+		);
 
 		/*
 		 * A site that cannot create or check a passkey cannot meet this
@@ -281,12 +305,44 @@ final class Policy {
 	public function weakens( array $input ): bool {
 		$next = $this->validate( $input );
 
-		return ! is_wp_error( $next ) && array() !== array_diff( $this->settings()['roles'], $next['roles'] );
+		return ! is_wp_error( $next ) && array() !== self::weakened( $this->settings(), $next );
+	}
+
+	/**
+	 * What a change gives back to the password, named: each role no longer
+	 * held to a passkey by its slug, then the accounts taken off or left out.
+	 *
+	 * @param array<string, mixed> $current
+	 * @param array<string, mixed> $next
+	 * @return string[]
+	 */
+	private static function weakened( array $current, array $next ): array {
+		$weakened = array_values( array_diff( $current['roles'], $next['roles'] ) );
+
+		if ( array() !== array_diff( $current['users'], $next['users'] ) ) {
+			$weakened[] = 'accounts no longer required';
+		}
+
+		if ( array() !== array_diff( $next['excluded'], $current['excluded'] ) ) {
+			$weakened[] = 'accounts left out';
+		}
+
+		return $weakened;
+	}
+
+	/**
+	 * Whether two lists hold the same members, in any order.
+	 *
+	 * @param array<int, int|string> $a
+	 * @param array<int, int|string> $b
+	 */
+	private static function same_set( array $a, array $b ): bool {
+		return array() === array_diff( $a, $b ) && array() === array_diff( $b, $a );
 	}
 
 	/**
 	 * @param array<string, mixed> $input
-	 * @return array{roles: string[], autofill: bool}|\WP_Error
+	 * @return array{roles: string[], users: int[], excluded: int[], autofill: bool}|\WP_Error
 	 */
 	public function update_settings( array $input ) {
 		$current = $this->settings();
@@ -298,7 +354,7 @@ final class Policy {
 
 		// The same roles in another order are what is stored already. Saving
 		// them wrote a high event, which alerts, for a change nobody made.
-		$same_roles = array() === array_diff( $current['roles'], $next['roles'] ) && array() === array_diff( $next['roles'], $current['roles'] );
+		$same_roles = self::same_set( $current['roles'], $next['roles'] ) && self::same_set( $current['users'], $next['users'] ) && self::same_set( $current['excluded'], $next['excluded'] );
 
 		if ( $same_roles && $current['autofill'] === $next['autofill'] ) {
 			return $current;
@@ -338,7 +394,12 @@ final class Policy {
 			array(
 				'object_type' => 'setting',
 				'object_id'   => self::OPTION,
-				'context'     => array( 'roles' => $next['roles'], 'weakened' => array_values( array_diff( $current['roles'], $next['roles'] ) ) ),
+				'context'     => array(
+					'roles'    => $next['roles'],
+					'users'    => count( $next['users'] ),
+					'excluded' => count( $next['excluded'] ),
+					'weakened' => self::weakened( $current, $next ),
+				),
 			)
 		);
 
@@ -348,25 +409,36 @@ final class Policy {
 	/* ---- who it covers --------------------------------------------------------- */
 
 	/**
-	 * Whether the policy names one of this account's roles.
+	 * Whether the policy holds this account to a passkey: by one of its roles
+	 * here or the network's, or by name, and not left alone by name.
 	 *
 	 * Read per request rather than stamped on the account, so a role granted
 	 * or removed today changes the answer today.
+	 *
+	 * This site's roles sit with the network's beneath them. A network may
+	 * name a role for every site under it; a site may add to that and may
+	 * never take it away, so the two lists compose rather than one replacing
+	 * the other, and leaving an account alone here answers only for this
+	 * site's own roles.
 	 */
 	public function applies_to( \WP_User $user ): bool {
-		/*
-		 * This site's roles with the network's beneath them. A network may
-		 * name a role for every site under it; a site may add to that and may
-		 * never take it away, so the two lists compose rather than one
-		 * replacing the other.
-		 */
-		$roles = NetworkPolicies::effective_passkey_roles( $this->settings()['roles'] );
+		$settings = $this->settings();
+		$held     = array_map( 'strval', (array) $user->roles );
+		$id       = (int) $user->ID;
 
-		if ( array() === $roles ) {
+		if ( array() !== array_intersect( NetworkPolicies::passkey()['roles'], $held ) ) {
+			return true;
+		}
+
+		if ( in_array( $id, $settings['excluded'], true ) ) {
 			return false;
 		}
 
-		return array() !== array_intersect( $roles, array_map( 'strval', (array) $user->roles ) );
+		if ( in_array( $id, $settings['users'], true ) ) {
+			return true;
+		}
+
+		return array() !== array_intersect( NetworkPolicies::effective_passkey_roles( $settings['roles'] ), $held );
 	}
 
 	/**
